@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Mobile-first: viewport chuẩn để app hiển thị vừa khít màn hình điện thoại -->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>App Quản Lý Chi Phí Công Trình — Kiểm thử P1→P7</title>
+
+  <!-- Bootstrap 5 (CDN) — ưu tiên dùng class Bootstrap, hạn chế CSS thủ công -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+</head>
+<body class="bg-light">
+  <!-- container-sm: căn giữa, tự co theo bề ngang màn hình (mobile-first) -->
+  <div class="container-sm py-4" style="max-width: 640px;">
+    <h1 class="h4 mb-1">App Quản Lý Chi Phí Công Trình</h1>
+    <p class="text-muted mb-4">Trang kiểm thử nền tảng — <strong>P1 → P7</strong> (db, fmt, store, ui, year, firebase, sync, autocomplete, cat, sheet-grid, auth)</p>
+
+    <!-- Khu vực hiển thị kết quả tự kiểm tra (để khỏi cần mở Console) -->
+    <div class="card shadow-sm">
+      <div class="card-header fw-semibold">Kết quả tự kiểm tra</div>
+      <ul id="ket-qua" class="list-group list-group-flush">
+        <li class="list-group-item text-muted">Đang chạy kiểm tra…</li>
+      </ul>
+    </div>
+
+    <!-- Nút bấm thử nhanh các tiện ích giao diện của P2 -->
+    <div class="d-flex flex-wrap gap-2 mt-3">
+      <button id="btn-toast" class="btn btn-success btn-sm">Thử toast</button>
+      <button id="btn-loading" class="btn btn-secondary btn-sm">Thử loading 1.5s</button>
+      <button id="btn-confirm" class="btn btn-danger btn-sm">Thử confirm2</button>
+    </div>
+
+    <!-- Ô gợi ý SỐNG của P5: gõ "xi mang", "da", "thep"… để thử gợi ý không dấu -->
+    <div class="mt-3">
+      <label class="form-label small mb-1">Thử ô gợi ý không dấu (P5)</label>
+      <input id="demo-ac" class="form-control" placeholder='Gõ thử: "xi mang", "da", "thep"…' autocomplete="off" />
+    </div>
+
+    <!-- ===== LƯỚI DEMO P6 (sheet-grid) — thử bằng tay: gõ, Tab, Shift+mũi tên, copy/paste ===== -->
+    <div class="card shadow-sm mt-4">
+      <div class="card-header fw-semibold">Lưới nhập kiểu Excel (P6) — thử bằng tay</div>
+      <div class="card-body">
+        <p class="small text-muted mb-2">
+          Gõ vào ô, bấm <kbd>Tab</kbd>/<kbd>Enter</kbd> để nhảy ô (hết bảng tự đẻ dòng),
+          <kbd>Shift</kbd>+mũi tên để chọn vùng, <kbd>Ctrl/Cmd</kbd>+<kbd>C</kbd>/<kbd>V</kbd> để copy/paste
+          (dán thử cả khối từ Excel/Google Sheets vào ô <em>Số tiền</em>).
+        </p>
+        <div id="demo-grid"></div>
+      </div>
+    </div>
+
+    <!-- ===== DEMO ĐĂNG NHẬP P7 (auth) — thử 3 vai trò + ẩn/hiện nút theo quyền ===== -->
+    <div class="card shadow-sm mt-4">
+      <div class="card-header fw-semibold">Đăng nhập &amp; phân quyền (P7) — thử bằng tay</div>
+      <div class="card-body">
+        <!-- Khi CHƯA đăng nhập: hiện form. 3 tài khoản mẫu: admin/admin123, giamdoc/giamdoc123, ketoan/ketoan123 -->
+        <div data-when="guest">
+          <p class="small text-muted mb-2">
+            Tài khoản mẫu: <code>admin/admin123</code>, <code>giamdoc/giamdoc123</code>, <code>ketoan/ketoan123</code>.
+          </p>
+          <div id="demo-login"></div>
+        </div>
+
+        <!-- Khi ĐÃ đăng nhập: hiện thông tin + các nút có phân quyền -->
+        <div data-when="auth" class="d-none">
+          <p class="mb-2">
+            Xin chào <strong data-user-name></strong>
+            <span class="badge bg-primary-subtle text-primary-emphasis" data-user-role></span>
+          </p>
+          <p class="small text-muted mb-2">Các nút dưới tự ẩn/hiện theo vai trò (ketoan không thấy Doanh Thu/Dashboard; chỉ admin thấy Tools):</p>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <button class="btn btn-sm btn-outline-secondary" data-perm="viewDashboard">📊 Dashboard</button>
+            <button class="btn btn-sm btn-outline-secondary" data-perm="viewDoanhThu">💰 Doanh Thu</button>
+            <button class="btn btn-sm btn-outline-secondary" data-perm="manageTools">🛠 Tools / Danh mục nâng cao</button>
+          </div>
+          <button id="demo-logout" class="btn btn-sm btn-outline-danger">Đăng xuất</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-muted small mt-3 mb-0">
+      Mẹo: mở Console (F12) để gõ thử
+      <code>formatMoney(1500000)</code>, <code>await db</code>, <code>demoGrid.getData()</code>
+      hoặc <code>getCurrentUser()</code>.
+    </p>
+  </div>
+
+  <!-- ====================================================================
+       SCRIPT KIỂM THỬ — chạy như ES Module để import được db.js / fmt.js.
+       PHẢI mở trang này qua HTTP (Live Server của VS Code), không mở file:// .
+  ===================================================================== -->
+  <script type="module">
+    // Nạp các hàm/biến của P1
+    import { db, STORE, DEVICE_ID, idbGet, idbSet } from './js/core/db.js';
+    import { formatMoney, parseMoney, formatDate, parseDate } from './js/utils/fmt.js';
+    // Nạp các hàm của P2
+    import { load, save, createRecord, markUpdated, softDelete, activeOnly, getById } from './js/core/store.js';
+    import { toast, setLoading, confirm2, validateRequired } from './js/utils/ui.js';
+    import { filterByYear, activeYears, getRecordYear } from './js/utils/year.js';
+    // Nạp các hàm của P3 (Firebase REST — phần chạy được offline để test)
+    import { toFirestore, fromFirestore, docYearCat, docMeta, fbReady, getQuota } from './js/core/firebase.js';
+    // Nạp P4 (Sync Engine) — import cũng để kích hoạt móc đẩy vào store.save()
+    import { safeTs, resolveConflict, mergeById, manualSync, getLastSync, getPendingCount } from './js/core/sync.js';
+    // Nạp P5 (gợi ý không dấu + danh mục dùng chung)
+    import { normalizeVietnamese, filterSuggestions, attachAutocomplete } from './js/utils/autocomplete.js';
+    import { GROUPS, normalizeName, normalizeKey, addCategoryItem, listNames } from './js/utils/cat.js';
+    // Nạp P6 (lưới nhập kiểu Excel)
+    import { createSheetGrid } from './js/utils/sheet-grid.js';
+    // Nạp P7 (đăng nhập + phân quyền)
+    import { hashPassword, checkPassword, loadUsers } from './js/modules/auth/auth.data.js';
+    import { login, logout, getCurrentUser, getCurrentRole, canEdit, initAuth, syncAuthUI, mountLoginForm } from './js/modules/auth/auth.ui.js';
+    import { hasPermission, applyRoleUI, getRoleLabel, startRoleObserver } from './js/modules/auth/auth.roles.js';
+
+    // Đưa ra phạm vi toàn cục (window) để gõ thử trực tiếp trong Console.
+    Object.assign(window, {
+      db, STORE, DEVICE_ID, idbGet, idbSet,
+      formatMoney, parseMoney, formatDate, parseDate,
+      load, save, createRecord, markUpdated, softDelete, activeOnly, getById,
+      toast, setLoading, confirm2, validateRequired,
+      filterByYear, activeYears, getRecordYear,
+      toFirestore, fromFirestore, docYearCat, docMeta, fbReady, getQuota,
+      safeTs, resolveConflict, mergeById, manualSync, getLastSync, getPendingCount,
+      normalizeVietnamese, filterSuggestions, attachAutocomplete,
+      GROUPS, normalizeName, normalizeKey, addCategoryItem, listNames,
+      createSheetGrid,
+      hashPassword, checkPassword, loadUsers,
+      login, logout, getCurrentUser, getCurrentRole, canEdit, initAuth, syncAuthUI, mountLoginForm,
+      hasPermission, applyRoleUI, getRoleLabel, startRoleObserver,
+    });
+
+    // Dựng lưới demo P6 với vài loại cột tiêu biểu (autocomplete + tiền + tự điền dòng trên).
+    const TEN_LOAI_CP = ['Vật Tư', 'Nhân Công', 'Máy Móc', 'Vận Chuyển'];
+    const demoGrid = createSheetGrid(document.getElementById('demo-grid'), {
+      columns: [
+        { field: 'category', label: 'Loại CP', type: 'autocomplete',
+          source: () => TEN_LOAI_CP, required: true, copyFromAbove: true },
+        { field: 'amount',   label: 'Số tiền', type: 'money' },
+        { field: 'note',     label: 'Nội dung', type: 'text', suggestFromAbove: true },
+      ],
+      rows: 4,
+    });
+    window.demoGrid = demoGrid; // gõ demoGrid.getData() trong Console để xem dữ liệu đã parse
+
+    // Gắn gợi ý không dấu vào ô demo với 1 danh sách tên mẫu (có dấu).
+    const TEN_MAU = ['Xi Măng', 'Cát Vàng', 'Đá 1x2', 'Thép Phi 6', 'Thép Phi 8', 'Gạch Ống', 'Sơn Nước'];
+    attachAutocomplete(document.getElementById('demo-ac'), () => TEN_MAU, {
+      onSelect: (ten) => toast('Đã chọn: ' + ten, 'success'),
+    });
+
+    // Gắn hành vi cho 3 nút thử tiện ích giao diện P2.
+    document.getElementById('btn-toast').onclick   = () => toast('Đây là toast mẫu — thành công!', 'success');
+    document.getElementById('btn-loading').onclick = () => { setLoading(true); setTimeout(() => setLoading(false), 1500); };
+    document.getElementById('btn-confirm').onclick = async () => {
+      const ok = await confirm2('Bạn có chắc muốn thử nút này?');
+      toast(ok ? 'Bạn đã bấm Đồng ý' : 'Bạn đã bấm Hủy', ok ? 'success' : 'warning');
+    };
+
+    // --- P7: Dây nối DEMO ĐĂNG NHẬP ---
+    // 1) Khôi phục phiên cũ (nếu còn) → cập nhật giao diện theo phiên.
+    await initAuth();
+    // 2) Dựng form đăng nhập vào khung [data-when="guest"]; đăng nhập xong tự đồng bộ UI.
+    mountLoginForm(document.getElementById('demo-login'), () => syncAuthUI());
+    // 3) Nút Đăng xuất: xóa phiên rồi vẽ lại giao diện về trạng thái khách.
+    document.getElementById('demo-logout').onclick = () => { logout(); syncAuthUI(); };
+    // 4) Tự áp lại phân quyền khi DOM đổi + đồng bộ giao diện theo phiên hiện tại.
+    startRoleObserver();
+    syncAuthUI();
+
+    // --- Hàm tiện ích: vẽ 1 dòng kết quả PASS/FAIL lên màn hình ---
+    const danhSach = document.getElementById('ket-qua');
+    function ghiKetQua(ten, dat, chiTiet) {
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex justify-content-between align-items-start';
+      li.innerHTML = `
+        <div class="me-2">
+          <div class="fw-semibold">${ten}</div>
+          <div class="small text-muted">${chiTiet}</div>
+        </div>
+        <span class="badge ${dat ? 'bg-success' : 'bg-danger'} rounded-pill">
+          ${dat ? 'ĐẠT' : 'LỖI'}
+        </span>`;
+      danhSach.appendChild(li);
+    }
+
+    // --- Chạy bộ kiểm tra của Phiếu Test P1 ---
+    (async () => {
+      danhSach.innerHTML = ''; // xóa dòng "đang chạy…"
+
+      // 1) formatMoney(1500000) phải ra đúng "1.500.000"
+      const tien = formatMoney(1500000);
+      ghiKetQua('formatMoney(1500000)', tien === '1.500.000', `Nhận: "${tien}"`);
+
+      // 2) parseMoney("1.500.000") phải về lại số 1500000
+      const so = parseMoney('1.500.000');
+      ghiKetQua('parseMoney("1.500.000")', so === 1500000, `Nhận: ${so}`);
+
+      // 3) Vòng tròn ngày: định dạng rồi bóc lại phải ra cùng 1 ngày
+      const moc = parseDate('05/06/2026');
+      const lai = formatDate(moc);
+      ghiKetQua('parseDate→formatDate "05/06/2026"', lai === '05/06/2026', `Nhận: "${lai}"`);
+
+      // 4) Mở được IndexedDB (db là Promise<IDBDatabase>)
+      try {
+        const database = await db;
+        ghiKetQua('Mở IndexedDB (db)', !!database, `Tên DB: "${database.name}"`);
+      } catch (e) {
+        ghiKetQua('Mở IndexedDB (db)', false, 'Lỗi: ' + e.message);
+      }
+
+      // 5) Ghi rồi đọc lại 1 cục dữ liệu thử trong store invoices
+      try {
+        await idbSet(STORE.INVOICES, [{ id: 'demo', tien: 1500000 }]);
+        const docLai = await idbGet(STORE.INVOICES);
+        const ok = Array.isArray(docLai) && docLai[0]?.tien === 1500000;
+        ghiKetQua('Ghi/đọc IndexedDB (invoices)', ok, `Đọc lại: ${JSON.stringify(docLai)}`);
+        await idbSet(STORE.INVOICES, []); // dọn lại cho sạch sau khi test
+      } catch (e) {
+        ghiKetQua('Ghi/đọc IndexedDB (invoices)', false, 'Lỗi: ' + e.message);
+      }
+
+      // 6) DEVICE_ID đã sinh và ghi nhớ
+      ghiKetQua('DEVICE_ID', typeof DEVICE_ID === 'string' && DEVICE_ID.length > 0, DEVICE_ID);
+
+      // ----- BÀI TEST P2 -----
+
+      // 7) createRecord() gắn đủ 6 field hệ thống + giữ dữ liệu nghiệp vụ
+      const rec = createRecord({ projectId: 'CT-DEMO', date: '2026-06-05', amount: 1500000 });
+      const duField = ['id','createdAt','updatedAt','deletedAt','deviceId','projectId'].every(k => k in rec);
+      ghiKetQua('createRecord() đủ 6 field hệ thống', duField && rec.amount === 1500000,
+                `id=${rec.id.slice(0,8)}… projectId=${rec.projectId}`);
+
+      // 8) save()→load() qua store.js: lưu 1 record rồi đọc lại đúng
+      try {
+        await save(STORE.ADVANCES, [rec]);
+        const dsUng = await load(STORE.ADVANCES);
+        const ok = dsUng.length === 1 && dsUng[0].amount === 1500000;
+        ghiKetQua('store.save() → store.load() (advances)', ok, `Số bản ghi đọc lại: ${dsUng.length}`);
+        await save(STORE.ADVANCES, []); // dọn lại cho sạch
+      } catch (e) {
+        ghiKetQua('store.save() → store.load() (advances)', false, 'Lỗi: ' + e.message);
+      }
+
+      // 9) softDelete() + activeOnly(): xóa mềm 1 trong 2 record → còn lại 1 record "sống"
+      const a = createRecord({ projectId: 'A', date: '2026-01-01' });
+      const b = createRecord({ projectId: 'B', date: '2026-01-02' });
+      softDelete(b);
+      const conSong = activeOnly([a, b]);
+      ghiKetQua('softDelete() + activeOnly()', conSong.length === 1 && conSong[0].projectId === 'A',
+                `Còn sống: ${conSong.length} (bỏ qua bản đã xóa mềm)`);
+
+      // 10) filterByYear(): lọc đúng năm theo field date
+      const dsNam = [
+        createRecord({ date: '2025-12-31' }),
+        createRecord({ date: '2026-06-05' }),
+        createRecord({ date: '2026-07-10' }),
+      ];
+      const cua2026 = filterByYear(dsNam, 2026);
+      ghiKetQua('filterByYear(2026)', cua2026.length === 2, `Lọc được ${cua2026.length}/3 bản ghi năm 2026`);
+
+      // 11) validateRequired(): trường trống phải báo lỗi, có giá trị thì null
+      const loiTrong = validateRequired('', 'Công trình');
+      const loiCo    = validateRequired('CT-01', 'Công trình');
+      ghiKetQua('validateRequired()', !!loiTrong && loiCo === null, `Trống → "${loiTrong}" | Có → ${loiCo}`);
+
+      // ----- BÀI TEST P3 (chạy offline — không cần config Firebase thật) -----
+
+      // 12) toFirestore → fromFirestore: bọc rồi bóc lại phải ra ĐÚNG object ban đầu
+      //     (kiểm cả số nguyên, số lẻ, chuỗi, null, mảng, object lồng nhau)
+      const gocFs = {
+        id: 'r1', amount: 1500000, heso: 1.5, ten: 'Cát',
+        deletedAt: null, tags: ['a', 'b'], chitiet: { sl: 3, don: 'm3' },
+      };
+      const laiFs = fromFirestore({ fields: toFirestore(gocFs).fields });
+      ghiKetQua('toFirestore ↔ fromFirestore (vòng tròn)',
+                JSON.stringify(laiFs) === JSON.stringify(gocFs),
+                `Bóc lại: ${JSON.stringify(laiFs)}`);
+
+      // 13) Đường dẫn document chuẩn (sharding theo năm + meta dùng chung)
+      const pYear = docYearCat(2026, 'invoices');
+      const pMeta = docMeta('projects');
+      ghiKetQua('docYearCat / docMeta',
+                pYear === 'cpct_data/y2026_invoices' && pMeta === 'cpct_data/meta_projects',
+                `${pYear} | ${pMeta}`);
+
+      // 14) fbReady(): chưa dán config → phải là false (app chạy offline an toàn)
+      ghiKetQua('fbReady() khi chưa có config', fbReady() === false,
+                `Trả về: ${fbReady()} (đúng nếu chưa điền apiKey/projectId)`);
+
+      // 15) Bộ đếm quota có đủ cấu trúc ngày/reads/writes + trần Spark
+      const q = getQuota();
+      const okQ = typeof q.date === 'string' && q.reads >= 0 && q.writes >= 0
+                  && q.readLimit === 50000 && q.writeLimit === 20000;
+      ghiKetQua('getQuota()', okQ, `Ngày ${q.date}: đọc ${q.reads}/${q.readLimit}, ghi ${q.writes}/${q.writeLimit}`);
+
+      // ----- BÀI TEST P4 (lõi Sync Engine — chạy offline, không cần config) -----
+
+      // 16) mergeById(): cùng id r1 → bản updatedAt MỚI hơn thắng; r2 chỉ có ở cloud → thêm vào
+      const local16 = [{ id: 'r1', amount: 100, updatedAt: 1000000000000 }]; // cũ
+      const cloud16 = [
+        { id: 'r1', amount: 999, updatedAt: 2000000000000 },                 // mới hơn → thắng
+        { id: 'r2', amount: 50,  updatedAt: 2000000000000 },                 // chỉ ở cloud
+      ];
+      const m16 = mergeById(local16, cloud16);
+      const r1 = m16.find(r => r.id === 'r1');
+      ghiKetQua('mergeById() — LWW theo updatedAt',
+                m16.length === 2 && r1.amount === 999,
+                `Sau gộp: ${m16.length} bản, r1.amount=${r1.amount} (bản mới thắng)`);
+
+      // 17) resolveConflict(): bản đã xóa (tombstone) phải ƯU TIÊN, dù bên kia "mới" hơn
+      const localDel = { id: 'x', deletedAt: 1500000000000, updatedAt: 1500000000000 };
+      const cloudLive = { id: 'x', deletedAt: null,         updatedAt: 9999999999999 };
+      const win17 = resolveConflict(localDel, cloudLive);
+      ghiKetQua('resolveConflict() — tombstone ưu tiên',
+                win17 === localDel,
+                `Bản thắng: ${win17.deletedAt ? 'ĐÃ XÓA (đúng)' : 'còn sống (sai)'}`);
+
+      // 18) safeTs(): mốc trước 2020 → 0; mốc tương lai xa → bị kẹp ≤ hôm nay
+      const tsCu  = safeTs(1262304000000);          // 2010-01-01 → phải ra 0
+      const tsXa  = safeTs(Date.now() + 5 * 86400000); // +5 ngày → bị kẹp về ~now
+      ghiKetQua('safeTs() — chống lệch giờ máy',
+                tsCu === 0 && tsXa <= Date.now() + 1000,
+                `2010→${tsCu} | tương-lai-xa kẹp về ≤ now`);
+
+      // ----- BÀI TEST P5 (gợi ý không dấu + danh mục) -----
+
+      // 19) filterSuggestions(): gõ "xi mang" (không dấu) vẫn ra "Xi Măng"
+      const dsTen = ['Xi Măng', 'Cát Vàng', 'Đá 1x2', 'Thép Phi 6'];
+      const goiY = filterSuggestions(dsTen, 'xi mang');
+      ghiKetQua('filterSuggestions("xi mang") — không dấu',
+                goiY.length === 1 && goiY[0] === 'Xi Măng',
+                `Gợi ý: ${JSON.stringify(goiY)}`);
+
+      // 20) normalizeName(): costType → Title Case, supplier → UPPERCASE
+      const nCost = normalizeName('costType', '  vật   tư ');
+      const nSup  = normalizeName('supplier', 'cty abc');
+      ghiKetQua('normalizeName() — Title Case / UPPERCASE',
+                nCost === 'Vật Tư' && nSup === 'CTY ABC',
+                `costType→"${nCost}" | supplier→"${nSup}"`);
+
+      // 21) addCategoryItem(): thêm 1 tên OK; thêm lại khác dấu/hoa-thường → chặn trùng
+      const docCat = { costType: [], supplier: [], performer: [], subcontractor: [], worker: [], equipment: [] };
+      const them1 = addCategoryItem(docCat, 'supplier', 'Công Ty ABC');
+      const them2 = addCategoryItem(docCat, 'supplier', 'cong ty abc'); // trùng (không dấu)
+      ghiKetQua('addCategoryItem() — chuẩn hóa + chống trùng',
+                them1.ok === true && them2.ok === false && them2.reason === 'duplicate'
+                  && docCat.supplier.length === 1 && docCat.supplier[0].name === 'CÔNG TY ABC',
+                `Thêm 1: ${them1.ok} | Thêm trùng: ${them2.ok} (${them2.reason}) | Còn ${docCat.supplier.length} item`);
+
+      // ----- BÀI TEST P6 (lưới sheet-grid — kiểm phần logic, thao tác bàn phím thử tay ở lưới demo) -----
+
+      // 22) getData() parse tiền ĐÚNG + copyFromAbove tự lấy Loại CP của dòng trên cho ô trống.
+      const gridTest = createSheetGrid(document.createElement('div'), {
+        columns: [
+          { field: 'category', type: 'autocomplete', source: () => ['Vật Tư'], copyFromAbove: true },
+          { field: 'amount',   type: 'money' },
+        ],
+        rows: 1,
+      });
+      gridTest.setData([
+        { category: 'Vật Tư', amount: 1500000 },
+        { category: '',       amount: 2000000 }, // bỏ trống Loại CP → phải tự lấy "Vật Tư" dòng trên
+      ]);
+      const dl22 = gridTest.getData();
+      const ok22 = dl22.length === 2
+        && dl22[0].amount === 1500000 && dl22[1].amount === 2000000
+        && dl22[0].category === 'Vật Tư' && dl22[1].category === 'Vật Tư';
+      ghiKetQua('sheet-grid: getData() parse tiền + copyFromAbove', ok22,
+                `Dòng 2: category="${dl22[1]?.category}" (copy dòng trên), amount=${dl22[1]?.amount}`);
+
+      // 23) countFilled() đếm đúng dòng có dữ liệu; clear() xóa sạch về 1 dòng trống.
+      const dem = gridTest.countFilled();
+      gridTest.clear();
+      const sauClear = gridTest.getData();
+      ghiKetQua('sheet-grid: countFilled() + clear()',
+                dem === 2 && sauClear.length === 0,
+                `Trước clear: ${dem} dòng có dữ liệu | Sau clear: ${sauClear.length} dòng dữ liệu`);
+      gridTest.destroy(); // dọn lưới test ẩn
+
+      // ===== P7: KIỂM THỬ ĐĂNG NHẬP & PHÂN QUYỀN =====
+
+      // 24) hashPassword(): cùng input → cùng output, độ dài 64 ký tự HEX (SHA-256).
+      const h1 = await hashPassword('admin123');
+      const h2 = await hashPassword('admin123');
+      const h3 = await hashPassword('khac');
+      ghiKetQua('hashPassword() — tất định + 64 ký tự',
+                h1 === h2 && h1 !== h3 && h1.length === 64 && /^[0-9a-f]+$/.test(h1),
+                `Dài ${h1.length}, "admin123"≠"khac": ${h1 !== h3}`);
+
+      // 25) login(): đúng tài khoản → ok + đúng vai trò; sai mật khẩu → reason='wrongpass'.
+      const dn = await login('giamdoc', 'giamdoc123');
+      const sai = await login('giamdoc', 'sai-mat-khau');
+      const khong = await login('khongton', 'x');
+      logout(); syncAuthUI(); // dọn phiên test, trả về trạng thái khách
+      ghiKetQua('login() — 3 vai trò + sai mật khẩu báo lỗi',
+                dn.ok && dn.user.role === 'giamdoc'
+                  && !sai.ok && sai.reason === 'wrongpass'
+                  && !khong.ok && khong.reason === 'notfound',
+                `Đúng→${dn.ok}(role=${dn.user?.role}) | Sai MK→${sai.reason} | Không tồn tại→${khong.reason}`);
+
+      // 26) hasPermission(): ma trận quyền theo vai trò (Dashboard/DoanhThu/Tools).
+      const okPerm =
+        hasPermission('viewDashboard', 'admin')   === true  &&
+        hasPermission('viewDashboard', 'giamdoc') === true  &&
+        hasPermission('viewDashboard', 'ketoan')  === false &&
+        hasPermission('manageTools',   'admin')   === true  &&
+        hasPermission('manageTools',   'giamdoc') === false &&
+        hasPermission('nhapNghiepVu',  'ketoan')  === true; // quyền chung → ai cũng có
+      ghiKetQua('hasPermission() — ma trận quyền 3 vai trò', okPerm,
+                `ketoan thấy Dashboard? ${hasPermission('viewDashboard','ketoan')} | ketoan nhập nghiệp vụ? ${hasPermission('nhapNghiepVu','ketoan')}`);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,528 @@
+/* ============================================================================
+ *  style.css  —  GIAO DIỆN TÙY CHỈNH (phủ lên Bootstrap 5)
+ * ----------------------------------------------------------------------------
+ *  Nạp SAU bootstrap.min.css để có thể ghi đè. Chỉ thuần CSS, không đụng JS.
+ *  9 nhóm:
+ *    1) Design Tokens   2) Base & Typography   3) Topbar
+ *    4) Sidebar (Offcanvas)   5) Bảng nhập liệu   6) KPI Cards & Dashboard
+ *    7) Modal & Toast   8) Responsive ≤768px   9) Giao diện điện thoại
+ * ========================================================================== */
+
+/* ─────────────────────────────────────────────────────────────────────────
+ *  NHÓM 1 — DESIGN TOKENS (biến màu sắc, bóng đổ)
+ * ───────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Màu vàng — nhấn chính: logo, viền focus, accent card */
+  --gold:      #c8870a;
+  --gold-bg:   #fef3dc;
+
+  /* Màu mực — topbar, chữ đậm */
+  --ink:       #1a1814;
+  --ink2:      #5a5650;
+  --ink3:      #9a9590;
+
+  /* Đường kẻ */
+  --line:      #e2e0db;
+  --line2:     #cccac4;
+
+  /* Màu ngữ nghĩa */
+  --green:     #1a7a45;    --green-bg: #e6f4ec;
+  --blue:      #1e5cb3;    --blue-bg:  #e8f0fb;
+  --red:       #c0392b;    --red-bg:   #fdecea;
+
+  /* Bóng đổ */
+  --shadow:    0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.05);
+  --shadow-lg: 0 4px 20px rgba(0,0,0,.12), 0 1px 4px rgba(0,0,0,.06);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ *  NHÓM 2 — BASE & TYPOGRAPHY
+ * ───────────────────────────────────────────────────────────────────────── */
+body {
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+/* Chặn scroll ngang ngoài ý muốn + chặn pull-to-refresh trên mobile */
+html, body { overflow-x: hidden; }
+body { overscroll-behavior-y: none; }
+
+/* Số tiền / mã dùng font mono cho thẳng cột */
+.mono, .font-mono { font-family: 'IBM Plex Mono', monospace; }
+
+/* Scrollbar tùy chỉnh — mảnh, kín đáo */
+* { scrollbar-width: thin; scrollbar-color: var(--line2) transparent; }
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 3px; }
+*::-webkit-scrollbar-thumb:hover { background: var(--ink3); }
+
+/* Vùng nội dung chính */
+.app-main, .content { padding: 16px; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ *  NHÓM 3 — TOPBAR (nền đen nâu, sticky)
+ * ───────────────────────────────────────────────────────────────────────── */
+.topbar {
+  background: var(--ink);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  width: 100%;
+}
+
+/* Hàng 1: Logo + Năm + Tổng CP + nút hành động */
+.topbar-row1 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 8px 16px;
+  min-height: 52px;
+}
+
+/* Logo app */
+.app-name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  color: #f0b429; /* vàng ấm */
+}
+.app-name .bi { font-size: 17px; }
+
+/* Đẩy nhóm nút bên phải ra mép */
+.topbar-spacer { flex: 1 1 auto; }
+
+/* Nút hành động trên topbar (glass effect) */
+.tb-btn {
+  background: rgba(255,255,255,.12);
+  border: 1.5px solid rgba(255,255,255,.25);
+  color: #fff;
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background .15s;
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+.tb-btn:hover { background: rgba(255,255,255,.2); }
+.tb-btn-danger {
+  background: rgba(192,57,43,.3);
+  border-color: rgba(255,100,80,.4);
+  color: #ff9980;
+}
+.tb-btn-danger:hover { background: rgba(192,57,43,.45); }
+
+/* Ô chọn năm */
+.year-select {
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.25);
+  color: #f0b429;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'IBM Plex Sans', sans-serif;
+  cursor: pointer;
+  outline: none;
+  min-width: 52px;
+}
+.year-select:hover { background: rgba(255,255,255,.2); }
+.year-select option { color: #1a1814; }
+
+/* Pill tổng chi phí / thông tin người dùng */
+.top-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: rgba(255,255,255,.08);
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.top-stat-label { color: rgba(255,255,255,.5); }
+.top-stat-val {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+  color: #f0b429;
+}
+.top-stat-role {
+  font-weight: 600;
+  color: rgba(255,255,255,.85);
+  text-transform: capitalize;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ *  NHÓM 4 — SIDEBAR NAVIGATION (Offcanvas)
+ * ───────────────────────────────────────────────────────────────────────── */
+#sidebar-nav {
+  background: var(--ink) !important;
+  width: 230px;
+}
+#sidebar-nav .offcanvas-header {
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  padding: 12px 16px;
+}
+#sidebar-nav .offcanvas-title {
+  color: #f0b429;
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Nút điều hướng bên trong sidebar */
+.nav-sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 16px 11px 14px;
+  border: none;
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: rgba(255,255,255,.7);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background .15s, color .15s, border-color .15s;
+  letter-spacing: .2px;
+}
+.nav-sidebar-btn:hover {
+  background: rgba(255,255,255,.1);
+  color: #fff;
+}
+.nav-sidebar-btn.active {
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  font-weight: 700;
+  border-left-color: #f0b429;
+}
+/* Icon sidebar: cố định 20px để text thẳng hàng */
+.nav-sidebar-btn .bi {
+  width: 20px;
+  text-align: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ *  NHÓM 5 — BẢNG NHẬP LIỆU
+ * ───────────────────────────────────────────────────────────────────────── */
+.entry-date-bar {
+  background: #fefefe;
+  border: 1px solid var(--line);
+  border-radius: 10px 10px 0 0;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 2px solid var(--gold);
+  flex-wrap: wrap;
+}
+.bar-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink2);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  white-space: nowrap;
+}
+
+.entry-table-wrap {
+  background: #fefefe;
+  border: 1px solid var(--line);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  margin-bottom: 12px;
+}
+.table-scroll { overflow-x: auto; }
+.entry-table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+
+.entry-table thead th {
+  background: #eeece7;
+  padding: 7px 8px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink2);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  border-bottom: 1px solid var(--line2);
+  border-right: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.entry-table tbody tr { border-bottom: 1px solid var(--line); }
+.entry-table tbody tr:hover td { background: #fffcf3; }
+.entry-table tbody td {
+  padding: 2px;
+  border-right: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.cell-input {
+  width: 100%;
+  padding: 7px;
+  border: none;
+  background: transparent;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  color: var(--ink);
+  outline: none;
+}
+.cell-input:focus {
+  background: #fffbef;
+  box-shadow: inset 0 0 0 2px var(--gold);
+  border-radius: 3px;
+}
+.cell-input.mono { font-family: 'IBM Plex Mono', monospace; }
+.cell-input.right { text-align: right; font-weight: 600; }
+
+.tt-cell {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green);
+  text-align: right;
+  padding: 7px 8px !important;
+  white-space: nowrap;
+}
+
+.del-btn {
+  background: transparent;
+  border: none;
+  color: var(--ink3);
+  cursor: pointer;
+  padding: 5px 7px;
+  border-radius: 4px;
+  font-size: 13px;
+  transition: all .15s;
+  display: block;
+  margin: auto;
+}
+.del-btn:hover { background: var(--red-bg); color: var(--red); }
+
+/* Độ rộng cột chuẩn */
+.col-num    { width: 32px;       }
+.col-loai   { width: 160px;      }
+.col-ct     { width: 220px;      }
+.col-tien   { width: 140px;      }
+.col-nguoi  { width: 150px;      }
+.col-ncc    { width: 160px;      }
+.col-nd     { min-width: 200px;  }
+.col-del    { width: 34px;       }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ *  NHÓM 6 — KPI CARDS & DASHBOARD
+ * ───────────────────────────────────────────────────────────────────────── */
+.db-kpi-card {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.db-kpi-label {
+  font-size: 11px;
+  color: var(--bs-secondary-color);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.db-kpi-val {
+  font-size: 22px;
+  font-weight: 800;
+  font-family: 'IBM Plex Mono', monospace;
+  line-height: 1.1;
+}
+.db-kpi-sub { font-size: 11px; color: var(--bs-secondary-color); }
+
+/* Màu viền trái theo ngữ nghĩa */
+.db-kpi-card.accent-gold  { border-left: 3px solid var(--bs-warning); }
+.db-kpi-card.accent-red   { border-left: 3px solid var(--bs-danger);  }
+.db-kpi-card.accent-green { border-left: 3px solid var(--bs-success); }
+.db-kpi-card.accent-blue  { border-left: 3px solid #4a90d9;           }
+
+/* Bar chart dashboard */
+.db-bar-wrap { display: flex; align-items: flex-end; gap: 5px; height: 160px; padding-bottom: 22px; position: relative; }
+.db-bar-col  { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 28px; }
+.db-bar { width: 100%; background: var(--bs-warning); border-radius: 4px 4px 0 0; min-height: 2px; transition: opacity .15s; }
+.db-bar:hover { opacity: .75; }
+.db-bar-lbl  { font-size: 9px; color: var(--bs-secondary-color); margin-top: 4px; white-space: nowrap; }
+.db-bar-amt  { font-size: 9px; color: var(--bs-secondary-color); margin-bottom: 2px; white-space: nowrap; }
+
+/* Rank list */
+.db-rank-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--bs-border-color); font-size: 12px;
+}
+.db-rank-row:last-child { border-bottom: none; }
+.db-rank-num { font-weight: 800; color: var(--bs-secondary-color); min-width: 20px; }
+.db-rank-num.top1 { color: var(--bs-warning); }
+.db-rank-bar-bg   { flex: 1; height: 6px; background: var(--bs-tertiary-bg); border-radius: 3px; overflow: hidden; }
+.db-rank-bar-fill { height: 100%; background: var(--bs-warning); border-radius: 3px; }
+.db-rank-amt { font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 11px; white-space: nowrap; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ *  NHÓM 7 — MODAL & TOAST
+ * ───────────────────────────────────────────────────────────────────────── */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(26,24,20,.5);
+  z-index: 1060;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s;
+  backdrop-filter: blur(2px);
+}
+.overlay.open { opacity: 1; pointer-events: all; }
+
+.app-modal {
+  background: var(--bs-body-bg);
+  border-radius: 12px;
+  width: 100%; max-width: 900px; max-height: 85vh;
+  overflow: hidden; display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,.2);
+  transform: scale(.97) translateY(8px);
+  transition: transform .2s;
+}
+.overlay.open .app-modal { transform: scale(1) translateY(0); }
+.app-modal-head {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--bs-border-color);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bs-tertiary-bg);
+}
+.app-modal-head h3 { font-size: 15px; font-weight: 700; }
+.app-modal-body { overflow-y: auto; padding: 20px; }
+
+.app-toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--bs-dark); color: #fff;
+  padding: 11px 18px; border-radius: 8px;
+  font-size: 13px; font-weight: 500;
+  box-shadow: 0 4px 20px rgba(0,0,0,.25);
+  z-index: 1099;
+  transform: translateY(60px); opacity: 0;
+  transition: all .25s cubic-bezier(.34,1.56,.64,1);
+}
+.app-toast.show  { transform: translateY(0); opacity: 1; }
+.app-toast.success { background: var(--bs-success); }
+.app-toast.error   { background: var(--bs-danger); }
+.app-toast.warning { background: var(--bs-warning); color: var(--ink); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ *  NHÓM 8 — RESPONSIVE DESKTOP (≤ 768px)
+ * ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .topbar-row1 { padding: 6px 12px; gap: 6px; }
+  .top-stat    { display: none; }
+  .app-name span.d-sm-inline { display: none !important; }
+
+  .content, .app-main { padding: 10px 12px 20px; }
+
+  .entry-date-bar  { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+  .entry-table-wrap { overflow-x: auto; }
+
+  .overlay { padding: 10px; }
+  .app-modal { max-height: 92vh; border-radius: 12px; }
+  .app-modal-body { padding: 14px; }
+
+  .app-toast { bottom: 12px; right: 10px; left: 10px; font-size: 12px; }
+
+  .db-kpi-grid { grid-template-columns: 1fr 1fr !important; }
+  .db-kpi-val  { font-size: 17px; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ *  NHÓM 9 — GIAO DIỆN ĐIỆN THOẠI (Mobile-First)
+ * ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .topbar-row1 { padding: 5px 10px; min-height: 44px; }
+  .tb-btn      { padding: 5px 8px; min-height: 32px; font-size: 13px; }
+
+  /* Ẩn chữ trên nút topbar, chỉ giữ icon */
+  .tb-btn .btn-text { display: none; }
+
+  .content, .app-main { padding: 8px 10px 80px; }
+
+  .db-kpi-grid { grid-template-columns: 1fr 1fr !important; }
+  .db-kpi-val  { font-size: 15px; }
+  .db-kpi-card { padding: 12px 14px; }
+
+  .cell-input { padding: 10px 7px; font-size: 13px; }
+  .del-btn    { padding: 8px; font-size: 15px; }
+}
+
+/* Bottom action bar — chỉ hiện trên điện thoại */
+@media (max-width: 768px) {
+  .mobile-bottom-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--ink);
+    border-top: 1px solid rgba(255,255,255,.12);
+    display: flex;
+    z-index: 1020;
+    padding: 6px 0 max(6px, env(safe-area-inset-bottom));
+  }
+  .mobile-bottom-bar .mbb-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 2px;
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,.55);
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: 'IBM Plex Sans', sans-serif;
+    transition: color .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-bottom-bar .mbb-btn .bi {
+    font-size: 20px;
+    line-height: 1;
+  }
+  .mobile-bottom-bar .mbb-btn.active { color: #f0b429; }
+  .mobile-bottom-bar .mbb-btn:active {
+    background: rgba(255,255,255,.06);
+    border-radius: 8px;
+  }
+}
+
+/* Ẩn bottom bar trên desktop */
+@media (min-width: 769px) {
+  .mobile-bottom-bar { display: none !important; }
+}
+
+/* Tránh nội dung bị che bởi bottom bar trên mobile */
+@media (max-width: 768px) {
+  main.app-main { padding-bottom: 70px !important; }
+}
+
+/* Chạm tay tối ưu: tăng vùng nhấn cho checkbox + select */
+@media (pointer: coarse) {
+  input[type="checkbox"] { transform: scale(1.4); margin: 3px; }
+  select.cell-input { cursor: pointer; background: rgba(240,180,41,.05); }
+}

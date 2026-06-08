@@ -1,0 +1,41 @@
+rules_version = '2';
+
+// ============================================================================
+//  firestore.rules  —  LUẬT BẢO MẬT Firestore cho app "Quản Lý Chi Phí Công Trình"
+// ----------------------------------------------------------------------------
+//  MỤC TIÊU: chặn người lạ đọc/ghi thẳng vào database bằng API key trần (key web
+//  LUÔN public trong mã JS — không giấu được). Lớp khóa thật nằm Ở ĐÂY.
+//
+//  CÁCH HOẠT ĐỘNG VỚI APP NÀY:
+//   • App dùng auth riêng (kho `users`), KHÔNG phải Firebase Auth. Để luật dưới
+//     đây cho phép app ghi/đọc, app ĐĂNG NHẬP ẨN DANH (Anonymous Auth) qua REST
+//     (core/firebase.js → ensureAuth) để có `request.auth`.
+//   • Vì vậy TRƯỚC KHI deploy file này, phải BẬT Anonymous Auth:
+//       Firebase Console → Authentication → Sign-in method → Anonymous → Enable.
+//     Nếu deploy luật này mà CHƯA bật Anonymous Auth, app sẽ mất quyền ghi/đọc.
+//
+//  TRIỂN KHAI:
+//   • Console: Firestore Database → Rules → dán nội dung file này → Publish.
+//   • Hoặc Firebase CLI: `firebase deploy --only firestore:rules`.
+//
+//  GIỚI HẠN (nói thật): Anonymous Auth cho phép BẤT KỲ ai mở app cũng lấy được
+//  token, nên luật "đã đăng nhập" chỉ chặn truy cập NGOÀI app (curl/script lạ),
+//  chứ chưa phân quyền theo người. Kết hợp thêm: hạn chế API key theo HTTP
+//  referrer (Google Cloud Console → Credentials) để chỉ domain của app gọi được.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Toàn bộ dữ liệu app nằm trong collection 'cpct_data'.
+    // Chỉ cho đọc/ghi khi ĐÃ đăng nhập (kể cả ẩn danh) → chặn truy cập nặc danh.
+    match /cpct_data/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Mọi đường dẫn khác: cấm tuyệt đối.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
