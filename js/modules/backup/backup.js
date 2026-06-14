@@ -17,12 +17,18 @@
 //  trong 10 kho nghiệp vụ nên KHÔNG bị đẩy lên cloud (chỉ là phao cứu sinh local).
 // ============================================================================
 
-import { STORE, idbGet, idbSet } from '../../core/db.js';
+import { STORE, idbGet, idbSet, idbDelete } from '../../core/db.js';
 import { save } from '../../core/store.js';
 import { gatherAll } from '../nhapxuat/nhapxuat.export.js';
 
-const SNAP_KEY = 'cpct_snapshots'; // key IndexedDB chứa MẢNG ảnh chụp
+const SNAP_KEY = 'cpct_snapshots'; // key IndexedDB chứa CHỈ MỤC (metadata) các ảnh chụp
 const MAX_SNAPSHOTS = 10;           // chỉ giữ 10 bản gần nhất (cũ hơn tự rụng)
+
+// dataKey(id) — Key riêng chứa cục `data` NẶNG của 1 ảnh chụp (tách khỏi chỉ mục).
+//  TRƯỚC ĐÂY mọi ảnh chụp (kèm cả bản sao dữ liệu) nhồi chung vào MỘT key SNAP_KEY →
+//  mỗi lần tạo/đọc phải nuốt cả ~10 bản sao toàn bộ DB (rất chậm). Nay mỗi ảnh chụp
+//  để `data` ở key riêng, SNAP_KEY chỉ giữ metadata nhẹ → mở tab & tạo ảnh đều tức thì.
+const dataKey = (id) => `cpct_snap_${id}`;
 
 // Thứ tự kho khi khôi phục (categories là đối tượng, còn lại mảng).
 const ALL_STORES = Object.values(STORE);
@@ -43,12 +49,30 @@ function countRecords(data) {
 }
 
 // ----------------------------------------------------------------------------
-//  loadList() / saveList(list) — Đọc/ghi MẢNG ảnh chụp ở key riêng.
+//  loadList() — Đọc CHỈ MỤC ảnh chụp (metadata nhẹ). Tự DI TRÚ định dạng cũ:
+//  nếu phát hiện entry còn nhồi `data` inline (kiểu lưu cũ), tách `data` ra key
+//  riêng rồi viết lại chỉ mục gọn — chỉ tốn 1 lần, các lần sau đọc tức thì.
 // ----------------------------------------------------------------------------
 async function loadList() {
   const arr = await idbGet(SNAP_KEY);
-  return Array.isArray(arr) ? arr : [];
+  if (!Array.isArray(arr)) return [];
+
+  const needsMigration = arr.some((s) => s && s.data != null);
+  if (!needsMigration) return arr;
+
+  const index = [];
+  for (const s of arr) {
+    if (!s || !s.id) continue;
+    if (s.data != null) {
+      await idbSet(dataKey(s.id), s.data);          // tách cục nặng ra key riêng
+    }
+    index.push({ id: s.id, at: s.at, label: s.label || '', records: s.records || 0 });
+  }
+  await saveList(index);                             // chỉ mục mới chỉ còn metadata
+  return index;
 }
+
+// saveList(list) — Ghi CHỈ MỤC (metadata) — luôn nhẹ vì không chứa `data`.
 function saveList(list) {
   return idbSet(SNAP_KEY, list);
 }
@@ -59,18 +83,21 @@ function saveList(list) {
 // ----------------------------------------------------------------------------
 export async function createSnapshot(label = '') {
   const data = await gatherAll();
-  const snap = {
-    id: crypto.randomUUID(),
+  const id = crypto.randomUUID();
+  const meta = {
+    id,
     at: Date.now(),
     label: String(label || '').trim(),
     records: countRecords(data),
-    data,
   };
+  await idbSet(dataKey(id), data);    // cục NẶNG để ở key riêng (không đụng các ảnh khác)
+
   const list = await loadList();
-  list.unshift(snap);                 // mới nhất lên đầu
-  if (list.length > MAX_SNAPSHOTS) list.length = MAX_SNAPSHOTS; // cắt bớt bản cũ
+  list.unshift(meta);                 // mới nhất lên đầu (chỉ mục nhẹ)
+  const dropped = list.splice(MAX_SNAPSHOTS);                  // cắt bớt bản cũ quá MAX
   await saveList(list);
-  return { id: snap.id, at: snap.at, label: snap.label, records: snap.records };
+  for (const d of dropped) await idbDelete(dataKey(d.id));     // dọn data của bản bị rụng
+  return meta;
 }
 
 // ----------------------------------------------------------------------------
@@ -88,15 +115,18 @@ export async function listSnapshots() {
 // ----------------------------------------------------------------------------
 export async function restoreSnapshot(id) {
   const list = await loadList();
-  const snap = list.find((s) => s.id === id);
-  if (!snap) throw new Error('Không tìm thấy bản sao lưu.');
+  const meta = list.find((s) => s.id === id);
+  if (!meta) throw new Error('Không tìm thấy bản sao lưu.');
+
+  const data = await idbGet(dataKey(id));   // nạp cục nặng ĐÚNG ảnh này (không nạp ảnh khác)
+  if (!data) throw new Error('Dữ liệu bản sao lưu đã mất hoặc rỗng.');
 
   for (const name of ALL_STORES) {
     const fallback = name === STORE.CATEGORIES ? {} : [];
-    const value = (snap.data && snap.data[name] != null) ? snap.data[name] : fallback;
+    const value = data[name] != null ? data[name] : fallback;
     await save(name, value); // ghi đè local + lên lịch đẩy đồng bộ
   }
-  return snap.records || countRecords(snap.data || {});
+  return meta.records || countRecords(data);
 }
 
 // ----------------------------------------------------------------------------
@@ -107,5 +137,6 @@ export async function deleteSnapshot(id) {
   const next = list.filter((s) => s.id !== id);
   if (next.length === list.length) return false;
   await saveList(next);
+  await idbDelete(dataKey(id));   // dọn luôn cục data nặng của ảnh bị xóa
   return true;
 }

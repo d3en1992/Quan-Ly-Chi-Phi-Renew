@@ -68,7 +68,16 @@
       "Bash(node --check js/modules/nhapxuat/nhapxuat.import.js)",
       "Bash(node --check js/modules/nhapxuat/nhapxuat.ui.js)",
       "Bash(node --input-type=module -e ' *)",
-      "Bash(node --check js/utils/csv.js)"
+      "Bash(node --check js/utils/csv.js)",
+      "Bash(ls -la *2026-06-08_17-06*)",
+      "Bash(ls -la \"cpct_snapshot_2026-06-08_17-06.json\")",
+      "Bash(ls -la *06-08*)",
+      "Bash(python -c ' *)",
+      "Bash(ls js/modules/danhmuc/)",
+      "Bash(find js/modules -iname \"*danhmuc*\" -o -iname \"*categor*\")",
+      "Bash(rm -f _vision_test.json)",
+      "Bash(ls _vision_test.json)",
+      "Bash(sort -k2)"
     ]
   }
 }

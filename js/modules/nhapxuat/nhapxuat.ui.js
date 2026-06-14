@@ -16,6 +16,7 @@ import { registerTab } from '../../router.js';
 import { toast, setLoading, confirm2 } from '../../utils/ui.js';
 import { mountExportButtons } from './nhapxuat.export.js';
 import { parseBackupFile, previewImport, applyImport } from './nhapxuat.import.js';
+import { parseVisionFile, convertVision, applyVisionImport } from './nhapxuat.vision.js';
 import { createSnapshot, listSnapshots, restoreSnapshot, deleteSnapshot } from '../backup/backup.js';
 
 function escapeHtml(s) {
@@ -39,6 +40,7 @@ const STORE_LABEL = {
 
 let _host = null;       // ô nội dung tab
 let _parsed = null;     // file đã parse đang chờ xác nhận nhập
+let _vision = null;     // kết quả convertVision đang chờ xác nhận GHI ĐÈ
 
 // ----------------------------------------------------------------------------
 //  render(host) — Vẽ toàn bộ tab.
@@ -46,10 +48,12 @@ let _parsed = null;     // file đã parse đang chờ xác nhận nhập
 async function render(host) {
   _host = host;
   _parsed = null;
+  _vision = null;
   host.innerHTML = shell();
 
   mountExportButtons(host.querySelector('[data-export-host]'));
   wireImport();
+  wireVision();
   wireBackup();
   await refreshSnapshots();
 }
@@ -74,6 +78,19 @@ function shell() {
           <p class="small text-muted mb-2">Chọn file <code>.json</code> do chính app này xuất. Dữ liệu được <b>gộp</b> theo bản mới nhất (không xóa bản đang có).</p>
           <input type="file" accept=".json,application/json" class="form-control form-control-sm mb-2" data-import-file>
           <div data-import-preview></div>
+        </div>
+      </div>
+
+      <div class="card mb-3 border-warning">
+        <div class="card-body">
+          <h6 class="card-title">🧪 Nhập dữ liệu Vision (kiểm thử)</h6>
+          <p class="small text-muted mb-2">
+            Nạp file sao lưu <b>schema cũ</b> (kiểu <code>cpct_snapshot_*.json</code>, có kho <code>inv_v3</code>…)
+            để thử dữ liệu thật trên app mới. ⚠️ Thao tác này <b>GHI ĐÈ</b> toàn bộ dữ liệu nghiệp vụ hiện tại
+            (giữ nguyên tài khoản đăng nhập). App sẽ <b>tự chụp 1 bản sao lưu</b> trước khi đè để hoàn tác.
+          </p>
+          <input type="file" accept=".json,application/json" class="form-control form-control-sm mb-2" data-vision-file>
+          <div data-vision-preview></div>
         </div>
       </div>
 
@@ -158,6 +175,84 @@ async function doApply() {
       '<div class="alert alert-success py-2 mb-0">✅ Đã nhập xong. Mở lại các tab để xem dữ liệu mới.</div>';
   } catch {
     /* applyImport đã toast lỗi */
+  }
+}
+
+// ----------------------------------------------------------------------------
+//  NHẬP VISION (schema cũ) — chọn file → chuyển đổi → xem trước/cảnh báo → GHI ĐÈ.
+// ----------------------------------------------------------------------------
+const VISION_LABEL = {
+  projects: 'Công trình', contracts: 'Hợp đồng chính', subcontracts: 'Thầu phụ',
+  invoices: 'Hóa đơn', timesheets: 'Chấm công', advances: 'Tiền ứng',
+  equipment: 'Thiết bị', receipts: 'Đợt thu', categories: 'Danh mục',
+};
+
+function wireVision() {
+  const input = _host.querySelector('[data-vision-file]');
+  input.addEventListener('change', async () => {
+    const file = input.files && input.files[0];
+    const box = _host.querySelector('[data-vision-preview]');
+    _vision = null;
+    if (!file) { box.innerHTML = ''; return; }
+    setLoading(true, 'Đang chuyển đổi dữ liệu Vision…');
+    try {
+      const parsed = await parseVisionFile(file);
+      _vision = convertVision(parsed);
+      box.innerHTML = visionPreview(_vision);
+      box.querySelector('[data-vision-apply]').addEventListener('click', doVisionApply);
+    } catch (e) {
+      box.innerHTML = `<div class="alert alert-danger py-2 mb-0">${escapeHtml(e.message || e)}</div>`;
+    } finally {
+      setLoading(false);
+    }
+  });
+}
+
+// visionPreview(v) — Bảng số bản ghi sau chuyển đổi + cảnh báo + nút GHI ĐÈ.
+function visionPreview(v) {
+  const rows = Object.keys(v.counts).map((k) => `<tr>
+      <td>${escapeHtml(VISION_LABEL[k] || k)}</td>
+      <td class="text-end">${v.counts[k]}</td>
+    </tr>`).join('');
+  const total = Object.values(v.counts).reduce((s, n) => s + n, 0);
+  const warns = (v.warnings || []).map((w) =>
+    `<li class="small">${escapeHtml(w)}</li>`).join('');
+
+  return `
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered align-middle mb-2">
+        <thead class="table-light"><tr><th>Kho</th><th class="text-end">Sau chuyển đổi</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    ${warns ? `<div class="alert alert-warning py-2"><b>Lưu ý chuyển đổi:</b><ul class="mb-0 ps-3">${warns}</ul></div>` : ''}
+    <button type="button" class="btn btn-warning btn-sm" data-vision-apply>
+      ⚠️ GHI ĐÈ bằng dữ liệu Vision (${total} bản ghi)
+    </button>`;
+}
+
+async function doVisionApply() {
+  if (!_vision) return;
+  if (!(await confirm2(
+    'GHI ĐÈ toàn bộ dữ liệu nghiệp vụ hiện tại bằng dữ liệu Vision? '
+    + 'App sẽ tự chụp 1 bản sao lưu trước để bạn hoàn tác được.',
+    { okText: 'Ghi đè' }))) return;
+  setLoading(true, 'Đang chụp sao lưu an toàn…');
+  try {
+    await createSnapshot('Trước khi nhập Vision');     // phao cứu sinh để hoàn tác
+    setLoading(true, 'Đang ghi đè dữ liệu Vision…');
+    const n = await applyVisionImport(_vision);
+    _vision = null;
+    _host.querySelector('[data-vision-file]').value = '';
+    _host.querySelector('[data-vision-preview]').innerHTML =
+      `<div class="alert alert-success py-2 mb-0">✅ Đã nạp ${n} bản ghi Vision. Mở lại các tab để kiểm thử. `
+      + 'Muốn quay lại: dùng “Khôi phục” bản “Trước khi nhập Vision” ở mục Sao lưu nhanh.</div>';
+    await refreshSnapshots();
+    toast(`🧪 Đã nạp dữ liệu Vision (${n} bản ghi).`, 'success');
+  } catch (e) {
+    toast(`⚠ ${e.message || 'Lỗi khi nhập Vision.'}`, 'error');
+  } finally {
+    setLoading(false);
   }
 }
 
