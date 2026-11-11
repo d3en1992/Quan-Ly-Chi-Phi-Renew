@@ -1,6 +1,6 @@
-TRẠNG THÁI: ĐANG CHẠY
+TRẠNG THÁI: GD04 XONG — chờ giai đoạn sau
 Nhịp tim: 11/11/2026 22:42
-Đang làm: GD04 — Danh Mục & Sao Lưu đã chạy được; đang chạy kiểm tra toàn bộ (typecheck, test, build, Playwright)
+Đang làm: (không) — GD04 đã xong, chờ GD05
 
 # Tiến độ làm lại app
 
@@ -9,7 +9,7 @@ Nhịp tim: 11/11/2026 22:42
 | GD01 | Khung app, đăng nhập, quyền, bố cục 3 khổ | Opus | **Xong** 11/11 | typecheck / 24 Vitest / build / 14 Playwright xanh. Ảnh: `anh-chup/GD01/` |
 | GD02 | Kho dữ liệu + chuyển dữ liệu cũ ⭐ | Fable | **Xong** 11/11 | Khớp hết với snapshot 02/11 (bản tạm). typecheck / 40 Vitest / build / 19 Playwright xanh. Báo cáo: `du-lieu/bao-cao-chuyen-du-lieu.md` |
 | GD03 | Công thức + báo cáo khớp số ⭐⭐ | Fable | **Xong** 11/11 | So với app cũ **lệch 0 đồng** (36 công trình × 2024, 2025, 2026, Tất cả). typecheck / 75 Vitest / build / 27 Playwright xanh. Ảnh: `anh-chup/GD03/` |
-| GD04 | Công Trình, Chi tiết CT, Danh Bạ, Danh Mục | Sonnet (medium) | **Đang làm** | Xong: Công Trình + Chi tiết (7 Playwright xanh). Còn: Danh Bạ, Danh Mục & Sao Lưu |
+| GD04 | Công Trình, Chi tiết CT, Danh Bạ, Danh Mục | Sonnet (medium) | **Xong** 11/11 | typecheck / 96 Vitest / build / Playwright xanh (gd04: 3 file spec). Ảnh: `anh-chup/GD04/` |
 | GD05 | Nhập Chi Phí (lưới Excel, chi tiết) | Fable (medium) | Chưa | |
 | GD06 | Chấm Công + Tạm ứng lương | Opus (medium) | Chưa | |
 | GD07 | Chi Trả, Công Nợ Phải Trả, Doanh Thu, Quyết Toán | Fable (medium) | Chưa | |
@@ -46,6 +46,12 @@ Nhịp tim: 11/11/2026 22:42
 - **Đọc dữ liệu:** `src/features/reports/api.ts` → `useReportData()` tải mọi năm 1 lần (bản ghi còn sống, Zod kiểm tra, giữ 1 phút), 3 màn dùng chung; lọc năm bằng ô chọn năm trên thanh trên (`useReport()` trong `shared.tsx`).
 - **Component dùng chung đã chốt** (GĐ sau chỉ dùng lại): `src/components/ui/data.tsx` — `KpiStrip` (dải số tổng), `FilterBar` + `FilterSelect` + `SearchBox` (thanh lọc), `HBar` / `HBarList`, `ProfitPill`, `Money` + `signedMoney`, `usePaged` + `Pager`, `MobileCard` + `MobileRow`, `PhoneKpis`, `Segmented`; cùng `misc.tsx` (Card, CardHeader, PageHeader, SubTabs, Pill, Note, Loading / Empty / ErrorState), `sheet.tsx` (bảng trượt), `confirm.tsx` (hộp xác nhận xóa), `toast.tsx`, `input.tsx` (Input, Select, Field, Checkbox), bảng `.tbl`. **Chưa có** (làm ở GĐ4–GĐ5 lúc có form nhập đầu tiên): ô tiền tự thêm dấu chấm, ô ngày, ô chọn công trình, ô chọn danh mục có gợi ý + "Tạo mới".
 
+## GD04 — đã có gì (cho GĐ sau)
+- **Công Trình** `src/features/projects/`: `ProjectsPage.tsx` (thẻ theo loại CT / SC / SN-Khác hoặc theo khách hàng, CÔNG TY cuối; dải số; lọc trạng thái + tìm), `ProjectDetailPage.tsx` (dải số + cấu thành A/B/C + 6 tab), `ProjectFormSheet.tsx` (thêm / sửa; chủ đầu tư bắt buộc + "Thêm nhanh"; tên gợi ý ≤ 45 ký tự, hạng mục trong ngoặc; hệ số k; ngày; khối lượng sàn; địa chỉ), `logic.ts` (nhận loại theo tiền tố tên, gợi ý tên — chép app cũ, có test), `api.ts` (đọc / ghi + `projectUsageCount` cho điều kiện xóa), `numbers.ts` (`projectNumbers` = cùng `profitReport` của tab Lợi Nhuận → số thẻ = số Lợi Nhuận). Hoàn thành / Quyết toán / Xóa nằm ở menu "Khác" trên trang Chi tiết. Đổi tên: tên cũ được nhớ trong `projects.aliases`.
+- **Công thức mới** `src/lib/calc/projectDetail.ts` (có test, kể cả test trên dữ liệu thật: Σ chi theo loại = A của Lợi Nhuận cho mọi công trình × 2024 / 2025 / 2026 / Tất cả): `projectCostByType`, `projectPayroll`, `projectSubcontracts`, `projectSuppliers`, `subcontractorStandings`, `collapseBreakdown`. `ReportData` thêm `subcontractorName`. `ExpenseStatsPage` xuất `buildRows / PaidPill / DetailSheet / SOURCE_LABEL` để tab Hóa đơn của Chi tiết dùng lại.
+- **Danh Bạ** `src/features/contacts/` (5 nhóm; thêm / sửa / xóa mềm; SĐT, CCCD che theo `see_contact_ids` bằng `list_contact_private_masked()`; người không có quyền không sửa được trường riêng tư; bật / tắt Mua nợ của NCC). Nút **Chụp CCCD để sẵn (khóa) — làm ở GĐ9**.
+- **Danh Mục & Sao Lưu** `src/features/catalog/` + migration `20261111000004_danh_muc_sao_luu.sql`: danh mục 5 nhóm (thêm / đổi tên / xóa mềm, chặn xóa mục đang dùng, chuẩn hóa tên như app cũ), thông tin công ty (tên, tên ngắn, logo; logo lưu dạng ảnh nhỏ 128 px trong `companies.logo_url`, hiện ở menu trái), sao lưu: bảng `backups` + hàm `create_backup / export_company_snapshot / get_backup_data / restore_backup` (chỉ Admin; khôi phục chạy trong 1 giao dịch và tự lưu bản "trước khi khôi phục"). `scripts/backup-nightly.ts` (`npm run backup:nightly`, thử bằng `-- --local`) + mẫu `scripts/mau-github-action-sao-luu.yml` (CHƯA bật, hướng dẫn ở đầu file). `stamp_row` biết cờ `app.restoring` để giữ nguyên Người TH / ngày khi khôi phục.
+
 ## Kết quả so số với app cũ
 - GD03 (11/11, snapshot 03/11 14:25 + so-chuan xuất bằng code app cũ chạy trong Node): **lệch 0 đồng** ở A, A phần hóa đơn, A phần trả NCC, B, C, Tổng đã chi, Tổng đã thu, Lợi nhuận, HĐ gốc, Quyết toán, Giá trị HĐ, Còn phải thu của 36 công trình × 4 mốc (2024, 2025, 2026, Tất cả) = 1.728 ô; chi phí chung CÔNG TY + bảng phân bổ (trọng số, tiền) khớp; số hóa đơn và tổng theo nguồn khớp (1.527 dòng). Tổng trên màn Lợi Nhuận (Tất cả năm) khớp so-chuan (Playwright).
 - GD02 (11/11, snapshot tạm 02/11/2026): số bản ghi 11/11 kho khớp; 15 tổng tiền lệch 0; A / B / Đã thu từng công trình × từng năm lệch 0 (108 ô). Chưa có `so-chuan.json` nên chưa so với số xuất từ app cũ → GĐ3.
@@ -77,6 +83,14 @@ Nhịp tim: 11/11/2026 22:42
 - GD03: **Dashboard** theo giao diện mẫu (không chép dashboard app cũ): dải số tổng cộng từ chính các dòng tab Lợi Nhuận nên 2 tab luôn cùng số; "Còn phải trả thầu phụ" = Σ HĐ thầu phụ còn nợ > 0; cơ cấu chi gộp mọi chi phí của CÔNG TY thành "Chi phí chung".
 - GD03: **Thống Kê CP/HĐ** hiện cả dòng lương / HĐ mua lẻ sinh từ chấm công (như danh sách hóa đơn app cũ), nguồn ghi "Chấm công". Chưa có nút Xuất Excel (GĐ9). Bấm dòng mở bảng trượt xem dòng vật tư; ảnh hóa đơn để GĐ9.
 - GD03: Bảng Lợi Nhuận mặc định xếp theo lợi nhuận cao → thấp (theo mẫu); chưa làm bấm tiêu đề để xếp và bấm số để nhảy sang tab chi tiết (các tab đích chưa có).
+
+- GD04: **Khối sao lưu** lưu bản sao trong bảng `backups` của chính kho (không phải Storage / file ngoài) vì chưa có Storage cấu hình; mỗi bản ~vài MB, giữ 30 bản mỗi loại. Cột `data` chỉ Admin lấy được qua hàm. Muốn giữ file ngoài kho: đặt `BACKUP_DIR` khi chạy script.
+- GD04: **Khôi phục** thay TOÀN BỘ dữ liệu nghiệp vụ của công ty (không đụng tài khoản / quyền); nếu bản sao lưu nhắc tới tài khoản đã bị xóa (Người TH) thì khôi phục báo lỗi và quay về nguyên trạng.
+- GD04: **Xóa công trình** chặn khi còn bản ghi ở hóa đơn, chấm công, ứng lương, phiếu chi, thiết bị, thu, HĐ chính, HĐ thầu phụ, quyết toán (app cũ chỉ kiểm tra 4 nơi đầu; chọn rộng hơn để không mất số lãi / lỗ). Bị xóa thì vào Thùng Rác (GĐ8 làm màn khôi phục).
+- GD04: **Trang Chi tiết dùng năm trên thanh trên**: công trình hạch toán 1 năm (≥ 80%) hoặc chưa có dòng Lợi Nhuận → các tab con hiện toàn vòng đời (khớp số cấu thành); công trình "Nhiều năm" → hiện theo năm đang chọn.
+- GD04: **Nhân viên** mới có bảng trống (app cũ không có danh sách nhân viên; chỉ có tài khoản) — thêm tay ở Danh Bạ; không tự sinh từ tài khoản.
+- GD04: **Danh mục Đơn vị tính** bắt đầu trống; nút "Nạp từ dữ liệu đã nhập" gom ĐVT đã gõ trong dòng vật tư (GĐ5 có thể dùng làm gợi ý khi nhập). **Giai đoạn mẫu** = `schedule_templates` (kind phases), hiện trống tới GĐ12.
+- GD04: Nút **Thu tiền** và **Xuất Excel** trên trang Chi tiết, và tiến độ thi công (chỉ 1 dòng ghi chú) để GĐ7 / GĐ9 / GĐ12. Chưa có gán công trình cho từng tài khoản "được giao" ở form công trình (làm ở màn Tài Khoản).
 
 ## Lỗi còn biết
 - Dữ liệu trong kho mới là **snapshot 03/11/2026 14:25**, trong đó 4 lô nhập 2024–2025 còn ở trạng thái NHÁP. Dữ liệu anh nhập / sửa sau 03/11 (và việc "đưa lô vào dữ liệu chung") chưa có → trước khi chuyển hẳn phải xuất snapshot mới rồi chạy lại 3 lệnh ở mục GD03.
