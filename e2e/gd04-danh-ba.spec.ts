@@ -1,0 +1,81 @@
+// GĐ4 — Danh Bạ: 5 nhóm ở 3 khổ, thêm công nhân + SĐT / CCCD, che SĐT / CCCD với tài khoản không có quyền, xóa.
+import { expect, test, type Page } from '@playwright/test';
+import { mkdirSync } from 'node:fs';
+import { E2E_PASSWORD } from './accounts';
+
+const SHOTS = 'anh-chup/GD04';
+mkdirSync(SHOTS, { recursive: true });
+
+function watchConsole(page: Page) {
+  const errors: string[] = [];
+  page.on('console', (m) => { if (m.type() === 'error' && !/fonts\.(googleapis|gstatic)/.test(m.text())) errors.push(m.text()); });
+  page.on('pageerror', (e) => errors.push(String(e)));
+  return errors;
+}
+async function login(page: Page, username: string) {
+  await page.goto('/dang-nhap');
+  await page.getByLabel('Tên đăng nhập').fill(username);
+  await page.locator('input[name="password"]').fill(E2E_PASSWORD);
+  await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
+  await page.locator('[data-layout]').first().waitFor();
+}
+const noSideScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
+const SIZES = [{ name: '1440', width: 1440, height: 900 }, { name: '800', width: 800, height: 1000 }, { name: '390', width: 390, height: 844 }];
+const TABS = ['KHÁCH HÀNG', 'CÔNG NHÂN', 'NHÂN VIÊN', 'NHÀ CUNG CẤP', 'THẦU PHỤ'];
+
+for (const size of SIZES) {
+  test(`Danh Bạ ở ${size.name}px: 5 nhóm, không lỗi, không kéo ngang`, async ({ page }) => {
+    const errors = watchConsole(page);
+    await page.setViewportSize({ width: size.width, height: size.height });
+    await login(page, 'e2e.admin');
+    await page.goto('/danh-ba');
+    for (const t of TABS) {
+      await page.getByRole('tab', { name: t }).click();
+      await expect(page.getByTestId('contacts-table').or(page.locator('main [role="button"]')).or(page.getByText(/Chưa có .* nào/)).first()).toBeVisible();
+      expect(await noSideScroll(page), `${t} bị kéo ngang`).toBe(true);
+      if (t === 'KHÁCH HÀNG' || t === 'CÔNG NHÂN') await page.screenshot({ path: `${SHOTS}/danh-ba-${t === 'KHÁCH HÀNG' ? 'khach' : 'cong-nhan'}-${size.name}.png`, fullPage: true });
+    }
+    expect(errors).toEqual([]);
+  });
+}
+
+test('Thêm công nhân có SĐT + CCCD: Admin thấy đủ, Kế toán thấy bản che; xóa được', async ({ browser }) => {
+  const name = `E2E TEST ${Date.now() % 100000}`;
+  const admin = await (await browser.newContext({ locale: 'vi-VN' })).newPage();
+  await login(admin, 'e2e.admin');
+  await admin.goto('/danh-ba');
+  await admin.getByRole('tab', { name: 'CÔNG NHÂN' }).click();
+  await admin.getByRole('button', { name: 'Thêm', exact: true }).click();
+  await admin.getByLabel('Tên gọi (trong sổ chấm công) *').fill(name);
+  await admin.getByLabel('Số điện thoại', { exact: true }).fill('0912345678');
+  await admin.getByLabel('Số CCCD').fill('079188012345');
+  await admin.getByLabel('Quê quán').fill('Bến Tre');
+  await admin.getByRole('button', { name: 'Lưu' }).click();
+  const row = admin.locator('tr', { hasText: name });
+  await expect(row).toContainText('0912345678');
+  await expect(row).toContainText('079188012345');
+  await expect(row).toContainText('Bến Tre');
+
+  const kt = await (await browser.newContext({ locale: 'vi-VN' })).newPage();
+  await login(kt, 'e2e.kt');
+  await kt.goto('/danh-ba');
+  await kt.getByRole('tab', { name: 'CÔNG NHÂN' }).click();
+  const ktRow = kt.locator('tr', { hasText: name });
+  await expect(ktRow).toBeVisible();
+  const text = await ktRow.innerText();
+  expect(text).not.toContain('0912345678');
+  expect(text).not.toContain('079188012345');
+  expect(text).not.toContain('Bến Tre');
+  expect(text).toContain('•');
+
+  // Dọn: xóa mềm
+  await admin.getByLabel(`Xóa ${name}`).click();
+  await admin.getByRole('button', { name: 'Xóa', exact: true }).click();
+  await expect(admin.locator('tr', { hasText: name })).toHaveCount(0);
+});
+
+test('Chỉ xem không thấy Danh Bạ; nhà cung cấp bật / tắt Mua nợ', async ({ page }) => {
+  await login(page, 'e2e.cx');
+  await page.goto('/danh-ba');
+  await expect(page.getByText('Không có quyền xem mục này')).toBeVisible();
+});

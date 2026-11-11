@@ -123,3 +123,19 @@ export function projectSuppliers(projectId: string, data: Pick<CalcData, 'expens
   for (const r of m.values()) r.debt = Math.max(0, r.purchased - r.paid);
   return [...m.values()].sort((a, b) => b.purchased - a.purchased);
 }
+
+export type SubcontractorStanding = { contracts: number; total: number; paid: number; debt: number };
+
+/** Mỗi thầu phụ: số HĐ, tổng giá trị, đã trả, còn phải trả (chỉ cộng HĐ còn nợ > 0 vào `debt`, như tab Công nợ). */
+export function subcontractorStandings(contracts: readonly CalcSubcontract[], payments: readonly CalcPayment[]): Map<string, SubcontractorStanding> {
+  const byId = new Map(contracts.map((h) => [h.id, h]));
+  const out = new Map<string, SubcontractorStanding>();
+  for (const r of subcontractPayables(contracts, payments)) {
+    const h = byId.get(r.subcontractId);
+    if (!h) continue;
+    const s = out.get(h.subcontractor_id) ?? { contracts: 0, total: 0, paid: 0, debt: 0 };
+    s.contracts++; s.total += r.total; s.paid += r.paid; if (r.debt > 0) s.debt += r.debt;
+    out.set(h.subcontractor_id, s);
+  }
+  return out;
+}

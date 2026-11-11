@@ -90,3 +90,18 @@ describe.skipIf(!existsSync(SNAP))('trên dữ liệu thật: Σ chi theo loại
     expect(bad).toEqual([]);
   });
 });
+
+import { subcontractorStandings } from '../index';
+describe('thầu phụ: tổng hợp theo từng thầu phụ', () => {
+  it('số HĐ, giá trị, đã trả, còn phải trả (HĐ trả dư không làm giảm nợ HĐ khác)', () => {
+    const subs = [
+      { id: 'h1', project_id: 'p1', subcontractor_id: 'tp1', date: '2026-01-01', value: 1000, legacy_variation: 0 },
+      { id: 'h2', project_id: 'p2', subcontractor_id: 'tp1', date: '2026-01-02', value: 500, legacy_variation: 0 },
+    ];
+    const pays = [
+      { id: 'a', kind: 'advance', date: '2026-02-01', amount: 1200, project_id: 'p1', subcontractor_id: 'tp1', subcontract_id: 'h1' },
+      { id: 'b', kind: 'progress', date: '2026-02-01', amount: 100, project_id: 'p2', subcontractor_id: 'tp1', subcontract_id: 'h2' },
+    ];
+    expect(subcontractorStandings(subs, pays).get('tp1')).toEqual({ contracts: 2, total: 1500, paid: 1300, debt: 400 });
+  });
+});
