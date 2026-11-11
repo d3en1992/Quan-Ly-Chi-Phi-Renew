@@ -1,6 +1,6 @@
 TRẠNG THÁI: ĐANG CHẠY
-Nhịp tim: 12/11/2026 06:48 — GD05 (session tiếp sức đang giữ): 8 test Playwright GD05 xanh (gõ 5 dòng, dán 20 dòng, chi tiết, sửa / xóa, điện thoại, Thống kê); đang chạy lại toàn bộ kiểm tra
-Đang làm: GD05
+Nhịp tim: 12/11/2026 06:55 — GD05 xong: typecheck / 126 Vitest / build / 54 Playwright xanh; đã commit + push dev
+Đang làm: GD05 xong, chờ điều phối chuyển GD06
 
 # Tiến độ làm lại app
 
@@ -10,7 +10,7 @@ Nhịp tim: 12/11/2026 06:48 — GD05 (session tiếp sức đang giữ): 8 test
 | GD02 | Kho dữ liệu + chuyển dữ liệu cũ ⭐ | Fable | **Xong** 11/11 | Khớp hết với snapshot 02/11 (bản tạm). typecheck / 40 Vitest / build / 19 Playwright xanh. Báo cáo: `du-lieu/bao-cao-chuyen-du-lieu.md` |
 | GD03 | Công thức + báo cáo khớp số ⭐⭐ | Fable | **Xong** 11/11 | So với app cũ **lệch 0 đồng** (36 công trình × 2024, 2025, 2026, Tất cả). typecheck / 75 Vitest / build / 27 Playwright xanh. Ảnh: `anh-chup/GD03/` |
 | GD04 | Công Trình, Chi tiết CT, Danh Bạ, Danh Mục | Sonnet (medium) | **Xong** 11/11 | typecheck / 96 Vitest / build / Playwright xanh (gd04: 3 file spec). Ảnh: `anh-chup/GD04/` |
-| GD05 | Nhập Chi Phí (lưới Excel, chi tiết) | Fable (medium) | Chưa | |
+| GD05 | Nhập Chi Phí (lưới Excel, chi tiết) | Fable (medium) | **Xong** 12/11 | typecheck / 126 Vitest / build / 54 Playwright xanh (gd05: 8 test). Ảnh: `anh-chup/GD05/` |
 | GD06 | Chấm Công + Tạm ứng lương | Opus (medium) | Chưa | |
 | GD07 | Chi Trả, Công Nợ Phải Trả, Doanh Thu, Quyết Toán | Fable (medium) | Chưa | |
 | GD10 | Điện thoại, máy tính bảng, PWA, bản thử online | Sonnet (medium) | Chưa | |
@@ -52,6 +52,13 @@ Nhịp tim: 12/11/2026 06:48 — GD05 (session tiếp sức đang giữ): 8 test
 - **Danh Bạ** `src/features/contacts/` (5 nhóm; thêm / sửa / xóa mềm; SĐT, CCCD che theo `see_contact_ids` bằng `list_contact_private_masked()`; người không có quyền không sửa được trường riêng tư; bật / tắt Mua nợ của NCC). Nút **Chụp CCCD để sẵn (khóa) — làm ở GĐ9**.
 - **Danh Mục & Sao Lưu** `src/features/catalog/` + migration `20261111000004_danh_muc_sao_luu.sql`: danh mục 5 nhóm (thêm / đổi tên / xóa mềm, chặn xóa mục đang dùng, chuẩn hóa tên như app cũ), thông tin công ty (tên, tên ngắn, logo; logo lưu dạng ảnh nhỏ 128 px trong `companies.logo_url`, hiện ở menu trái), sao lưu: bảng `backups` + hàm `create_backup / export_company_snapshot / get_backup_data / restore_backup` (chỉ Admin; khôi phục chạy trong 1 giao dịch và tự lưu bản "trước khi khôi phục"). `scripts/backup-nightly.ts` (`npm run backup:nightly`, thử bằng `-- --local`) + mẫu `scripts/mau-github-action-sao-luu.yml` (CHƯA bật, hướng dẫn ở đầu file). `stamp_row` biết cờ `app.restoring` để giữ nguyên Người TH / ngày khi khôi phục.
 
+## GD05 — đã có gì (cho GĐ sau)
+- **Tab Nhập Chi Phí** `src/features/expenses/`: `ExpenseEntryPage.tsx` (3 tab con: NHẬP NHANH · HÓA ĐƠN CHI TIẾT · CHỤP HÓA ĐƠN = chỗ trống chờ GĐ9; dưới là "Hóa đơn trong ngày" theo ngày của dòng đang đứng), `QuickGrid.tsx` + `grid-model.ts` (lưới kiểu Excel: Enter / Tab / mũi tên / Shift chọn vùng / Ctrl+C, V, D, S / Delete / Space; gợi ý ngay dưới ô, "+ Tạo mới"; NCC Mua nợ tự bỏ tích Đã TT), `InvoiceForm.tsx` + `invoice-model.ts` (form một hóa đơn có / không có dòng vật tư, nội dung tự ghép, "Mua tại" + nhãn "khác khu vực"), `EditExpenseSheet.tsx` (bảng trượt sửa / xóa mềm; `EditExpenseById` để màn khác mở theo id), `PhoneEntry.tsx` (điện thoại: Nhập tay), `logic.ts` (gợi ý không dấu, dán TSV, ngày, cảnh báo trùng, đoán quận / huyện), `api.ts` (`useLookups`, `useEntryExpenses`, `useCreateExpenses`, `useUpdateExpense`, `useDeleteExpense`, `useCreateLookup`).
+- **Công thức** `src/lib/calc/expense.ts`: `parseMoneyDigits` (ô tiền chỉ nhận số, KHÔNG nhận "1tr"), `parsePastedMoney` (tiền dán từ Excel), `lineAmount` (SL × đơn giá − chiết khấu), `sumAmounts`.
+- **Component dùng chung mới:** `components/ui/combo.tsx` (`Combo` = ô chọn có gợi ý + "Tạo mới"; `SuggestPanel`), `MoneyInput` trong `input.tsx`, `Sheet` thêm `wide`.
+- **Thống Kê CP/HĐ:** thêm lọc Thanh toán (Đã trả / Mua nợ) và Nguồn (Nhanh / Chi tiết / Ảnh / Excel / Chấm công); mở dòng có nút "Sửa hóa đơn" (người có quyền Nhập).
+- Lưu / sửa / xóa hóa đơn tự làm mới số của Lợi Nhuận, Dashboard, Thống Kê (cùng `REPORT_DATA_KEY`).
+
 ## Kết quả so số với app cũ
 - GD03 (11/11, snapshot 03/11 14:25 + so-chuan xuất bằng code app cũ chạy trong Node): **lệch 0 đồng** ở A, A phần hóa đơn, A phần trả NCC, B, C, Tổng đã chi, Tổng đã thu, Lợi nhuận, HĐ gốc, Quyết toán, Giá trị HĐ, Còn phải thu của 36 công trình × 4 mốc (2024, 2025, 2026, Tất cả) = 1.728 ô; chi phí chung CÔNG TY + bảng phân bổ (trọng số, tiền) khớp; số hóa đơn và tổng theo nguồn khớp (1.527 dòng). Tổng trên màn Lợi Nhuận (Tất cả năm) khớp so-chuan (Playwright).
 - GD02 (11/11, snapshot tạm 02/11/2026): số bản ghi 11/11 kho khớp; 15 tổng tiền lệch 0; A / B / Đã thu từng công trình × từng năm lệch 0 (108 ô). Chưa có `so-chuan.json` nên chưa so với số xuất từ app cũ → GĐ3.
@@ -92,7 +99,20 @@ Nhịp tim: 12/11/2026 06:48 — GD05 (session tiếp sức đang giữ): 8 test
 - GD04: **Danh mục Đơn vị tính** bắt đầu trống; nút "Nạp từ dữ liệu đã nhập" gom ĐVT đã gõ trong dòng vật tư (GĐ5 có thể dùng làm gợi ý khi nhập). **Giai đoạn mẫu** = `schedule_templates` (kind phases), hiện trống tới GĐ12.
 - GD04: Nút **Thu tiền** và **Xuất Excel** trên trang Chi tiết, và tiến độ thi công (chỉ 1 dòng ghi chú) để GĐ7 / GĐ9 / GĐ12. Chưa có gán công trình cho từng tài khoản "được giao" ở form công trình (làm ở màn Tài Khoản).
 
+- GD05: **Hai session cùng làm GD05 một lúc** (06:35–06:39 ngày 12/11, do app khởi động lại): session kia đã tự gỡ file của nó; bản đang có là của session tiếp sức. Giữ 2 sửa nhỏ của session kia ở lưới (dòng chỉ gõ Ngày coi như dòng trống).
+- GD05: **Cảnh báo trùng** gộp 2 bước của app cũ vào 1 hộp (trùng 100% + gần giống ≥ 70% cùng ngày, công trình, số tiền); "Vẫn lưu" để lưu tiếp.
+- GD05: **Ngày trong lưới để trống** = lấy ngày dòng trên (dòng đầu = hôm nay); lưu xong lưới sạch, giữ ngày nếu không phải hôm nay (như app cũ).
+- GD05: **Công trình đã quyết toán** không hiện trong danh sách chọn khi nhập mới (như app cũ) nhưng sửa hóa đơn cũ của nó vẫn được.
+- GD05: **Sửa hóa đơn**: Toàn quyền, hoặc Nhập + (dòng của mình / quyền "Sửa dòng người khác") — đúng RLS; người khác chỉ xem. Hai người sửa cùng lúc: người lưu sau thắng, có báo "vừa được người khác sửa".
+- GD05: **Điện thoại** chỉ có Nhập tay một khoản (không có lưới, không có dòng vật tư); 5 loại chi phí dùng nhiều nhất thành nút bấm nhanh, còn lại sau "Khác…". Sửa hóa đơn chi tiết trên điện thoại vẫn được (bảng trượt).
+- GD05: **Gợi ý ĐVT / tên vật tư** lấy từ danh mục ĐVT + những gì đã gõ trong các hóa đơn cũ; gõ tự do, không bắt buộc có trong danh mục.
+- GD05: **Nguồn** hiện gọn: Nhanh / Chi tiết / Ảnh / Excel / Chấm công. Hóa đơn nhập nhanh được thêm dòng vật tư khi sửa → thành "Chi tiết".
+
 ## Lỗi còn biết
+- GD05: tab con CHỤP HÓA ĐƠN và ảnh kèm hóa đơn chưa có (GĐ9). Form hóa đơn chi tiết không có cột chiết khấu (mẫu không vẽ); hóa đơn cũ có chiết khấu vẫn giữ và hiện "CK …" dưới thành tiền khi sửa.
+- GD05: ô gợi ý của form (Combo) không tự đóng khi cuộn trang (lưới nhập nhanh thì có). Ô Ngày của form dùng ô ngày của trình duyệt nên hiện theo ngôn ngữ máy.
+- GD05: sửa một hóa đơn mua nợ ĐÃ có phiếu chi trả (đổi số tiền / tích Đã TT) chưa có cảnh báo riêng — GĐ7 (Chi Trả) cần chặn hoặc nhắc.
+- GD05: container `supabase_edge_runtime` trên máy hay tự tắt sau khi máy khởi động lại → test "Admin tạo tài khoản" (GĐ1) báo lỗi Edge Function; chạy `docker start supabase_edge_runtime_qlcp-ban-moi` (hoặc `npx supabase stop` rồi `start`) là hết.
 - Dữ liệu trong kho mới là **snapshot 03/11/2026 14:25**, trong đó 4 lô nhập 2024–2025 còn ở trạng thái NHÁP. Dữ liệu anh nhập / sửa sau 03/11 (và việc "đưa lô vào dữ liệu chung") chưa có → trước khi chuyển hẳn phải xuất snapshot mới rồi chạy lại 3 lệnh ở mục GD03.
 - GD03: 3 màn báo cáo đọc thẳng các bảng qua RLS. Tài khoản có quyền Lợi nhuận / Dashboard nhưng bị ẨN một mục nguồn (Doanh thu, Chi trả, Chấm công…) hoặc chỉ được giao vài công trình thì số trên báo cáo chỉ gồm phần họ được xem (không báo lỗi). Chưa kiểm tra số của vai trò Quản lý có đủ như Admin không (mới kiểm tra mở được màn).
 - GD03: cột **C** (và lợi nhuận) của công trình chưa có ngày kết thúc nhích dần theo ngày xem — đúng như app cũ. Trên máy tính 1440px bảng Lợi Nhuận đủ cột phải cuộn ngang trong khung (cột tên đứng yên); bấm "Thu gọn cột" thì vừa màn.
