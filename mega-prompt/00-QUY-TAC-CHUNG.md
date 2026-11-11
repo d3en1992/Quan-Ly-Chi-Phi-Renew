@@ -16,6 +16,7 @@ Thư mục dự án: `D:\10-CONG-VIEC\app-quan-ly-cong-trinh\code\ban-moi` (gọ
 - **Ảnh chụp Playwright**: lưu file cho anh xem; **không mở ảnh để tự xem** trừ khi cần sửa một lỗi giao diện cụ thể (ảnh rất tốn token).
 - Tìm bằng Grep / Glob trước khi đọc. Không liệt kê `node_modules`.
 - Mỗi giai đoạn chạy trong **session mới** (lịch sử ngắn = rẻ). Hết giai đoạn thì dừng, không tự làm sang giai đoạn sau (trừ khi đang chạy bằng prompt điều phối).
+- Effort đã hạ một nấc để tiết kiệm quota → bù bằng kiểm tra: **chép đúng hàm app cũ** (tra BAN-DO-APP-CU), chạy `npm test` (gồm test so số với `so-chuan.json`) sau **mỗi** phần có đụng tiền, đừng đợi cuối giai đoạn.
 - Không dùng subagent trong một giai đoạn, trừ khi việc thật sự tách rời và lớn (subagent khởi động lại từ đầu, tốn hơn).
 
 ## Luật tuyệt đối

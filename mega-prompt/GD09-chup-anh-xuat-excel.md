@@ -1,5 +1,5 @@
 # GĐ9 — Nút Chụp đa năng (hóa đơn, CCCD, hợp đồng) + Xuất Excel
-Model: **Opus 5.5** · Effort: **high** (chụp ảnh + Gemini, xuất Excel). Đọc `00-QUY-TAC-CHUNG.md` trước. Đọc kế hoạch mục **4D, 4G**.
+Model: **Sonnet 5.5** · Effort: **high** (chụp ảnh + Gemini, xuất Excel). Đọc `00-QUY-TAC-CHUNG.md` trước. Đọc kế hoạch mục **4D, 4G**.
 
 ## Làm
 1. **Edge Function `scan-document`** (Supabase): nhận ảnh (đã thu nhỏ ≤ 1600px) + ghi chú + loại (auto / invoice / id_card / contract); gửi Gemini (model đa phương thức mới nhất có gói miễn phí) với **JSON schema** đầu ra; kèm danh sách loại chi phí, NCC, công trình, công nhân hiện có để AI khớp tên. Trả về loại giấy tờ + dữ liệu + **độ chắc chắn từng ô**.
@@ -22,7 +22,7 @@ Cập nhật `TIEN-DO.md`, commit + push `dev`, rồi **trả lời anh đúng m
 - ⚠️ **Chưa xong / lỗi còn biết:** (hoặc “không có”).
 - 🧪 **Kiểm tra đã chạy:** typecheck / test / build / Playwright → kết quả.
 - 👉 **Anh cần làm:** (nếu có, ví dụ dán key vào `.env`; không có thì ghi “không có”).
-- **Prompt tiếp theo:** mở **session MỚI** (đừng dùng tiếp session này, để khỏi tốn token đọc lại lịch sử), chọn model **Opus 5.5**, effort **medium**, quyền **Bypass**, dán:
+- **Prompt tiếp theo:** mở **session MỚI** (đừng dùng tiếp session này, để khỏi tốn token đọc lại lịch sử), chọn model **Sonnet 5.5**, effort **medium**, quyền **Bypass**, dán:
   ```
   Đọc mega-prompt/00-QUY-TAC-CHUNG.md rồi làm mega-prompt/GD12-tien-do.md
   ```

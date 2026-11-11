@@ -1,6 +1,6 @@
-TRẠNG THÁI: GD03 XONG — chờ GD04
-Nhịp tim: 11/11/2026 21:50
-Đang làm: —
+TRẠNG THÁI: ĐANG CHẠY
+Nhịp tim: 11/11/2026 22:00
+Đang làm: GD04
 
 # Tiến độ làm lại app
 
@@ -9,15 +9,15 @@ Nhịp tim: 11/11/2026 21:50
 | GD01 | Khung app, đăng nhập, quyền, bố cục 3 khổ | Opus | **Xong** 11/11 | typecheck / 24 Vitest / build / 14 Playwright xanh. Ảnh: `anh-chup/GD01/` |
 | GD02 | Kho dữ liệu + chuyển dữ liệu cũ ⭐ | Fable | **Xong** 11/11 | Khớp hết với snapshot 02/11 (bản tạm). typecheck / 40 Vitest / build / 19 Playwright xanh. Báo cáo: `du-lieu/bao-cao-chuyen-du-lieu.md` |
 | GD03 | Công thức + báo cáo khớp số ⭐⭐ | Fable | **Xong** 11/11 | So với app cũ **lệch 0 đồng** (36 công trình × 2024, 2025, 2026, Tất cả). typecheck / 75 Vitest / build / 27 Playwright xanh. Ảnh: `anh-chup/GD03/` |
-| GD04 | Công Trình, Chi tiết CT, Danh Bạ, Danh Mục | Opus | Chưa | |
-| GD05 | Nhập Chi Phí (lưới Excel, chi tiết) | Fable | Chưa | |
-| GD06 | Chấm Công + Tạm ứng lương | Fable | Chưa | |
-| GD07 | Chi Trả, Công Nợ Phải Trả, Doanh Thu, Quyết Toán | Fable | Chưa | |
-| GD10 | Điện thoại, máy tính bảng, PWA, bản thử online | Opus | Chưa | |
-| GD08 | Thiết bị, Tỉ trọng, Thùng rác | Opus / Fable | Chưa | |
-| GD09 | Chụp đa năng + Xuất Excel | Fable | Chưa | |
-| GD12 | Tiến Độ phần 1 | Opus | Chưa | |
-| GD99 | Kiểm tra cuối + báo cáo sáng | Opus (low) | Chưa | |
+| GD04 | Công Trình, Chi tiết CT, Danh Bạ, Danh Mục | Sonnet (medium) | Chưa | |
+| GD05 | Nhập Chi Phí (lưới Excel, chi tiết) | Fable (medium) | Chưa | |
+| GD06 | Chấm Công + Tạm ứng lương | Opus (medium) | Chưa | |
+| GD07 | Chi Trả, Công Nợ Phải Trả, Doanh Thu, Quyết Toán | Fable (medium) | Chưa | |
+| GD10 | Điện thoại, máy tính bảng, PWA, bản thử online | Sonnet (medium) | Chưa | |
+| GD08 | Thiết bị, Tỉ trọng, Thùng rác | Opus (medium) | Chưa | |
+| GD09 | Chụp đa năng + Xuất Excel | Sonnet (high) | Chưa | |
+| GD12 | Tiến Độ phần 1 | Sonnet (medium) | Chưa | |
+| GD99 | Kiểm tra cuối + báo cáo sáng | Sonnet (medium) | Chưa | |
 
 ## GD01 — đã có gì (cho GĐ sau)
 - Khung: `src/app/` (App.tsx = đường dẫn + chặn quyền; `nav.ts` = menu đủ mọi tab; DesktopShell / PhoneShell). Tab chưa làm hiện trang "Đang làm"; thêm trang thật vào `PAGES` trong `App.tsx`.

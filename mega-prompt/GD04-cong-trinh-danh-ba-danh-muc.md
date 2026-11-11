@@ -1,5 +1,5 @@
 # GĐ4 — Công Trình, Chi tiết công trình, Danh Bạ, Danh Mục & Sao Lưu
-Model: **Opus 5.5** · Effort: **medium** (màn hình CRUD theo mẫu). Đọc `00-QUY-TAC-CHUNG.md` trước.
+Model: **Sonnet 5.5** · Effort: **medium** (màn hình CRUD theo mẫu). Đọc `00-QUY-TAC-CHUNG.md` trước.
 App cũ cần đọc: `projects.model.js`, `projects.ui.js`, `khachhang.model.js`, `khachhang.ui.js`, `danhmuc.categories.js`, `danhmuc.tools.js`.
 
 ## Làm
@@ -18,7 +18,7 @@ Cập nhật `TIEN-DO.md`, commit + push `dev`, rồi **trả lời anh đúng m
 - ⚠️ **Chưa xong / lỗi còn biết:** (hoặc “không có”).
 - 🧪 **Kiểm tra đã chạy:** typecheck / test / build / Playwright → kết quả.
 - 👉 **Anh cần làm:** (nếu có, ví dụ dán key vào `.env`; không có thì ghi “không có”).
-- **Prompt tiếp theo:** mở **session MỚI** (đừng dùng tiếp session này, để khỏi tốn token đọc lại lịch sử), chọn model **Fable 5.2**, effort **high**, quyền **Bypass**, dán:
+- **Prompt tiếp theo:** mở **session MỚI** (đừng dùng tiếp session này, để khỏi tốn token đọc lại lịch sử), chọn model **Fable 5.2**, effort **medium**, quyền **Bypass**, dán:
   ```
   Đọc mega-prompt/00-QUY-TAC-CHUNG.md rồi làm mega-prompt/GD05-nhap-chi-phi.md
   ```

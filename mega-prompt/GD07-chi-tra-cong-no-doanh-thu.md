@@ -1,5 +1,5 @@
 # GĐ7 — Chi Trả TP/NCC, Công Nợ Phải Trả, Doanh Thu, Quyết Toán
-Model: **Fable 5.2** · Effort: **high** (chia tiền trả NCC, công nợ, quyết toán). Đọc `00-QUY-TAC-CHUNG.md` trước. Đọc kỹ kế hoạch mục **4F, 4J, 4L**.
+Model: **Fable 5.2** · Effort: **medium** (chia tiền trả NCC, công nợ, quyết toán). Đọc `00-QUY-TAC-CHUNG.md` trước. Đọc kỹ kế hoạch mục **4F, 4J, 4L**.
 App cũ cần đọc: `tienung.*.js`, `congno.hdtp.js`, `congno.tattoan.js`, `doanhthu.core.js`, `doanhthu.forms.js`, `doanhthu.reports-export.js` (xuất ảnh phiếu), `quyettoan.core.js`, `quyettoan.congtrinh.js`.
 
 ## Làm
@@ -21,7 +21,7 @@ Cập nhật `TIEN-DO.md`, commit + push `dev`, rồi **trả lời anh đúng m
 - ⚠️ **Chưa xong / lỗi còn biết:** (hoặc “không có”).
 - 🧪 **Kiểm tra đã chạy:** typecheck / test / build / Playwright → kết quả.
 - 👉 **Anh cần làm:** (nếu có, ví dụ dán key vào `.env`; không có thì ghi “không có”).
-- **Prompt tiếp theo:** mở **session MỚI** (đừng dùng tiếp session này, để khỏi tốn token đọc lại lịch sử), chọn model **Opus 5.5**, effort **medium**, quyền **Bypass**, dán:
+- **Prompt tiếp theo:** mở **session MỚI** (đừng dùng tiếp session này, để khỏi tốn token đọc lại lịch sử), chọn model **Sonnet 5.5**, effort **medium**, quyền **Bypass**, dán:
   ```
   Đọc mega-prompt/00-QUY-TAC-CHUNG.md rồi làm mega-prompt/GD10-dien-thoai-pwa-online.md
   ```

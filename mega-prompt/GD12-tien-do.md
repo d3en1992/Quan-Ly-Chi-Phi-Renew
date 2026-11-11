@@ -1,5 +1,5 @@
 # GĐ12 — Tiến Độ Thi Công, Phần 1 (tính năng phụ)
-Model: **Opus 5.5** · Effort: **medium** (tiến độ, tính năng phụ). Đọc `00-QUY-TAC-CHUNG.md` trước. Đọc kế hoạch mục GĐ12, `../ban-dang-dung/PLAN_TIEN_DO_THI_CONG.md` (chỉ phần **nội dung tính năng** của Mega Prompt 1; **bỏ** phần kỹ thuật `tiendo_v1`, `meta_tien_do`, outbox, giới hạn 1MB), `../ban-dang-dung/PHAN_TICH_XONGVIEC.md`.
+Model: **Sonnet 5.5** · Effort: **medium** (tiến độ, tính năng phụ). Đọc `00-QUY-TAC-CHUNG.md` trước. Đọc kế hoạch mục GĐ12, `../ban-dang-dung/PLAN_TIEN_DO_THI_CONG.md` (chỉ phần **nội dung tính năng** của Mega Prompt 1; **bỏ** phần kỹ thuật `tiendo_v1`, `meta_tien_do`, outbox, giới hạn 1MB), `../ban-dang-dung/PHAN_TICH_XONGVIEC.md`.
 
 ## Làm
 - Bảng đã tạo ở GĐ2 (`schedule_*`). Giai đoạn **dùng chung** với giai đoạn của Tỉ Trọng.
@@ -17,7 +17,7 @@ Cập nhật `TIEN-DO.md`, commit + push `dev`, rồi **trả lời anh đúng m
 - ⚠️ **Chưa xong / lỗi còn biết:** (hoặc “không có”).
 - 🧪 **Kiểm tra đã chạy:** typecheck / test / build / Playwright → kết quả.
 - 👉 **Anh cần làm:** (nếu có, ví dụ dán key vào `.env`; không có thì ghi “không có”).
-- **Prompt tiếp theo:** mở **session MỚI** (đừng dùng tiếp session này, để khỏi tốn token đọc lại lịch sử), chọn model **Opus 5.5**, effort **low**, quyền **Bypass**, dán:
+- **Prompt tiếp theo:** mở **session MỚI** (đừng dùng tiếp session này, để khỏi tốn token đọc lại lịch sử), chọn model **Sonnet 5.5**, effort **medium**, quyền **Bypass**, dán:
   ```
   Đọc mega-prompt/00-QUY-TAC-CHUNG.md rồi làm mega-prompt/GD99-kiem-tra-cuoi.md
   ```

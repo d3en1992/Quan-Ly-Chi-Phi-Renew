@@ -1,5 +1,5 @@
 # GĐ6 — Chấm Công + Tạm Ứng Lương
-Model: **Opus 5.5** · Effort: **high** (chấm công: công thức vừa phải, nhiều màn). Đọc `00-QUY-TAC-CHUNG.md` trước.
+Model: **Opus 5.5** · Effort: **medium** (chấm công: công thức vừa phải, nhiều màn). Đọc `00-QUY-TAC-CHUNG.md` trước.
 App cũ cần đọc: `chamcong.core.js`, `chamcong.week-form.js`, `chamcong.history-reports.js`, `chamcong.ung-ledger.js`, phần chấm công trong `tienich.js` (`buildInvoices`: lương, HĐ mua lẻ).
 
 ## Làm
@@ -19,7 +19,7 @@ Cập nhật `TIEN-DO.md`, commit + push `dev`, rồi **trả lời anh đúng m
 - ⚠️ **Chưa xong / lỗi còn biết:** (hoặc “không có”).
 - 🧪 **Kiểm tra đã chạy:** typecheck / test / build / Playwright → kết quả.
 - 👉 **Anh cần làm:** (nếu có, ví dụ dán key vào `.env`; không có thì ghi “không có”).
-- **Prompt tiếp theo:** mở **session MỚI** (đừng dùng tiếp session này, để khỏi tốn token đọc lại lịch sử), chọn model **Fable 5.2**, effort **high**, quyền **Bypass**, dán:
+- **Prompt tiếp theo:** mở **session MỚI** (đừng dùng tiếp session này, để khỏi tốn token đọc lại lịch sử), chọn model **Fable 5.2**, effort **medium**, quyền **Bypass**, dán:
   ```
   Đọc mega-prompt/00-QUY-TAC-CHUNG.md rồi làm mega-prompt/GD07-chi-tra-cong-no-doanh-thu.md
   ```

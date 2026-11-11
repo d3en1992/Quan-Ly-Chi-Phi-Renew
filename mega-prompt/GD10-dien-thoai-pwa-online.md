@@ -1,5 +1,5 @@
 # GĐ10 — Hoàn thiện điện thoại, máy tính bảng, PWA, đưa lên bản thử online
-Model: **Opus 5.5** · Effort: **medium** (rà giao diện điện thoại, PWA). Đọc `00-QUY-TAC-CHUNG.md` trước.
+Model: **Sonnet 5.5** · Effort: **medium** (rà giao diện điện thoại, PWA). Đọc `00-QUY-TAC-CHUNG.md` trước.
 
 ## Làm
 1. Rà **mọi** màn điện thoại theo `MP.*` của giao diện mẫu (Tổng quan, Công trình, Chi tiết CT, Nhập, Chụp, Chấm công, Thêm + 14 màn con). Màn nào giai đoạn trước chưa làm thì làm.
@@ -17,7 +17,7 @@ Cập nhật `TIEN-DO.md`, commit + push `dev`, rồi **trả lời anh đúng m
 - ⚠️ **Chưa xong / lỗi còn biết:** (hoặc “không có”).
 - 🧪 **Kiểm tra đã chạy:** typecheck / test / build / Playwright → kết quả.
 - 👉 **Anh cần làm:** (nếu có, ví dụ dán key vào `.env`; không có thì ghi “không có”).
-- **Prompt tiếp theo:** mở **session MỚI** (đừng dùng tiếp session này, để khỏi tốn token đọc lại lịch sử), chọn model **Opus 5.5**, effort **high**, quyền **Bypass**, dán:
+- **Prompt tiếp theo:** mở **session MỚI** (đừng dùng tiếp session này, để khỏi tốn token đọc lại lịch sử), chọn model **Opus 5.5**, effort **medium**, quyền **Bypass**, dán:
   ```
   Đọc mega-prompt/00-QUY-TAC-CHUNG.md rồi làm mega-prompt/GD08-thiet-bi-ty-trong-thung-rac.md
   ```

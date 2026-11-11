@@ -1,5 +1,5 @@
 # GĐ99 — Kiểm tra cuối + báo cáo sáng
-Model: **Opus 5.5** · Effort: **low** (chỉ chạy kiểm tra, viết báo cáo). Đọc `00-QUY-TAC-CHUNG.md` trước. **Không viết tính năng mới**, chỉ kiểm tra và báo cáo. Sửa lỗi nhỏ (≤ 15 phút mỗi lỗi) thì được.
+Model: **Sonnet 5.5** · Effort: **medium** (chỉ chạy kiểm tra, viết báo cáo). Đọc `00-QUY-TAC-CHUNG.md` trước. **Không viết tính năng mới**, chỉ kiểm tra và báo cáo. Sửa lỗi nhỏ (≤ 15 phút mỗi lỗi) thì được.
 
 ## Làm
 1. `npm run typecheck`, `npm test`, `npm run build` trên nhánh `dev`. Ghi kết quả (chỉ tóm tắt, không dán log dài).

@@ -1,5 +1,5 @@
 # GĐ5 — Nhập Chi Phí (lưới nhập nhanh kiểu Excel, hóa đơn chi tiết, danh sách)
-Model: **Fable 5.2** · Effort: **high** (lưới nhập kiểu Excel, nhiều phím tắt). Đọc `00-QUY-TAC-CHUNG.md` trước.
+Model: **Fable 5.2** · Effort: **medium** (lưới nhập kiểu Excel, nhiều phím tắt). Đọc `00-QUY-TAC-CHUNG.md` trước.
 App cũ cần đọc kỹ: `hoadon.quick-entry.js`, `hoadon.sheet-grid.js` (≈1.000 dòng — chép đúng hành vi phím), `hoadon.detail-entry.js`, `hoadon.list-trash.js`, `tienich.js` (`calcRowMoney`, gợi ý tên). **Không chép** `parseMoney` gõ tắt “1tr” (đã bỏ, mục 4E).
 
 ## Làm
@@ -24,7 +24,7 @@ Cập nhật `TIEN-DO.md`, commit + push `dev`, rồi **trả lời anh đúng m
 - ⚠️ **Chưa xong / lỗi còn biết:** (hoặc “không có”).
 - 🧪 **Kiểm tra đã chạy:** typecheck / test / build / Playwright → kết quả.
 - 👉 **Anh cần làm:** (nếu có, ví dụ dán key vào `.env`; không có thì ghi “không có”).
-- **Prompt tiếp theo:** mở **session MỚI** (đừng dùng tiếp session này, để khỏi tốn token đọc lại lịch sử), chọn model **Opus 5.5**, effort **high**, quyền **Bypass**, dán:
+- **Prompt tiếp theo:** mở **session MỚI** (đừng dùng tiếp session này, để khỏi tốn token đọc lại lịch sử), chọn model **Opus 5.5**, effort **medium**, quyền **Bypass**, dán:
   ```
   Đọc mega-prompt/00-QUY-TAC-CHUNG.md rồi làm mega-prompt/GD06-cham-cong.md
   ```

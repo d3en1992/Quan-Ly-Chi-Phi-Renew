@@ -12,24 +12,23 @@
 | `TIEN-DO.md` | AI ghi tiến độ, nhịp tim, lỗi, việc anh cần làm |
 | `xuat-so-chuan.js` | Đoạn lệnh anh dán vào app cũ để xuất số lãi/lỗ chuẩn |
 
-## Model và effort từng giai đoạn
-| Thứ tự | Giai đoạn | Model | Effort | Vì sao |
+## Model và effort từng giai đoạn (đã hạ 1 nấc từ GD04 để tiết kiệm quota)
+| Thứ tự | Giai đoạn | Model | Effort | Ghi chú |
 |---|---|---|---|---|
-| 1 | GD01 Khung app, đăng nhập, quyền | Opus 5.5 | medium | Dựng theo mẫu có sẵn |
-| 2 | GD02 Kho dữ liệu + chuyển dữ liệu ⭐ | **Fable 5.2** | high | Sai là lệch số cả app |
-| 3 | GD03 Công thức, khớp số ⭐⭐ | **Fable 5.2** | high | Lãi/lỗ phải khớp 0 đồng |
-| 4 | GD04 Công trình, Danh bạ, Danh mục | Opus 5.5 | medium | Màn hình theo mẫu |
-| 5 | GD05 Nhập chi phí (lưới Excel) | **Fable 5.2** | high | Nhiều phím tắt, dễ sai |
-| 6 | GD06 Chấm công | Opus 5.5 | high | Công thức vừa phải |
-| 7 | GD07 Chi trả, Công nợ, Doanh thu, Quyết toán | **Fable 5.2** | high | Chia tiền trả NCC |
-| 8 | GD10 Điện thoại, PWA, bản thử online | Opus 5.5 | medium | Rà giao diện |
-| 9 | GD08 Thiết bị, Tỉ trọng, Thùng rác | Opus 5.5 | high | Chép logic tỉ trọng |
-| 10 | GD09 Chụp đa năng, Xuất Excel | Opus 5.5 | high | Gọi Gemini |
-| 11 | GD12 Tiến độ | Opus 5.5 | medium | Tính năng phụ |
-| 12 | GD99 Kiểm tra cuối, báo cáo | Opus 5.5 | low | Chỉ kiểm tra |
-| — | Sửa lỗi nhỏ sau này | Sonnet 5.5 | low / medium | Rẻ nhất |
+| 1–3 | GD01, GD02, GD03 | Opus / Fable / Fable | medium / high / high | **Đã xong**, lệch 0 đồng |
+| 4 | GD04 Công trình, Danh bạ, Danh mục | Sonnet 5.5 | medium | Màn hình theo mẫu |
+| 5 | GD05 Nhập chi phí (lưới Excel) | **Fable 5.2** | medium | Fable thứ 1/2 |
+| 6 | GD06 Chấm công | Opus 5.5 | medium | |
+| 7 | GD07 Chi trả, Công nợ, Doanh thu, Quyết toán | **Fable 5.2** | medium | Fable thứ 2/2 |
+| 8 | GD10 Điện thoại, PWA, bản thử online | Sonnet 5.5 | medium | |
+| 9 | GD08 Thiết bị, Tỉ trọng, Thùng rác | Opus 5.5 | medium | |
+| 10 | GD09 Chụp đa năng, Xuất Excel | Sonnet 5.5 | **high** | Sonnet high duy nhất |
+| 11 | GD12 Tiến độ | Sonnet 5.5 | medium | |
+| 12 | GD99 Kiểm tra cuối, báo cáo | Sonnet 5.5 | medium | |
+| — | Điều phối tự động | Sonnet 5.5 | medium | Chỉ giao việc |
+| — | Sửa lỗi nhỏ sau này | Sonnet 5.5 | low / medium | |
 
-Anh có thêm một lượt reset Fable, nên 4 giai đoạn khó (GD02, 03, 05, 07) dùng Fable là vừa. Nếu thấy quota Fable sắp hết, đổi giai đoạn đó sang **Opus 5.5, effort high**.
+Fable hết quota thì đổi giai đoạn đó sang **Opus 5.5, effort medium**.
 
 ## Hai cách chạy
 **Cách 1 — Từng bước (ban ngày, anh ở máy, tiết kiệm nhất):**
@@ -38,7 +37,7 @@ Anh có thêm một lượt reset Fable, nên 4 giai đoạn khó (GD02, 03, 05,
 3. Làm xong, AI trả lời: đã xong gì, lỗi còn gì, anh cần làm gì, và **prompt tiếp theo + model + effort**. Anh mở session mới, chọn đúng model / effort, dán prompt đó.
 
 **Cách 2 — Tự động (ban đêm, anh ngủ):**
-1. Mở session mới trong `ban-moi`, chọn **Opus 5.5**, effort **low**, quyền **Bypass**.
+1. Mở session mới trong `ban-moi`, chọn **Sonnet 5.5**, effort **medium**, quyền **Bypass**.
 2. Dán phần trong khung của `00-DIEU-PHOI.md`. Nó tự làm tiếp từ giai đoạn đang dở (đọc `TIEN-DO.md`), tự chọn model + effort cho từng giai đoạn.
 
 Đổi từ cách 1 sang cách 2 lúc nào cũng được, vì cả hai cùng đọc / ghi `TIEN-DO.md`.

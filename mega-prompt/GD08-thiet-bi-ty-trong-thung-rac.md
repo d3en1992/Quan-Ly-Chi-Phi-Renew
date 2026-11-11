@@ -1,5 +1,5 @@
 # GĐ8 — Theo Dõi TB, Tỉ Trọng & Định Mức, Thùng Rác
-Model: **Opus 5.5** · Effort: **high** (tỉ trọng chép logic cũ; thiết bị, thùng rác đơn giản). Đọc `00-QUY-TAC-CHUNG.md` trước.
+Model: **Opus 5.5** · Effort: **medium** (tỉ trọng chép logic cũ; thiết bị, thùng rác đơn giản). Đọc `00-QUY-TAC-CHUNG.md` trước.
 App cũ cần đọc: `legacy/thietbi.js`, `tytrong.core.js`, `tytrong.ui.js`, `thungrac.js`.
 
 ## Làm
@@ -18,7 +18,7 @@ Cập nhật `TIEN-DO.md`, commit + push `dev`, rồi **trả lời anh đúng m
 - ⚠️ **Chưa xong / lỗi còn biết:** (hoặc “không có”).
 - 🧪 **Kiểm tra đã chạy:** typecheck / test / build / Playwright → kết quả.
 - 👉 **Anh cần làm:** (nếu có, ví dụ dán key vào `.env`; không có thì ghi “không có”).
-- **Prompt tiếp theo:** mở **session MỚI** (đừng dùng tiếp session này, để khỏi tốn token đọc lại lịch sử), chọn model **Opus 5.5**, effort **high**, quyền **Bypass**, dán:
+- **Prompt tiếp theo:** mở **session MỚI** (đừng dùng tiếp session này, để khỏi tốn token đọc lại lịch sử), chọn model **Sonnet 5.5**, effort **high**, quyền **Bypass**, dán:
   ```
   Đọc mega-prompt/00-QUY-TAC-CHUNG.md rồi làm mega-prompt/GD09-chup-anh-xuat-excel.md
   ```
