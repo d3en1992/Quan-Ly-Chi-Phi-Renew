@@ -25,7 +25,6 @@ type Suggest = { r: number; c: number; anchor: AnchorRect; active: number };
 const WIDTHS = [36, 92, 170, 250, 116, 0, 110, 170, 62];
 const AC_LABEL: Partial<Record<Col, string>> = { type: 'Loại chi phí', project: 'Công trình', buyer: 'Người mua', supplier: 'Nhà cung cấp', description: 'Nội dung đã nhập' };
 const CREATE_KIND: Partial<Record<Col, CreatableKind>> = { type: 'expense_type', buyer: 'person', supplier: 'supplier' };
-const PAID_COL = COLS.indexOf('paid');
 /** Bộ nhớ tạm của nút Copy / Dán khi trình duyệt không cho đọc clipboard */
 let memoryClip = '';
 

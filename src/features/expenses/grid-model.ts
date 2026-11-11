@@ -96,7 +96,7 @@ export function cellText(row: GridRow, col: Col): string {
 export function isBlank(row: GridRow): boolean {
   if (row.amount || row.description.trim() || row.buyer.trim() || row.supplier.trim()) return false;
   if (row.auto) return true;
-  return !row.type.trim() && !row.project.trim() && !row.date.trim();
+  return !row.type.trim() && !row.project.trim();
 }
 
 /** Ngày của từng dòng: ô trống thì lấy ngày của dòng gần nhất phía trên, dòng đầu lấy hôm nay. null = gõ sai. */

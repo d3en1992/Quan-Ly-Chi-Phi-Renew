@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { ChangePasswordPage } from '@/features/auth/ChangePasswordPage';
 import { AccountsPage } from '@/features/accounts/AccountsPage';
+import { ExpenseEntryPage } from '@/features/expenses/ExpenseEntryPage';
 import { DashboardPage } from '@/features/reports/DashboardPage';
 import { ExpenseStatsPage } from '@/features/reports/ExpenseStatsPage';
 import { ProfitPage } from '@/features/reports/ProfitPage';
@@ -53,6 +54,7 @@ const STAGE: Record<string, string> = {
 const PAGES: Record<string, () => ReactNode> = {
   taikhoan: () => <AccountsPage />,
   congtrinh: () => <ProjectsRoute />,
+  nhap: () => <ExpenseEntryPage />,
   danhba: () => <ContactsPage />,
   danhmuc: () => <CatalogPage />,
   loinhuan: () => <ProfitPage />,
