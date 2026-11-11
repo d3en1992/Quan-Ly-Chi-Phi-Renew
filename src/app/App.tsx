@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { ChangePasswordPage } from '@/features/auth/ChangePasswordPage';
 import { AccountsPage } from '@/features/accounts/AccountsPage';
+import { DashboardPage } from '@/features/reports/DashboardPage';
+import { ExpenseStatsPage } from '@/features/reports/ExpenseStatsPage';
+import { ProfitPage } from '@/features/reports/ProfitPage';
 import {
   BlockedPage,
   ComingSoonPage,
@@ -46,6 +49,9 @@ const STAGE: Record<string, string> = {
 /** Trang đã làm xong (thay dần trang "Đang làm" ở các GĐ sau) */
 const PAGES: Record<string, () => ReactNode> = {
   taikhoan: () => <AccountsPage />,
+  loinhuan: () => <ProfitPage />,
+  dashboard: () => <DashboardPage />,
+  thongkecphd: () => <ExpenseStatsPage />,
 };
 
 function Guard({ item, children }: { item: NavItem; children: ReactNode }) {

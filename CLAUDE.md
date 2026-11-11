@@ -22,7 +22,9 @@ Vite + React 18 + TypeScript strict · Tailwind v4 (token màu ở `src/index.cs
 ## Cấu trúc
 ```
 src/app/            khung: App (đường dẫn, chặn quyền), DesktopShell (≥640), PhoneShell (<640), nav.ts (menu), auth.tsx, year.tsx
-src/components/ui/  nút, ô nhập, bảng trượt (Sheet), hộp xác nhận, dropdown, thẻ, pill, trạng thái tải/trống/lỗi, toast
+src/components/ui/  nút, ô nhập, bảng trượt (Sheet), hộp xác nhận, dropdown, thẻ, pill, trạng thái tải/trống/lỗi, toast,
+                    data.tsx = dải số tổng (KpiStrip), thanh lọc, HBarList, ProfitPill, Money, Pager, MobileCard, PhoneKpis (dùng lại, đừng viết mới)
+src/features/reports/  Lợi Nhuận, Dashboard, Thống Kê CP/HĐ (chỉ xem) + api.ts `useReportData()` đọc mọi bảng cho công thức
 src/lib/            supabase.ts, format.ts, permissions.ts, calc/ (công thức tiền)
 src/features/<tab>/ mỗi tab 1 thư mục tên tiếng Anh: api.ts (đọc/ghi), schema.ts (Zod), các màn .tsx
 supabase/migrations/  file .sql tạo bảng, RLS, dữ liệu ban đầu
@@ -51,6 +53,7 @@ npm i
 npx supabase start          # Supabase trong Docker
 npm run seed:users          # tạo tinh / chay / lam, mật khẩu tạm ở du-lieu/tai-khoan-tam.txt
 npm run migrate:legacy      # đổ dữ liệu app cũ (du-lieu/snapshot.json) vào Supabase trên máy + báo cáo so sánh
+npm run so-chuan            # chạy code app cũ trong Node trên du-lieu/snapshot.json → du-lieu/so-chuan.json (npm test so từng đồng)
 npm run gen:types           # sau khi thêm / sửa migration: npx supabase migration up → sinh lại src/types/db.ts
 npm run dev                 # http://localhost:5173
 npm run typecheck && npm test && npm run build

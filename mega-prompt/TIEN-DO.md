@@ -1,5 +1,5 @@
-TRẠNG THÁI: GD02 XONG — chờ GD03
-Nhịp tim: 11/11/2026 16:55
+TRẠNG THÁI: GD03 XONG — chờ GD04
+Nhịp tim: 11/11/2026 21:50
 Đang làm: —
 
 # Tiến độ làm lại app
@@ -8,7 +8,7 @@ Nhịp tim: 11/11/2026 16:55
 |---|---|---|---|---|
 | GD01 | Khung app, đăng nhập, quyền, bố cục 3 khổ | Opus | **Xong** 11/11 | typecheck / 24 Vitest / build / 14 Playwright xanh. Ảnh: `anh-chup/GD01/` |
 | GD02 | Kho dữ liệu + chuyển dữ liệu cũ ⭐ | Fable | **Xong** 11/11 | Khớp hết với snapshot 02/11 (bản tạm). typecheck / 40 Vitest / build / 19 Playwright xanh. Báo cáo: `du-lieu/bao-cao-chuyen-du-lieu.md` |
-| GD03 | Công thức + báo cáo khớp số ⭐⭐ | Fable | Chưa | |
+| GD03 | Công thức + báo cáo khớp số ⭐⭐ | Fable | **Xong** 11/11 | So với app cũ **lệch 0 đồng** (36 công trình × 2024, 2025, 2026, Tất cả). typecheck / 75 Vitest / build / 27 Playwright xanh. Ảnh: `anh-chup/GD03/` |
 | GD04 | Công Trình, Chi tiết CT, Danh Bạ, Danh Mục | Opus | Chưa | |
 | GD05 | Nhập Chi Phí (lưới Excel, chi tiết) | Fable | Chưa | |
 | GD06 | Chấm Công + Tạm ứng lương | Fable | Chưa | |
@@ -39,7 +39,15 @@ Nhịp tim: 11/11/2026 16:55
   - Quyết toán: `settlements.amount` luôn dương, dấu nằm ở `kind` (increase / decrease / replace). HĐ gốc = `value + extra_value + legacy_variation`.
 - **RLS:** mỗi bảng 4 chính sách (đọc / thêm / sửa / xóa hẳn) + lọc theo phạm vi công trình của tài khoản. Bảng tra cứu (danh mục, NCC, thầu phụ) ai trong công ty cũng đọc được. Test: `e2e/gd02-rls.spec.ts`.
 
+## GD03 — đã có gì (cho GĐ sau)
+- **Dữ liệu đang dùng:** `du-lieu/snapshot.json` = `du-lieu-xu-ly/file-import-chuan-hoa/cpct_snapshot_2026-11-03_14-25.json` (anh Tình chỉ định; có 4 lô nhập NHÁP 2024–2025: 277 hóa đơn, 123 phiếu ứng, 7 phiếu thu, 13 HĐ thầu phụ, 4 HĐ chính).
+- **Số chuẩn:** `npm run so-chuan` (= `scripts/legacy/xuat-so-chuan-node.mjs`) nạp NGUYÊN code `../ban-dang-dung/js` vào hộp cát `node:vm` (document / mạng là đồ giả, không đụng Firebase), đổ snapshot vào `_mem`, chạy đúng `mega-prompt/xuat-so-chuan.js` → `du-lieu/so-chuan.json`. Xem bằng mắt ADMIN (thấy dữ liệu nháp). Đổi snapshot thì chạy lại: `npm run migrate:legacy` → `npm run so-chuan` → `npm test`.
+- **Công thức** `src/lib/calc/` (import từ `@/lib/calc`): `year.ts` (`inYear` = thiếu ngày thì loại; `inYearLoose` = thiếu ngày thì hiện mọi năm, dùng cho thu / HĐ / quyết toán / phiếu chi / hóa đơn trong lãi-lỗ), `timesheet.ts`, `overhead.ts` (ngày tính theo giờ VN cố định +07; chọn NHIỀU năm thì số ngày = cả vòng đời như app cũ; công trình chưa kết thúc tính tới "bây giờ" nên C đổi theo giờ xem), `revenue.ts`, `profit.ts` (`profitReport` = bảng tab Lợi Nhuận kèm quy tắc năm hạch toán 80%; `projectProfit` = `lnTinhCongTrinh`), `payables.ts` (chia tiền trả NCC cũ nhất trước; công nợ NCC; đã trả từng HĐ thầu phụ như `_hdtpUngAlloc`), `stats.ts` (chi theo tuần, cơ cấu chi, tổng danh sách).
+- **Đọc dữ liệu:** `src/features/reports/api.ts` → `useReportData()` tải mọi năm 1 lần (bản ghi còn sống, Zod kiểm tra, giữ 1 phút), 3 màn dùng chung; lọc năm bằng ô chọn năm trên thanh trên (`useReport()` trong `shared.tsx`).
+- **Component dùng chung đã chốt** (GĐ sau chỉ dùng lại): `src/components/ui/data.tsx` — `KpiStrip` (dải số tổng), `FilterBar` + `FilterSelect` + `SearchBox` (thanh lọc), `HBar` / `HBarList`, `ProfitPill`, `Money` + `signedMoney`, `usePaged` + `Pager`, `MobileCard` + `MobileRow`, `PhoneKpis`, `Segmented`; cùng `misc.tsx` (Card, CardHeader, PageHeader, SubTabs, Pill, Note, Loading / Empty / ErrorState), `sheet.tsx` (bảng trượt), `confirm.tsx` (hộp xác nhận xóa), `toast.tsx`, `input.tsx` (Input, Select, Field, Checkbox), bảng `.tbl`. **Chưa có** (làm ở GĐ4–GĐ5 lúc có form nhập đầu tiên): ô tiền tự thêm dấu chấm, ô ngày, ô chọn công trình, ô chọn danh mục có gợi ý + "Tạo mới".
+
 ## Kết quả so số với app cũ
+- GD03 (11/11, snapshot 03/11 14:25 + so-chuan xuất bằng code app cũ chạy trong Node): **lệch 0 đồng** ở A, A phần hóa đơn, A phần trả NCC, B, C, Tổng đã chi, Tổng đã thu, Lợi nhuận, HĐ gốc, Quyết toán, Giá trị HĐ, Còn phải thu của 36 công trình × 4 mốc (2024, 2025, 2026, Tất cả) = 1.728 ô; chi phí chung CÔNG TY + bảng phân bổ (trọng số, tiền) khớp; số hóa đơn và tổng theo nguồn khớp (1.527 dòng). Tổng trên màn Lợi Nhuận (Tất cả năm) khớp so-chuan (Playwright).
 - GD02 (11/11, snapshot tạm 02/11/2026): số bản ghi 11/11 kho khớp; 15 tổng tiền lệch 0; A / B / Đã thu từng công trình × từng năm lệch 0 (108 ô). Chưa có `so-chuan.json` nên chưa so với số xuất từ app cũ → GĐ3.
 
 ## Quyết định AI tự chọn
@@ -63,18 +71,28 @@ Nhịp tim: 11/11/2026 16:55
 - GD02: RLS **Kế toán được thêm NCC / danh mục mới** ngay lúc nhập chi phí (chỉ thêm; sửa mục người khác cần quyền Danh mục / Danh bạ). **Tất toán** cần quyền Công nợ ≥ Nhập (mặc định Kế toán chỉ Xem — app cũ cho Kế toán tất toán; Admin bật 1 ô là được).
 - GD02: **Không chạy `supabase db reset`** để khỏi đổi mật khẩu tạm của tinh / chay / lam trên máy; migration mới áp bằng `npx supabase migration up`. `npm run db:reset` giờ = reset + tạo tài khoản + chuyển dữ liệu.
 
+- GD03: **Tự xuất `so-chuan.json` bằng code app cũ chạy trong Node** thay vì chờ anh dán script vào Console (anh bảo dùng snapshot 03/11 14:25, không có file so-chuan đi kèm). Cùng code, cùng dữ liệu nên số như nhau; anh vẫn có thể xuất tay để đối chứng.
+- GD03: **Bản ghi `draftHide`** (2 hóa đơn CH TRƯỜNG HẢI "Cáp điện" 7.863.000 và 32.895.000 bị lô nhập nháp thay thế — admin app cũ không còn thấy) → chuyển vào **Thùng rác** thay vì coi là còn sống, để số khớp cái admin đang thấy. Khôi phục được.
+- GD03: Danh sách **NCC Mua nợ** giờ là 22 (9 của KẾ HOẠCH + 13 NCC có phiếu ứng trong lô nhập 2024–2025). Quy tắc không đổi ("NCC từng có phiếu ứng"); `compare-counts` chỉ báo lỗi khi THIẾU NCC của KẾ HOẠCH.
+- GD03: **Dashboard** theo giao diện mẫu (không chép dashboard app cũ): dải số tổng cộng từ chính các dòng tab Lợi Nhuận nên 2 tab luôn cùng số; "Còn phải trả thầu phụ" = Σ HĐ thầu phụ còn nợ > 0; cơ cấu chi gộp mọi chi phí của CÔNG TY thành "Chi phí chung".
+- GD03: **Thống Kê CP/HĐ** hiện cả dòng lương / HĐ mua lẻ sinh từ chấm công (như danh sách hóa đơn app cũ), nguồn ghi "Chấm công". Chưa có nút Xuất Excel (GĐ9). Bấm dòng mở bảng trượt xem dòng vật tư; ảnh hóa đơn để GĐ9.
+- GD03: Bảng Lợi Nhuận mặc định xếp theo lợi nhuận cao → thấp (theo mẫu); chưa làm bấm tiêu đề để xếp và bấm số để nhảy sang tab chi tiết (các tab đích chưa có).
+
 ## Lỗi còn biết
-- GD02: đang dùng **snapshot tạm 02/11/2026** (`../ban-dang-dung/cpct_snapshot_2026-11-02_00-51.json`) vì chưa có `du-lieu/snapshot.json`. Dữ liệu anh nhập sau 02/11 chưa có trong kho mới.
-- GD02: chưa có `du-lieu/so-chuan.json` → chưa đối chiếu được với số xuất từ app cũ (GĐ3 cần). Chưa có file khách hàng đã duyệt (`du-lieu-xu-ly/khach-hang-tu-ho-so/khach-hang-de-duyet.xlsx`) → khách hàng mới chỉ có tên, địa chỉ và 2 số điện thoại sẵn trong app cũ; script **chưa có** đoạn đọc file này (làm khi có file).
+- Dữ liệu trong kho mới là **snapshot 03/11/2026 14:25**, trong đó 4 lô nhập 2024–2025 còn ở trạng thái NHÁP. Dữ liệu anh nhập / sửa sau 03/11 (và việc "đưa lô vào dữ liệu chung") chưa có → trước khi chuyển hẳn phải xuất snapshot mới rồi chạy lại 3 lệnh ở mục GD03.
+- GD03: 3 màn báo cáo đọc thẳng các bảng qua RLS. Tài khoản có quyền Lợi nhuận / Dashboard nhưng bị ẨN một mục nguồn (Doanh thu, Chi trả, Chấm công…) hoặc chỉ được giao vài công trình thì số trên báo cáo chỉ gồm phần họ được xem (không báo lỗi). Chưa kiểm tra số của vai trò Quản lý có đủ như Admin không (mới kiểm tra mở được màn).
+- GD03: cột **C** (và lợi nhuận) của công trình chưa có ngày kết thúc nhích dần theo ngày xem — đúng như app cũ. Trên máy tính 1440px bảng Lợi Nhuận đủ cột phải cuộn ngang trong khung (cột tên đứng yên); bấm "Thu gọn cột" thì vừa màn.
+- GD03: mở app lần đầu chưa tự chuyển sang "Tất cả năm" khi năm hiện tại chưa có dữ liệu (mục 4K) — hiện màn trống kèm lời nhắc chọn năm khác.
+- GD02: Chưa có file khách hàng đã duyệt (`du-lieu-xu-ly/khach-hang-tu-ho-so/khach-hang-de-duyet.xlsx`) → khách hàng mới chỉ có tên, địa chỉ và 2 số điện thoại sẵn trong app cũ; script **chưa có** đoạn đọc file này (làm khi có file).
 - GD02: Danh mục **đơn vị tính** (`catalog_items.kind = 'unit'`) còn trống — app cũ không có danh mục này (ĐVT gõ tay). GĐ4 / GĐ5 quyết định có gợi ý từ ĐVT đã dùng hay không.
 - GD02: tài khoản test `e2e.cx` (Chỉ xem) có `project_scope = 'all'` vì `upsertAccount` không áp phạm vi mặc định của vai trò — test tự đặt 'assigned' rồi trả lại.
 - Supabase trong máy có thêm các tài khoản test `e2e.*` (do Playwright tạo) — hiện trong danh sách Tài khoản ở máy anh. Không ảnh hưởng bản online. Xóa: `npm run db:reset`.
-- Chọn năm mới chỉ lưu lựa chọn; lọc số liệu theo năm làm ở GĐ3 (mục 4K).
 - Ô tìm (Ctrl+K) mới tìm được tên tab; tìm công trình / hóa đơn / công nhân thêm ở các GĐ sau.
 - Font Be Vietnam Pro + icon tải từ Google Fonts (cần mạng). GĐ10 (PWA) nên tự chứa font.
 
 ## Việc anh cần làm
-0. **Trước GĐ3 (5 phút):** mở app cũ → chọn “Tất cả năm”, chờ đồng bộ xanh → (a) xuất JSON sao lưu, chép thành `ban-moi/du-lieu/snapshot.json`; (b) ngay sau đó dán `mega-prompt/xuat-so-chuan.js` vào Console, chép file tải về thành `ban-moi/du-lieu/so-chuan.json`. Hai file phải xuất **cùng lúc** thì số mới khớp. Rồi chạy `npm run migrate:legacy` trong `ban-moi` (khoảng 30 giây), xem `du-lieu/bao-cao-chuyen-du-lieu.md`.
+0. **So bằng mắt (5 phút, mục "Anh kiểm tra" của GĐ3):** mở app cũ (đăng nhập ADMIN, chọn "Tất cả năm") và app mới cạnh nhau, tab Lợi Nhuận, so 5 công trình bất kỳ: Tổng đã thu, A, B, Tổng đã chi, Lợi nhuận. App mới đang là dữ liệu lúc 03/11 14:25 nên công trình anh có nhập thêm sau đó sẽ lệch; cột C lệch nhẹ theo ngày xem là bình thường.
+0b. **Trước khi chuyển hẳn:** xuất JSON sao lưu mới từ app cũ → chép thành `ban-moi/du-lieu/snapshot.json` → chạy `npm run migrate:legacy`, `npm run so-chuan`, `npm test`.
 1. **Thử trên máy:** mở Docker Desktop → trong `ban-moi` chạy `npx supabase start` → `npm run dev` → mở http://localhost:5173. Mật khẩu tạm của `tinh`, `chay`, `lam` ở `ban-moi/du-lieu/tai-khoan-tam.txt`.
 2. **Vercel** (chưa cần làm ngay, để GĐ10 đưa bản thử online): project `quan-ly-chi-phi-test` → Settings:
    - Build & Development: Framework Preset = **Vite**, Build Command = `npm run build`, Output Directory = `dist`, Root Directory = thư mục chứa `package.json` (gốc repo).
