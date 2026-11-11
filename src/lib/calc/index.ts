@@ -7,3 +7,4 @@ export * from './revenue';
 export * from './profit';
 export * from './payables';
 export * from './stats';
+export * from './projectDetail';

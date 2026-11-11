@@ -11,16 +11,16 @@ import { useExpenseLines, type ReportData } from './api';
 import { matchesSearch, ReportBody, useReport } from './shared';
 
 const PAGE_SIZE = 50;
-const SOURCE_LABEL: Record<string, string> = { quick: 'Nhập nhanh', detail: 'Chi tiết', scan: 'Từ ảnh', import: 'Nhập Excel', wage: 'Chấm công', retail: 'Chấm công' };
+export const SOURCE_LABEL: Record<string, string> = { quick: 'Nhập nhanh', detail: 'Chi tiết', scan: 'Từ ảnh', import: 'Nhập Excel', wage: 'Chấm công', retail: 'Chấm công' };
 const WAGE_TYPE = 'Nhân Công';
 const RETAIL_TYPE = 'Hóa Đơn Lẻ';
 
-type Row = {
+export type Row = {
   entry: CostEntry; id: string; date: string | null; month: string; projectId: string; project: string; type: string; supplier: string;
   buyer: string; description: string; paid: boolean; source: string; enteredBy: string; amount: number;
 };
 
-function buildRows(data: ReportData): Row[] {
+export function buildRows(data: ReportData): Row[] {
   const weekStart = new Map(data.timesheetWeeks.map((w) => [w.id, w.week_start]));
   const dm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
   return buildCostEntries(data).map((c) => {
@@ -46,11 +46,11 @@ function buildRows(data: ReportData): Row[] {
 const uniqueOptions = (values: string[]): Option[] =>
   [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi')).map((v) => ({ value: v, label: v }));
 
-function PaidPill({ paid }: { paid: boolean }) {
+export function PaidPill({ paid }: { paid: boolean }) {
   return paid ? <Pill tone="good">Đã trả</Pill> : <Pill tone="warn">Mua nợ</Pill>;
 }
 
-function DetailSheet({ row, onClose }: { row: Row | null; onClose: () => void }) {
+export function DetailSheet({ row, onClose }: { row: Row | null; onClose: () => void }) {
   const expenseId = row?.entry.expense ? row.id : null;
   const lines = useExpenseLines(expenseId);
   return (

@@ -11,6 +11,7 @@ import { AccountsPage } from '@/features/accounts/AccountsPage';
 import { DashboardPage } from '@/features/reports/DashboardPage';
 import { ExpenseStatsPage } from '@/features/reports/ExpenseStatsPage';
 import { ProfitPage } from '@/features/reports/ProfitPage';
+import { ProjectsRoute } from '@/features/projects/ProjectsPage';
 import {
   BlockedPage,
   ComingSoonPage,
@@ -49,6 +50,7 @@ const STAGE: Record<string, string> = {
 /** Trang đã làm xong (thay dần trang "Đang làm" ở các GĐ sau) */
 const PAGES: Record<string, () => ReactNode> = {
   taikhoan: () => <AccountsPage />,
+  congtrinh: () => <ProjectsRoute />,
   loinhuan: () => <ProfitPage />,
   dashboard: () => <DashboardPage />,
   thongkecphd: () => <ExpenseStatsPage />,

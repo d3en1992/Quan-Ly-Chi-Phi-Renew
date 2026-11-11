@@ -1,6 +1,6 @@
 TRẠNG THÁI: ĐANG CHẠY
-Nhịp tim: 11/11/2026 22:00
-Đang làm: GD04
+Nhịp tim: 11/11/2026 22:12
+Đang làm: GD04 — phần 1/2 (Công Trình + Chi tiết) xong; tiếp: Danh Bạ, Danh Mục & Sao Lưu
 
 # Tiến độ làm lại app
 
@@ -9,7 +9,7 @@ Nhịp tim: 11/11/2026 22:00
 | GD01 | Khung app, đăng nhập, quyền, bố cục 3 khổ | Opus | **Xong** 11/11 | typecheck / 24 Vitest / build / 14 Playwright xanh. Ảnh: `anh-chup/GD01/` |
 | GD02 | Kho dữ liệu + chuyển dữ liệu cũ ⭐ | Fable | **Xong** 11/11 | Khớp hết với snapshot 02/11 (bản tạm). typecheck / 40 Vitest / build / 19 Playwright xanh. Báo cáo: `du-lieu/bao-cao-chuyen-du-lieu.md` |
 | GD03 | Công thức + báo cáo khớp số ⭐⭐ | Fable | **Xong** 11/11 | So với app cũ **lệch 0 đồng** (36 công trình × 2024, 2025, 2026, Tất cả). typecheck / 75 Vitest / build / 27 Playwright xanh. Ảnh: `anh-chup/GD03/` |
-| GD04 | Công Trình, Chi tiết CT, Danh Bạ, Danh Mục | Sonnet (medium) | Chưa | |
+| GD04 | Công Trình, Chi tiết CT, Danh Bạ, Danh Mục | Sonnet (medium) | **Đang làm** | Xong: Công Trình + Chi tiết (7 Playwright xanh). Còn: Danh Bạ, Danh Mục & Sao Lưu |
 | GD05 | Nhập Chi Phí (lưới Excel, chi tiết) | Fable (medium) | Chưa | |
 | GD06 | Chấm Công + Tạm ứng lương | Opus (medium) | Chưa | |
 | GD07 | Chi Trả, Công Nợ Phải Trả, Doanh Thu, Quyết Toán | Fable (medium) | Chưa | |

@@ -69,6 +69,7 @@ export type ReportData = CalcData & {
   catalogName: Map<string, string>;
   customerName: Map<string, string>;
   workerName: Map<string, string>;
+  subcontractorName: Map<string, string>;
   profileName: Map<string, string>;
   projectById: Map<string, ReportProject>;
   /** Lúc tải dữ liệu — "bây giờ" để tính số ngày thi công của công trình chưa kết thúc */
@@ -85,6 +86,7 @@ export async function fetchReportData(): Promise<ReportData> {
       fetchLive('settlements', settlementSchema), fetchLive('subcontracts', subcontractSchema), fetchLive('suppliers', namedSchema),
       fetchLive('catalog_items', catalogSchema), fetchLive('customers', namedSchema), fetchLive('workers', namedSchema),
     ]);
+  const subcontractors = await fetchLive('subcontractors', namedSchema);
   const [timesheetLines, paymentAllocations, profiles] = await Promise.all([
     fetchLive('timesheet_lines', lineSchema), fetchLive('payment_allocations', allocationSchema),
     // Tên Người TH: tài khoản không được xem danh sách tài khoản thì bỏ trống cột này, không coi là lỗi
@@ -97,7 +99,7 @@ export async function fetchReportData(): Promise<ReportData> {
     projects, expenses, timesheetWeeks, payments, receipts, mainContracts, settlements, subcontracts,
     timesheetLines: timesheetLines.filter((l) => weekIds.has(l.week_id)),
     paymentAllocations: paymentAllocations.filter((a) => payIds.has(a.payment_id)),
-    supplierName: toMap(suppliers), catalogName: toMap(catalog), customerName: toMap(customers), workerName: toMap(workers),
+    supplierName: toMap(suppliers), catalogName: toMap(catalog), customerName: toMap(customers), workerName: toMap(workers), subcontractorName: toMap(subcontractors),
     profileName: new Map(profiles.map((p) => [p.id, p.display_name])),
     projectById: new Map(projects.map((p) => [p.id, p])),
     loadedAt: Date.now(),
