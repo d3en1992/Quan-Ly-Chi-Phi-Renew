@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(//d/99-BAO-MAT/**)",
+      "Edit(//d/99-BAO-MAT/**)",
+      "Write(//d/99-BAO-MAT/**)",
+      "Bash(*99-BAO-MAT*)",
+      "Edit(//d/10-CONG-VIEC/app-quan-ly-cong-trinh/code/ban-dang-dung/**)",
+      "Write(//d/10-CONG-VIEC/app-quan-ly-cong-trinh/code/ban-dang-dung/**)",
+      "Edit(//d/10-CONG-VIEC/app-quan-ly-cong-trinh/du-lieu-goc/**)",
+      "Write(//d/10-CONG-VIEC/app-quan-ly-cong-trinh/du-lieu-goc/**)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f*)",
+      "Bash(git push origin main*)",
+      "Bash(git push * --delete*)",
+      "Bash(git branch -D*)",
+      "Bash(npx supabase projects delete*)"
+    ]
+  }
+}

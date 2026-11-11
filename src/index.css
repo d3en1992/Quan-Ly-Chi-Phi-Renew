@@ -1,0 +1,85 @@
+@import 'tailwindcss';
+
+/* Token màu lấy nguyên từ thiet-ke/giao-dien-mau.html (:root). Sáng / tối theo máy hoặc theo nút đổi. */
+:root {
+  --bg: #f3f5f8; --surface: #ffffff; --surface-2: #edf1f5; --line: #dce2e9; --line-soft: #e9edf2;
+  --fg: #16202a; --muted: #5b6877; --faint: #8995a3;
+  --accent: #1d5db5; --accent-soft: #e2ebf8; --accent-fg: #ffffff;
+  --good: #17804a; --good-soft: #e1f3e8; --bad: #c2372c; --bad-soft: #fbe6e4; --warn: #a86a12; --warn-soft: #fbf0dc;
+  --shadow: 0 1px 2px rgba(22, 32, 42, 0.06), 0 8px 24px rgba(22, 32, 42, 0.08);
+  --font: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0e141a; --surface: #151d25; --surface-2: #1b252f; --line: #283441; --line-soft: #212c37;
+    --fg: #e5eaf0; --muted: #97a4b2; --faint: #6f7c8a;
+    --accent: #6fa3f0; --accent-soft: #1a2a40; --accent-fg: #0e141a;
+    --good: #4fc283; --good-soft: #15301f; --bad: #f2786c; --bad-soft: #3a1c1a; --warn: #e2aa4e; --warn-soft: #352812;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #0e141a; --surface: #151d25; --surface-2: #1b252f; --line: #283441; --line-soft: #212c37;
+  --fg: #e5eaf0; --muted: #97a4b2; --faint: #6f7c8a;
+  --accent: #6fa3f0; --accent-soft: #1a2a40; --accent-fg: #0e141a;
+  --good: #4fc283; --good-soft: #15301f; --bad: #f2786c; --bad-soft: #3a1c1a; --warn: #e2aa4e; --warn-soft: #352812;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-fg);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --font-sans: var(--font);
+  --radius-card: var(--r);
+  --shadow-card: var(--shadow);
+}
+
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+}
+
+/* Icon Material Symbols — giống class .ms của giao diện mẫu */
+.ms {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal; font-style: normal; font-size: 20px; line-height: 1;
+  display: inline-block; vertical-align: middle; letter-spacing: normal; text-transform: none;
+  white-space: nowrap; font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased;
+  width: 1em; overflow: hidden; flex: none;
+}
+.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Bảng chung (giống mẫu) */
+.tbl { overflow-x: auto; }
+.tbl table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl th { font-size: 11.5px; font-weight: 600; color: var(--muted); text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--surface); white-space: nowrap; }
+.tbl td { padding: 9px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+.tbl tbody tr:hover td { background: var(--surface-2); }
