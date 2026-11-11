@@ -116,7 +116,10 @@ export function transformSnapshot(snapshot: L, opts: TransformOptions): Transfor
     return new Date(n).toISOString();
   };
   const isPurged = (r: L) => !!r?.purgedAt;
-  const isDeleted = (r: L) => !!r?.deletedAt || r?.cancelled === true; // tienung.core.js: cancelled = đã xóa
+  // tienung.core.js: cancelled = đã xóa.
+  // draftHide (core.storage.js): bản ghi cũ mà một LÔ NHẬP NHÁP sẽ thay thế — admin ở app cũ không còn thấy
+  // (số liệu admin xem / so-chuan.json không tính) → sang app mới nằm trong Thùng rác, khôi phục được.
+  const isDeleted = (r: L) => !!r?.deletedAt || r?.cancelled === true || !!r?.draftHide;
   const deletedAt = (r: L): string | null =>
     isDeleted(r) ? iso(typeof r.deletedAt === 'number' ? r.deletedAt : r.updatedAt, num(r.updatedAt) || exportedMs) : null;
   const userOf = (name: unknown): string | null => opts.userIdByLegacyName[String(name ?? '').trim().toUpperCase()] ?? null;
@@ -727,6 +730,9 @@ export function transformSnapshot(snapshot: L, opts: TransformOptions): Transfor
   const drafts = ['inv_v3', 'cc_v2', 'ung_v1', 'thu_v1', 'tb_v1', 'thauphu_v1', 'quyettoan_v1']
     .reduce((s, k) => s + arr(k).filter((r) => r.draft === true || r.importLot).length, 0);
   notes.push(`Cờ nháp / lô nhập (draft, importLot): ${drafts} bản ghi mang cờ — cờ bị bỏ, bản ghi vẫn chuyển`);
+  const hidden = ['inv_v3', 'cc_v2', 'ung_v1', 'thu_v1', 'tb_v1', 'thauphu_v1']
+    .reduce((s, k) => s + arr(k).filter((r) => r.draftHide && !r.deletedAt && !r.purgedAt).length, 0);
+  if (hidden) notes.push(`Bản ghi cũ bị lô nhập nháp thay thế (draftHide): ${hidden} bản ghi — admin ở app cũ không còn thấy → chuyển vào Thùng rác`);
 
   // Sắp xếp theo id cho ổn định
   for (const t of TABLE_ORDER) tables[t].sort((a, b) => String(a.id).localeCompare(String(b.id)));

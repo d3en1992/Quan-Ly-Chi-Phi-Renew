@@ -23,7 +23,8 @@ const live = (rows: Row[]) => rows.filter((r) => !r.deleted_at);
 const gone = (rows: Row[]) => rows.filter((r) => r.deleted_at);
 const sum = (rows: Row[], f: (r: Row) => number) => rows.reduce((s, r) => s + f(r), 0);
 const n = (v: unknown) => Number(v) || 0;
-const oldAlive = (r: L) => r && !r.deletedAt && !r.purgedAt && r.cancelled !== true;
+// draftHide = bản ghi cũ bị lô nhập nháp thay thế, admin app cũ không thấy → coi như đã xóa (vào Thùng rác)
+const oldAlive = (r: L) => r && !r.deletedAt && !r.purgedAt && r.cancelled !== true && !r.draftHide;
 const list = (key: string): L[] => (Array.isArray(d[key]) ? d[key] : []);
 const out: string[] = [];
 let failures = 0;
@@ -119,7 +120,11 @@ out.push('');
 out.push('## 4. Đã TT, Mua nợ, chia tiền trả NCC', '');
 const PLAN_CREDIT = ['VLXD HÙNG HUỆ', 'VLXD PHƯƠNG', 'VLXD DUY THỊNH PHÁT', 'CH TRƯỜNG HẢI', 'VLXD HOÀNG TUẤN BC', 'HIỆP ĐỔ BÊ TÔNG TAY', 'SẮT THÉP VLXD ĐỨC ANH', 'CH SƠN TRUNG HẬU', 'SẮT THÉP AN PHÚ'].sort();
 const credit = db.suppliers.filter((s) => s.buys_on_credit).map((s) => String(s.name)).sort();
-out.push(`- ${mark(JSON.stringify(credit) === JSON.stringify(PLAN_CREDIT))} NCC bật **Mua nợ** (${credit.length}): ${credit.join(', ')}${JSON.stringify(credit) === JSON.stringify(PLAN_CREDIT) ? ' — đúng 9 NCC trong KẾ HOẠCH mục 4F' : ` — KHÁC danh sách trong KẾ HOẠCH: ${PLAN_CREDIT.join(', ')}`}`);
+// Danh sách 9 NCC trong KẾ HOẠCH lấy từ snapshot 02/11; snapshot mới có thêm lô nhập 2024–2025 nên có thêm NCC từng được ứng.
+// Quy tắc vẫn là "NCC từng có phiếu ứng" → chỉ báo lỗi khi THIẾU NCC của KẾ HOẠCH.
+const missingCredit = PLAN_CREDIT.filter((x) => !credit.includes(x));
+const extraCredit = credit.filter((x) => !PLAN_CREDIT.includes(x));
+out.push(`- ${mark(missingCredit.length === 0)} NCC bật **Mua nợ** (${credit.length}): ${credit.join(', ')}${missingCredit.length ? ` — THIẾU so với KẾ HOẠCH mục 4F: ${missingCredit.join(', ')}` : ' — đủ 9 NCC trong KẾ HOẠCH mục 4F'}${extraCredit.length ? `; thêm ${extraCredit.length} NCC từng có phiếu ứng trong dữ liệu mới: ${extraCredit.join(', ')}` : ''}`);
 const unpaid = live(db.expenses).filter((e) => e.paid_at_purchase === false);
 out.push(`- Hóa đơn **chưa tích Đã TT** (mua nợ): ${unpaid.length} hóa đơn, tổng ${fmt(sum(unpaid, (r) => n(r.amount)))} đ. Còn lại ${live(db.expenses).length - unpaid.length} hóa đơn đã tích.`);
 const allocByPayment = new Map<string, number>();
@@ -185,9 +190,13 @@ if (existsSync(soChuanFile)) {
     thu_v1: live(db.receipts).length, tb_v1: live(db.equipment).length, thauphu_v1: live(db.subcontracts).length,
     quyettoan_v1: live(db.settlements).length, projects_v1: live(db.projects).filter((p) => !p.is_company_overhead).length, customers_v1: live(db.customers).length,
   };
-  out.push('| Kho | so-chuan.json | Kho mới | Khớp |', '|---|--:|--:|:-:|');
-  for (const [k, v] of Object.entries((sc.soBanGhi ?? {}) as Record<string, number>)) out.push(`| \`${k}\` | ${v} | ${newAlive[k] ?? '—'} | ${mark(newAlive[k] === v)} |`);
-  out.push('', 'Lưu ý: `so-chuan.json` phải được xuất CÙNG LÚC với snapshot đang dùng; lệch thời điểm thì số bản ghi lệch là bình thường.', '');
+  // so-chuan đếm bản ghi thô chưa có deletedAt (kể cả phiếu đã hủy `cancelled`, bản bị lô nháp ẩn `draftHide`)
+  // → so với CHÍNH snapshot để biết 2 file có cùng thời điểm không; cột "Kho mới" để tham khảo.
+  const rawAlive = (k: string) => (Array.isArray(d[k]) ? (d[k] as L[]).filter((r) => !r.deletedAt).length : Object.keys((d[k] ?? {}) as L).length);
+  out.push(`Nguồn: ${sc.nguon ?? 'anh xuất từ Console app cũ'} · lúc ${sc.taoLuc ?? '?'}`, '',
+    '| Kho | so-chuan.json | Snapshot | Cùng thời điểm | Kho mới (đang dùng) |', '|---|--:|--:|:-:|--:|');
+  for (const [k, v] of Object.entries((sc.soBanGhi ?? {}) as Record<string, number>)) out.push(`| \`${k}\` | ${v} | ${rawAlive(k)} | ${mark(rawAlive(k) === v)} | ${newAlive[k] ?? '—'} |`);
+  out.push('', 'So từng đồng A / B / C / Đã thu / Lợi nhuận / Giá trị HĐ / Còn phải thu của từng công trình × từng năm: `npm test` (`src/lib/calc/__tests__/so-chuan.test.ts`).', '');
 } else {
   out.push('Chưa có `du-lieu/so-chuan.json` (anh xuất bằng `mega-prompt/xuat-so-chuan.js`) → mới so với snapshot. Có file thì chạy lại `npm run compare:legacy`.', '');
 }
