@@ -45,7 +45,7 @@ export type ReportExpense = z.infer<typeof expenseSchema>;
 const cols = (s: z.ZodObject<z.ZodRawShape>) => Object.keys(s.shape).join(',');
 
 /** Đọc hết bản ghi CÒN SỐNG của 1 bảng (PostgREST trả tối đa 1000 dòng / lần), kiểm tra bằng Zod. */
-async function fetchLive<S extends z.ZodObject<z.ZodRawShape>>(table: string, schema: S, softDelete = true): Promise<z.infer<S>[]> {
+export async function fetchLive<S extends z.ZodObject<z.ZodRawShape>>(table: string, schema: S, softDelete = true): Promise<z.infer<S>[]> {
   const out: z.infer<S>[] = [];
   const orderBy = 'id' in schema.shape ? 'id' : Object.keys(schema.shape)[0]!;
   for (let from = 0; ; from += 1000) {
@@ -108,7 +108,7 @@ export async function fetchReportData(): Promise<ReportData> {
 
 const expenseLineSchema = z.object({
   id: z.string(), position: z.number(), name: z.string().nullable(), unit: z.string().nullable(), quantity: z.coerce.number().nullable(),
-  unit_price: z.coerce.number().nullable(), discount: z.coerce.number().nullable(), amount: money, note: z.string().nullable(),
+  unit_price: z.coerce.number().nullable(), discount: z.string().nullable(), amount: money, note: z.string().nullable(),
 });
 export type ExpenseLine = z.infer<typeof expenseLineSchema>;
 

@@ -8,3 +8,4 @@ export * from './profit';
 export * from './payables';
 export * from './stats';
 export * from './projectDetail';
+export * from './expense';
