@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blankRow, checkRow, commitCell, effectiveDates, isBlank, pasteMatrix, toTsv, type GridLists } from './grid-model';
+import { blankRow, checkRow, commitCell, effectiveDates, isBlank, pasteMatrix, toTsv, typeCell, type GridLists } from './grid-model';
 import { blankInvoice, blankLine, checkInvoice, invoiceDescription, invoiceTotal, lineTotal, parseQuantity, quantityText } from './invoice-model';
 import { parseTsv } from './logic';
 
@@ -68,6 +68,11 @@ describe('lưới nhập nhanh', () => {
     expect(row.supplier).toBe('SẮT THÉP AN PHÚ');
     expect(row.paid).toBe(false);
     row = commitCell(row, 'supplier', 'COPHA TÂN THÀNH', lists, 2026);
+    expect(row.paid).toBe(true);
+    // Gõ ĐỦ tên rồi mới rời ô (ô đã chứa tên trước khi chốt) vẫn phải bỏ tích; chốt lại lần nữa không đè lên ô người dùng tự tích
+    row = commitCell(typeCell(row, 'supplier', 'SẮT THÉP AN PHÚ'), 'supplier', 'SẮT THÉP AN PHÚ', lists, 2026);
+    expect(row.paid).toBe(false);
+    row = commitCell({ ...row, paid: true }, 'supplier', 'SẮT THÉP AN PHÚ', lists, 2026);
     expect(row.paid).toBe(true);
   });
   it('dán 20 dòng × 7 cột TSV: đủ dòng, đúng tổng, ngày trống lấy dòng trên', () => {

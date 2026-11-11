@@ -1,17 +1,23 @@
 // Tab THỐNG KÊ CP/HĐ (chỉ xem): tra cứu mọi khoản chi đã nhập — hóa đơn + dòng lương / HĐ mua lẻ từ chấm công
 // (như `buildInvoices` app cũ). Lọc theo năm (ô chọn năm phía trên), tháng, công trình, loại, NCC, người mua.
 import { useMemo, useState } from 'react';
+import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
+import { Button, Icon } from '@/components/ui/button';
 import { FilterBar, FilterSelect, KpiStrip, MobileCard, MobileRow, Money, Pager, PhoneKpis, SearchBox, usePaged, type Option } from '@/components/ui/data';
 import { Card, EmptyState, ErrorState, LoadingState, PageHeader, Pill } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
 import { buildCostEntries, inYear, summarizeExpenses, type CostEntry } from '@/lib/calc';
 import { formatDate, formatMoney, formatShortMoney } from '@/lib/format';
+import { hasLevel } from '@/lib/permissions';
+import { EditExpenseById } from '@/features/expenses/EditExpenseSheet';
 import { useExpenseLines, type ReportData } from './api';
 import { matchesSearch, ReportBody, useReport } from './shared';
 
 const PAGE_SIZE = 50;
-export const SOURCE_LABEL: Record<string, string> = { quick: 'Nhập nhanh', detail: 'Chi tiết', scan: 'Từ ảnh', import: 'Nhập Excel', wage: 'Chấm công', retail: 'Chấm công' };
+export const SOURCE_LABEL: Record<string, string> = { quick: 'Nhanh', detail: 'Chi tiết', scan: 'Ảnh', import: 'Excel', wage: 'Chấm công', retail: 'Chấm công' };
+const SOURCE_OPTIONS: Option[] = [{ value: 'quick', label: 'Nhanh' }, { value: 'detail', label: 'Chi tiết' }, { value: 'scan', label: 'Ảnh' }, { value: 'import', label: 'Excel' }, { value: 'timesheet', label: 'Chấm công' }];
+const PAID_OPTIONS: Option[] = [{ value: 'paid', label: 'Đã trả' }, { value: 'credit', label: 'Mua nợ' }];
 const WAGE_TYPE = 'Nhân Công';
 const RETAIL_TYPE = 'Hóa Đơn Lẻ';
 
@@ -50,11 +56,12 @@ export function PaidPill({ paid }: { paid: boolean }) {
   return paid ? <Pill tone="good">Đã trả</Pill> : <Pill tone="warn">Mua nợ</Pill>;
 }
 
-export function DetailSheet({ row, onClose }: { row: Row | null; onClose: () => void }) {
+export function DetailSheet({ row, onClose, onEdit }: { row: Row | null; onClose: () => void; onEdit?: (expenseId: string) => void }) {
   const expenseId = row?.entry.expense ? row.id : null;
   const lines = useExpenseLines(expenseId);
   return (
-    <Sheet open={!!row} onOpenChange={(o) => { if (!o) onClose(); }} title="Chi tiết khoản chi">
+    <Sheet open={!!row} onOpenChange={(o) => { if (!o) onClose(); }} title="Chi tiết khoản chi"
+      footer={expenseId && onEdit ? <Button variant="primary" data-testid="stats-edit" onClick={() => onEdit(expenseId)}><Icon name="edit" />Sửa hóa đơn</Button> : undefined}>
       {row ? (
         <>
           <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-[13px] [&>dt]:text-muted">
@@ -66,12 +73,13 @@ export function DetailSheet({ row, onClose }: { row: Row | null; onClose: () => 
             <dt>Nội dung</dt><dd>{row.description || '—'}</dd>
             <dt>Thanh toán</dt><dd><PaidPill paid={row.paid} /></dd>
             <dt>Nguồn</dt><dd>{SOURCE_LABEL[row.source] ?? row.source}</dd>
+            <dt>Người TH</dt><dd>{row.enteredBy || '—'}</dd>
             <dt>Số tiền</dt><dd className="num text-[15px] font-bold">{formatMoney(row.amount)} đ</dd>
           </dl>
           {expenseId ? (
             lines.isPending ? <LoadingState label="Đang tải dòng vật tư…" />
             : lines.isError ? <ErrorState error={lines.error} onRetry={() => void lines.refetch()} />
-            : lines.data.length === 0 ? <div className="rounded-lg bg-surface-2 px-3 py-2.5 text-[12.5px] text-muted">Hóa đơn nhập nhanh, không có dòng vật tư.</div>
+            : lines.data.length === 0 ? <div className="rounded-lg bg-surface-2 px-3 py-2.5 text-[12.5px] text-muted">Hóa đơn nhập nhanh, không có dòng vật tư. Ảnh hóa đơn (nếu chụp) sẽ hiện ở đây từ GĐ9.</div>
             : (
               <div className="tbl rounded-lg border border-line">
                 <table>
@@ -103,8 +111,12 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
   const [type, setType] = useState('');
   const [supplier, setSupplier] = useState('');
   const [buyer, setBuyer] = useState('');
+  const [paid, setPaid] = useState('');
+  const [source, setSource] = useState('');
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState<Row | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const canEdit = hasLevel(useAccess().permissions, 'expenses', 'add');
 
   const all = useMemo(() => buildRows(data), [data]);
   const inScope = useMemo(
@@ -120,15 +132,16 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
   const rows = useMemo(
     () => inScope.filter((r) =>
       (!month || r.month === month) && (!project || r.projectId === project) && (!type || r.type === type) &&
-      (!supplier || r.supplier === supplier) && (!buyer || r.buyer === buyer) && matchesSearch(search, r.description, r.project, r.supplier, r.type)),
-    [inScope, month, project, type, supplier, buyer, search],
+      (!supplier || r.supplier === supplier) && (!buyer || r.buyer === buyer) && (!paid || r.paid === (paid === 'paid')) &&
+      (!source || (source === 'timesheet' ? !r.entry.expense : r.source === source)) && matchesSearch(search, r.description, r.project, r.supplier, r.type)),
+    [inScope, month, project, type, supplier, buyer, paid, source, search],
   );
   const summary = useMemo(() => {
     const typeOf = new Map(rows.map((r) => [r.entry, r.type]));
     return summarizeExpenses(rows.map((r) => r.entry), (c) => typeOf.get(c) ?? '');
   }, [rows]);
   const topType = summary.topType;
-  const paged = usePaged(rows, PAGE_SIZE, `${years.join()}|${month}|${project}|${type}|${supplier}|${buyer}|${search}`);
+  const paged = usePaged(rows, PAGE_SIZE, `${years.join()}|${month}|${project}|${type}|${supplier}|${buyer}|${paid}|${source}|${search}`);
   const scope = month ? `tháng ${Number(month)}` : yearLabel.toLowerCase();
 
   const filters = (
@@ -138,6 +151,8 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
       <FilterSelect label="Loại" value={type} onChange={setType} options={options.types} />
       <FilterSelect label="NCC" value={supplier} onChange={setSupplier} options={options.suppliers} />
       <FilterSelect label="Người mua" value={buyer} onChange={setBuyer} options={options.buyers} />
+      <FilterSelect label="Thanh toán" value={paid} onChange={setPaid} options={PAID_OPTIONS} />
+      <FilterSelect label="Nguồn" value={source} onChange={setSource} options={SOURCE_OPTIONS} />
       <SearchBox value={search} onChange={setSearch} placeholder="Tìm nội dung…" />
     </FilterBar>
   );
@@ -160,7 +175,8 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
           </MobileCard>
         ))}
         {rows.length > PAGE_SIZE ? <Pager {...paged} /> : null}
-        <DetailSheet row={open} onClose={() => setOpen(null)} />
+        <DetailSheet row={open} onClose={() => setOpen(null)} onEdit={canEdit ? (id) => { setOpen(null); setEditId(id); } : undefined} />
+        <EditExpenseById id={editId} onClose={() => setEditId(null)} />
       </>
     );
   }
@@ -215,7 +231,8 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
         </Card>
       )}
       {rows.length > 0 ? <Pager {...paged} /> : null}
-      <DetailSheet row={open} onClose={() => setOpen(null)} />
+      <DetailSheet row={open} onClose={() => setOpen(null)} onEdit={canEdit ? (id) => { setOpen(null); setEditId(id); } : undefined} />
+      <EditExpenseById id={editId} onClose={() => setEditId(null)} />
     </>
   );
 }

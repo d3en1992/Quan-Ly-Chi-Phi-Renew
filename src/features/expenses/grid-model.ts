@@ -20,6 +20,8 @@ export type GridRow = {
   paid: boolean;
   /** Loại + Công trình tự chép từ dòng trên khi Enter ở dòng cuối; người dùng chưa đụng vào dòng này */
   auto: boolean;
+  /** id NCC lúc CHỐT ô gần nhất ('' = chưa có) — để biết NCC có đổi thật không, kể cả khi gõ đủ tên rồi mới rời ô */
+  supplierId: string;
 };
 
 type Named = { id: string; name: string };
@@ -32,7 +34,7 @@ export type GridLists = {
 
 let nextKey = 1;
 export function blankRow(from?: Partial<GridRow>): GridRow {
-  return { key: nextKey++, date: '', type: '', project: '', amount: '', description: '', buyer: '', supplier: '', paid: true, auto: false, ...from };
+  return { key: nextKey++, date: '', type: '', project: '', amount: '', description: '', buyer: '', supplier: '', paid: true, auto: false, supplierId: '', ...from };
 }
 export const blankRows = (n: number): GridRow[] => Array.from({ length: n }, () => blankRow());
 
@@ -73,12 +75,11 @@ export function commitCell(row: GridRow, col: Col, raw: string, lists: GridLists
     const src = sourceOf(col, lists)!;
     next[col] = findByName(text, src)?.name ?? text.trim();
     if (col === 'supplier') {
-      const before = findByName(row.supplier, lists.suppliers);
       const after = findByName(next.supplier, lists.suppliers);
-      if (before?.id !== after?.id) next.paid = !after?.buys_on_credit;
+      if ((after?.id ?? '') !== row.supplierId) { next.paid = !after?.buys_on_credit; next.supplierId = after?.id ?? ''; }
     }
   }
-  const changed = COLS.some((c) => next[c] !== row[c]);
+  const changed = COLS.some((c) => next[c] !== row[c]) || next.supplierId !== row.supplierId;
   return changed ? { ...next, auto: false } : row;
 }
 

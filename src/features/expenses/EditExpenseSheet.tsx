@@ -9,12 +9,12 @@ import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
 import { formatMoney } from '@/lib/format';
 import { hasLevel } from '@/lib/permissions';
-import { fetchExpenseLines, useDeleteExpense, useLineHistory, useUpdateExpense, type EntryExpense } from './api';
+import { fetchExpenseLines, useDeleteExpense, useEntryExpenses, useLineHistory, useUpdateExpense, type EntryExpense } from './api';
 import { expenseToDraft, InvoiceFields, useLineSuggestions } from './InvoiceForm';
 import { blankInvoice, blankLines, checkInvoice, invoiceTotal, type InvoiceDraft, type InvoiceField } from './invoice-model';
 import { findDuplicates, historySuggest, isoToVn, type DupHit } from './logic';
 import type { ExpenseInput } from './schema';
-import { DuplicateDialog, toDupCandidate, type Lists } from './shared';
+import { DuplicateDialog, toDupCandidate, useLists, type Lists } from './shared';
 
 type Props = { expense: EntryExpense | null; expenses: readonly EntryExpense[]; lists: Lists; onClose: () => void };
 
@@ -124,4 +124,23 @@ export function EditExpenseSheet({ expense, expenses, lists, onClose }: Props) {
       />
     </>
   );
+}
+
+/** Mở bảng sửa theo id (dùng ở Thống Kê CP/HĐ): tự tải danh mục + hóa đơn khi cần */
+export function EditExpenseById({ id, onClose }: { id: string | null; onClose: () => void }) {
+  return id ? <EditExpenseLoader id={id} onClose={onClose} /> : null;
+}
+function EditExpenseLoader({ id, onClose }: { id: string; onClose: () => void }) {
+  const toast = useToast();
+  const { query, lists } = useLists();
+  const entries = useEntryExpenses();
+  const expense = entries.data?.find((e) => e.id === id) ?? null;
+  const failed = query.isError || entries.isError || (!!entries.data && !expense);
+  useEffect(() => {
+    if (!failed) return;
+    toast('Không mở được hóa đơn để sửa (có thể vừa bị xóa). Tải lại trang rồi thử lại.', 'error');
+    onClose();
+  }, [failed, onClose, toast]);
+  if (!lists || !entries.data || !expense) return null;
+  return <EditExpenseSheet expense={expense} expenses={entries.data} lists={lists} onClose={onClose} />;
 }
