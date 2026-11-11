@@ -20,6 +20,26 @@ export type Database = {
                   Relationships: [
                     
                   ]
+                },"backups": {
+                  Row: {
+                    "company_id": string,"counts": NonNullable<Json>,"created_at": string,"created_by": string | null,"data": NonNullable<Json>,"id": string,"kind": string,"note": string | null,"size_bytes": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "company_id": string,"counts"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string | null,"data": NonNullable<Json>,"id"?: string,"kind"?: string,"note"?: string | null,"size_bytes"?: number
+                  }
+                  Update: {
+                    "company_id"?: string,"counts"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string | null,"data"?: NonNullable<Json>,"id"?: string,"kind"?: string,"note"?: string | null,"size_bytes"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "backups_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"catalog_items": {
                   Row: {
                     "archived": boolean,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"id": string,"kind": string,"name": string,"sort_order": number,"updated_at": string
@@ -922,7 +942,16 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "admin_list_accounts":
+            "_backup_tables":
+{ Args: Record<PropertyKey, never>; Returns: (string)[]
+                           },
+"_snapshot_company":
+{ Args: { "p_company": string }; Returns: Json
+                           },
+"_snapshot_counts":
+{ Args: { "snap": Json }; Returns: Json
+                           },
+"admin_list_accounts":
 { Args: Record<PropertyKey, never>; Returns: {
               "created_at": string,"display_name": string,"id": string,"is_locked": boolean,"last_sign_in_at": string,"must_change_password": boolean,"project_ids": (string)[],"project_scope": string,"role_id": string,"role_name": string,"username": string
             }[]
@@ -936,8 +965,17 @@ isOneToOne: false
 "complete_password_change":
 { Args: Record<PropertyKey, never>; Returns: undefined
                            },
+"create_backup":
+{ Args: { "p_company"?: string,"p_kind"?: string,"p_note"?: string }; Returns: string
+                           },
 "current_company_id":
 { Args: Record<PropertyKey, never>; Returns: string
+                           },
+"export_company_snapshot":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"get_backup_data":
+{ Args: { "p_id": string }; Returns: Json
                            },
 "get_my_access":
 { Args: Record<PropertyKey, never>; Returns: Json
@@ -967,6 +1005,9 @@ isOneToOne: false
                            },
 "my_project_ids":
 { Args: Record<PropertyKey, never>; Returns: string[]
+                           },
+"restore_backup":
+{ Args: { "p_data": Json }; Returns: Json
                            },
 "sees_all_projects":
 { Args: Record<PropertyKey, never>; Returns: boolean

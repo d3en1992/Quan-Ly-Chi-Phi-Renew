@@ -1,0 +1,29 @@
+# MẪU — CHƯA BẬT. Sao lưu Supabase mỗi đêm bằng GitHub Action.
+# Cách bật (làm 1 lần, anh tự làm vì cần dán key):
+#   1. Chép file này thành  .github/workflows/sao-luu-moi-dem.yml  (đổi đuôi tên file, không đổi nội dung).
+#   2. GitHub → repo → Settings → Secrets and variables → Actions → New repository secret:
+#        SUPABASE_URL                = địa chỉ project Supabase (bản thật)
+#        SUPABASE_SERVICE_ROLE_KEY   = key service_role của project đó (KHÔNG gửi cho ai, không dán vào code)
+#   3. Actions → "Sao lưu mỗi đêm" → Run workflow để thử 1 lần. Xem bản sao lưu ở app: Danh Mục & Sao Lưu.
+# Hàm create_backup giữ 30 bản mới nhất, bản cũ tự xóa. Nếu muốn giữ thêm file JSON ngoài kho, bỏ dấu # ở 2 bước cuối.
+name: Sao lưu mỗi đêm
+on:
+  schedule:
+    - cron: '0 19 * * *'   # 19:00 UTC = 02:00 giờ Việt Nam
+  workflow_dispatch: {}
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main }          # đổi thành nhánh đang dùng thật
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - run: npm ci
+      - run: node scripts/backup-nightly.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # BACKUP_DIR: sao-luu
+      # - uses: actions/upload-artifact@v4
+      #   with: { name: sao-luu, path: sao-luu, retention-days: 30 }

@@ -58,8 +58,8 @@ export function DesktopShell({ compact }: { compact: boolean }) {
         )}
       >
         <div className={cn('flex items-center gap-2.5', compact ? 'pb-3' : 'px-2 pt-1 pb-3.5')}>
-          <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent text-accent-fg">
-            <Icon name="foundation" />
+          <div className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-accent text-accent-fg">
+            {access.company.logo_url ? <img src={access.company.logo_url} alt="" className="size-full object-cover" /> : <Icon name="foundation" />}
           </div>
           {compact ? null : (
             <div className="min-w-0">

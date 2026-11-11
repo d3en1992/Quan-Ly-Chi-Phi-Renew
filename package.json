@@ -15,7 +15,8 @@
     "migrate:legacy": "node scripts/migrate-legacy.ts && node scripts/compare-counts.ts",
     "compare:legacy": "node scripts/compare-counts.ts",
     "so-chuan": "node scripts/legacy/xuat-so-chuan-node.mjs",
-    "gen:types": "node scripts/gen-types.mjs"
+    "gen:types": "node scripts/gen-types.mjs",
+    "backup:nightly": "node scripts/backup-nightly.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",

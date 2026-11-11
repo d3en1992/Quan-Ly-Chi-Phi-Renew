@@ -16,7 +16,7 @@ const accessSchema = z.object({
     project_scope: z.enum(['all', 'assigned']),
     company_id: z.string(),
   }),
-  company: z.object({ id: z.string(), name: z.string(), short_name: z.string().nullable(), slug: z.string() }),
+  company: z.object({ id: z.string(), name: z.string(), short_name: z.string().nullable(), slug: z.string(), logo_url: z.string().nullable().optional() }),
   role: z.object({ id: z.string(), name: z.string(), is_admin: z.boolean() }),
   special: z.object({ see_contact_ids: z.boolean(), edit_others: z.boolean(), purge_trash: z.boolean() }),
   permissions: z.record(z.enum(LEVELS)),
