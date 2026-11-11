@@ -1,6 +1,5 @@
 // Tạo tài khoản dùng riêng cho test (mỗi vai trò 1 tài khoản, mật khẩu test cố định, chỉ trên Supabase trong máy).
 // Không đụng mật khẩu tạm của tinh / chay / lam.
-// @ts-expect-error — file .mjs không có kiểu
 import { localAdminClient, ROLE_IDS, upsertAccount } from '../scripts/local-supabase.mjs';
 import { E2E_ACCOUNTS, E2E_PASSWORD } from './accounts';
 

@@ -27,7 +27,9 @@ src/lib/            supabase.ts, format.ts, permissions.ts, calc/ (công thức 
 src/features/<tab>/ mỗi tab 1 thư mục tên tiếng Anh: api.ts (đọc/ghi), schema.ts (Zod), các màn .tsx
 supabase/migrations/  file .sql tạo bảng, RLS, dữ liệu ban đầu
 supabase/functions/   Edge Function (admin-users), _shared/ dùng chung với app
-scripts/            seed-users.mjs (tạo tài khoản tạm), local-supabase.mjs
+scripts/            seed-users.mjs (tạo tài khoản tạm), local-supabase.mjs, migrate-legacy.ts + compare-counts.ts (chuyển dữ liệu app cũ),
+                    legacy/transform.ts (quy tắc chuyển, hàm thuần có test), gen-types.mjs
+src/types/db.ts     kiểu TypeScript TỰ SINH từ schema (npm run gen:types) — không sửa tay
 e2e/                test Playwright
 ```
 
@@ -35,8 +37,9 @@ e2e/                test Playwright
 - Tên trong code tiếng Anh theo `TU-DIEN.md`: bảng/cột `snake_case`, biến/hàm `camelCase`, component `PascalCase`, thư mục `kebab-case`.
 - Giao diện, thông báo, comment nghiệp vụ: **tiếng Việt có dấu**.
 - Mọi bảng nghiệp vụ có: `id, company_id, created_at, updated_at, deleted_at, created_by`. Xóa = **xóa mềm** (`deleted_at`) + hỏi xác nhận.
-- Mọi bảng bật **RLS**, chính sách dùng `public.has_permission(module, level)` và `public.current_company_id()`.
+- Mọi bảng bật **RLS**, chính sách dùng `public.has_permission(module, level)` và `public.current_company_id()`. Bảng nghiệp vụ (GĐ2) có sẵn 4 chính sách + trigger `stamp_row` (tự ghi `created_by`, `updated_at`); bảng có `project_id` còn lọc theo phạm vi công trình. Thêm bảng mới thì làm theo mẫu `_apply_rls` trong migration `…000003`.
   Mức: `none` (Ẩn) < `view` (Xem) < `add` (Nhập: thêm + sửa dòng của mình) < `full` (Toàn quyền). Quyền đặc biệt: `has_special('see_contact_ids' | 'edit_others' | 'purge_trash')`.
+- Tiền trong kho là `bigint` (đồng). Script `.ts` chạy thẳng bằng `node` (Node ≥ 23), import phải ghi đuôi `.ts`, dùng `import type` cho kiểu.
 - Mỗi màn có trạng thái đang tải / trống / lỗi (`LoadingState`, `EmptyState`, `ErrorState`).
 - Thêm tab mới: thêm mục ở `src/app/nav.ts` (đã có đủ), thêm trang vào `PAGES` trong `src/app/App.tsx`.
 - 3 khổ: máy tính ≥1024 (menu chữ), máy tính bảng 640–1023 (menu biểu tượng, khối 1 cột), điện thoại <640 (thẻ, thanh dưới). Không kéo ngang cả trang; bảng rộng thì cuộn trong `.tbl`.
@@ -47,6 +50,8 @@ e2e/                test Playwright
 npm i
 npx supabase start          # Supabase trong Docker
 npm run seed:users          # tạo tinh / chay / lam, mật khẩu tạm ở du-lieu/tai-khoan-tam.txt
+npm run migrate:legacy      # đổ dữ liệu app cũ (du-lieu/snapshot.json) vào Supabase trên máy + báo cáo so sánh
+npm run gen:types           # sau khi thêm / sửa migration: npx supabase migration up → sinh lại src/types/db.ts
 npm run dev                 # http://localhost:5173
 npm run typecheck && npm test && npm run build
 npm run test:e2e            # Playwright (cần supabase start)

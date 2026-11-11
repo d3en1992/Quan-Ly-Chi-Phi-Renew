@@ -11,7 +11,10 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "seed:users": "node scripts/seed-users.mjs",
-    "db:reset": "npx supabase db reset && node scripts/seed-users.mjs"
+    "db:reset": "npx supabase db reset && node scripts/seed-users.mjs && npm run migrate:legacy",
+    "migrate:legacy": "node scripts/migrate-legacy.ts && node scripts/compare-counts.ts",
+    "compare:legacy": "node scripts/compare-counts.ts",
+    "gen:types": "node scripts/gen-types.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",
