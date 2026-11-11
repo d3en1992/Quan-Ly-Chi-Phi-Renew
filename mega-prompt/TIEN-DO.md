@@ -1,6 +1,6 @@
-TRẠNG THÁI: GD04 XONG — chờ giai đoạn sau
-Nhịp tim: 11/11/2026 22:42
-Đang làm: (không) — GD04 đã xong, chờ GD05
+TRẠNG THÁI: ĐANG CHẠY
+Nhịp tim: 11/11/2026 22:45
+Đang làm: GD05
 
 # Tiến độ làm lại app
 
