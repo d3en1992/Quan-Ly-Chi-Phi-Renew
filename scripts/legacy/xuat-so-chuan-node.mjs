@@ -90,6 +90,24 @@ await vm.runInContext(exporter.replace(/\}\)\(\);\s*$/, '})()'), sandbox, { file
 if (!captured) { console.error('Không xuất được số chuẩn. Lỗi nạp file:\n' + loadErrors.join('\n')); process.exit(1); }
 
 const out = JSON.parse(captured);
+// ── GĐ6: phiếu lương từng người × từng tuần (`ccPayslipData` = cột Thực Lãnh của Tổng Lương Tuần) + nợ còn lại ──
+out.chamCong = vm.runInContext(`(() => {
+  const live = ccData.filter(w => !w.deletedAt && w.fromDate);
+  const tuan = {};
+  [...new Set(live.map(w => w.fromDate))].sort().forEach(from => {
+    const to = ccSaturdayISO(from);
+    const names = [...new Set(live.filter(w => w.fromDate === from).flatMap(w => (w.workers || []).map(k => k.name)).filter(Boolean))];
+    tuan[from] = names.map(n => { const d = ccPayslipData(n, from, to);
+      return { ten: n, cong: d.congs, luong: d.luong, phuCap: d.pc, hdml: d.hdml, ung: d.ung, tra: d.tra, thucLanh: d.net, noCon: d.debt }; });
+  });
+  const names = new Set();
+  live.forEach(w => (w.workers || []).forEach(k => k.name && names.add(k.name)));
+  ungRecords.forEach(r => { if (!r.deletedAt && r.loai === 'congnhan' && r.tp) names.add(r.tp); });
+  const no = {};
+  names.forEach(n => { no[n] = ccWorkerDebtUpTo(n, '9999-12-31'); });
+  return JSON.stringify({ tuan, no });
+})()`, sandbox, { filename: 'xuat-cham-cong' });
+out.chamCong = JSON.parse(out.chamCong);
 out.taoLuc = new Date(NOW).toISOString();
 out.nguon = 'node: scripts/legacy/xuat-so-chuan-node.mjs (code app cũ chạy trên du-lieu/snapshot.json)';
 out.snapshotXuatLuc = snapshot.exportedAt ?? snapshot.meta?.exportedAt ?? null;

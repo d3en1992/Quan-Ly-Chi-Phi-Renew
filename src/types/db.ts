@@ -886,14 +886,14 @@ isOneToOne: false
                   ]
                 },"wage_advances": {
                   Row: {
-                    "amount": number,"company_id": string,"counts_in_net_pay": boolean,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"direction": string,"id": string,"note": string | null,"project_id": string | null,"updated_at": string,"worker_id": string
+                    "amount": number,"company_id": string,"counts_in_net_pay": boolean,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"direction": string,"id": string,"note": string | null,"project_id": string | null,"source_week_id": string | null,"updated_at": string,"worker_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount": number,"company_id"?: string,"counts_in_net_pay"?: boolean,"created_at"?: string,"created_by"?: string | null,"date": string,"deleted_at"?: string | null,"direction": string,"id"?: string,"note"?: string | null,"project_id"?: string | null,"updated_at"?: string,"worker_id": string
+                    "amount": number,"company_id"?: string,"counts_in_net_pay"?: boolean,"created_at"?: string,"created_by"?: string | null,"date": string,"deleted_at"?: string | null,"direction": string,"id"?: string,"note"?: string | null,"project_id"?: string | null,"source_week_id"?: string | null,"updated_at"?: string,"worker_id": string
                   }
                   Update: {
-                    "amount"?: number,"company_id"?: string,"counts_in_net_pay"?: boolean,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"direction"?: string,"id"?: string,"note"?: string | null,"project_id"?: string | null,"updated_at"?: string,"worker_id"?: string
+                    "amount"?: number,"company_id"?: string,"counts_in_net_pay"?: boolean,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"direction"?: string,"id"?: string,"note"?: string | null,"project_id"?: string | null,"source_week_id"?: string | null,"updated_at"?: string,"worker_id"?: string
                   }
                   Relationships: [
                     {
@@ -907,6 +907,12 @@ isOneToOne: false
       columns: ["project_id"]
 isOneToOne: false
       referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "wage_advances_source_week_id_fkey"
+      columns: ["source_week_id"]
+isOneToOne: false
+      referencedRelation: "timesheet_weeks"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "wage_advances_worker_id_fkey"
@@ -971,6 +977,9 @@ isOneToOne: false
 "current_company_id":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
+"delete_timesheet_week":
+{ Args: { "p_week_id": string }; Returns: undefined
+                           },
 "export_company_snapshot":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
@@ -1008,6 +1017,9 @@ isOneToOne: false
                            },
 "restore_backup":
 { Args: { "p_data": Json }; Returns: Json
+                           },
+"save_timesheet_week":
+{ Args: { "p_lines": Json,"p_project_id": string,"p_week_start": string }; Returns: string
                            },
 "sees_all_projects":
 { Args: Record<PropertyKey, never>; Returns: boolean

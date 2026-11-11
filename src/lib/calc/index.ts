@@ -2,6 +2,7 @@
 export * from './types';
 export * from './year';
 export * from './timesheet';
+export * from './payroll';
 export * from './overhead';
 export * from './revenue';
 export * from './profit';
