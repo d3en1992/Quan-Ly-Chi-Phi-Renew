@@ -1,4 +1,5 @@
 // Tab THÙNG RÁC (PAGES.thungrac / MP.thungrac): subtab theo loại dữ liệu; Khôi phục; Xóa hẳn theo quyền `purge_trash`.
+import { ExportButton } from '@/features/export/ExportButton';
 import { useMemo, useState } from 'react';
 import { useAccess, type MyAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -92,7 +93,7 @@ export function TrashPage() {
   return (
     <>
       <PageHeader title="Thùng Rác" sub="Dữ liệu đã xóa, khôi phục được"
-        actions={purgeable.length > 0 ? <Button variant="danger" data-testid="trash-empty" onClick={() => setAsk({ rows: purgeable, all: true })}><Icon name="delete_forever" />Xóa hẳn {purgeable.length} mục đang hiện</Button> : null} />
+        actions={<><ExportButton datasets={['expenses', 'timesheet_weeks', 'payments', 'receipts']} year={null} deleted label="Xuất cả dòng đã xóa" />{purgeable.length > 0 ? <Button variant="danger" data-testid="trash-empty" onClick={() => setAsk({ rows: purgeable, all: true })}><Icon name="delete_forever" />Xóa hẳn {purgeable.length} mục đang hiện</Button> : null}</>} />
       <SubTabs tabs={tabs} value={tab} onChange={setTab} />
       <FilterBar><SearchBox value={q} onChange={setQ} placeholder="Tìm nội dung, công trình, người xóa…" className="min-w-[240px] flex-1" /></FilterBar>
       {rows.length === 0 ? empty : (

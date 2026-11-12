@@ -32,7 +32,9 @@ describe('menu theo vai trò = giao diện mẫu', () => {
 
   it('nhóm trống bị bỏ, trang đầu là mục đầu tiên được thấy', () => {
     const perms: PermissionMap = { revenue: 'view' };
-    expect(visibleGroups(perms).map((g) => g.title)).toEqual(['Doanh thu & lãi']);
+    // Xuất Dữ Liệu (TN02) hiện với ai Xem được ít nhất 1 mục → nhóm Hệ thống còn 1 mục
+    expect(visibleGroups(perms).map((g) => g.title)).toEqual(['Doanh thu & lãi', 'Hệ thống']);
+    expect(visibleGroups(perms)[1]!.items.map((i) => i.key)).toEqual(['xuatdulieu']);
     expect(firstVisiblePath(perms)).toBe('/doanh-thu');
     expect(firstVisiblePath({})).toBe('/khong-co-quyen');
   });

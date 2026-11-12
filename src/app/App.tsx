@@ -21,6 +21,7 @@ import { PayablesPage } from '@/features/payments/PayablesPage';
 import { CostAllocationPage } from '@/features/cost-allocation/CostAllocationPage';
 import { EquipmentPage } from '@/features/equipment/EquipmentPage';
 import { TrashPage } from '@/features/trash/TrashPage';
+import { ExportPage } from '@/features/export/ExportPage';
 import { RevenuePage } from '@/features/revenue/RevenuePage';
 import { SettlementsPage } from '@/features/revenue/SettlementsPage';
 import {
@@ -76,6 +77,7 @@ const PAGES: Record<string, () => ReactNode> = {
   tytrong: () => <CostAllocationPage />,
   thietbi: () => <EquipmentPage />,
   thungrac: () => <TrashPage />,
+  xuatdulieu: () => <ExportPage />,
 };
 
 function Guard({ item, children }: { item: NavItem; children: ReactNode }) {

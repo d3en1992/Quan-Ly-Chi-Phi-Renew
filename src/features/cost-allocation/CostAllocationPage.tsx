@@ -1,6 +1,7 @@
 // Tab TỈ TRỌNG & ĐỊNH MỨC (PAGES.tytrong / MP.tytrong): PHÂN BỔ CÔNG TRÌNH · ĐỊNH MỨC · CẤU HÌNH RỔ.
 // Theo đúng logic app cũ bản 27/10/2026: chi phí chia 4 NHÓM; Nhóm 1 chia 6 rổ (Sắt / Bê tông / Nhân công / Thầu phụ / Quỹ / Khác).
 // Bảng "giai đoạn × hạng mục" của bản vẽ được thay bằng bảng Loại chi phí × Nhóm (app cũ đã bỏ giai đoạn & hạng mục).
+import { ExportButton } from '@/features/export/ExportButton';
 import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -451,7 +452,7 @@ export function CostAllocationPage() {
 
   return (
     <>
-      <PageHeader title="Tỉ Trọng & Định Mức" sub="Chi phí mỗi công trình chia theo nhóm, loại, rổ; lưu thành định mức để báo giá" />
+      <PageHeader title="Tỉ Trọng & Định Mức" sub="Chi phí mỗi công trình chia theo nhóm, loại, rổ; lưu thành định mức để báo giá" actions={<ExportButton datasets={['cost_allocations']} year={null} />} />
       <SubTabs tabs={TABS} value={tab} onChange={setTab} />
       {tab === 'alloc' ? allocTab : tab === 'benchmark' ? benchmarkTab : configTab}
 

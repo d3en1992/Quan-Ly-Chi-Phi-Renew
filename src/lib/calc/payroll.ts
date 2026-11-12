@@ -405,3 +405,25 @@ export function payslipText(d: Payslip, workerName: string, projectName: (id: st
   L.push('— ' + signature);
   return L.join('\n');
 }
+
+// ───────────── Xuất dữ liệu (TN02) ─────────────
+
+/**
+ * Thực lãnh của MỘT dòng sổ chấm công khi xuất kiểu "chi tiết": đúng các thành phần `weeklyPayroll` cộng theo dòng
+ * (công × lương ngày + phụ cấp + ứng đời cũ + HĐ mua lẻ − trừ nợ đời cũ). Phần phiếu ứng / trả "tính vào Thực lãnh"
+ * không thuộc dòng nào → xuất thành dòng riêng bằng `netPayLedgerItems`. Cộng hai phần = Thực lãnh của Tổng lương tuần.
+ */
+export function exportLineNetPay(line: Pick<PayrollLine, 'day_units' | 'daily_wage' | 'allowance' | 'retail_purchase' | 'legacy_loan' | 'debt_deduction'>): number {
+  const tc = totalDayUnits(line.day_units);
+  return tc * (line.daily_wage || 0) + (line.allowance || 0) + (line.legacy_loan || 0) + (line.retail_purchase || 0) - (line.debt_deduction || 0);
+}
+
+/** Các phiếu ứng (+) / trả (−) "tính vào Thực lãnh" trong khoảng — tổng đúng bằng `netPayLedgerAdj` cùng khoảng */
+export function netPayLedgerItems(ix: PayrollIndex, workerId: string, start: IsoDate, end: IsoDate): { advance: WageAdvance; amount: number }[] {
+  const out: { advance: WageAdvance; amount: number }[] = [];
+  for (const a of ix.advancesByWorker.get(workerId) ?? []) {
+    if (!a.counts_in_net_pay || !a.date || a.date < start || a.date > end) continue;
+    out.push({ advance: a, amount: sign(a) * (a.amount || 0) });
+  }
+  return out;
+}

@@ -1,13 +1,13 @@
 // Menu và đường dẫn của mọi tab. Thứ tự, tên, icon theo giao diện mẫu (NAV) + đổi tên mục 4L.
 import type { ModuleKey, PermissionMap } from '@/lib/permissions';
-import { canSeeTrash, hasLevel } from '@/lib/permissions';
+import { canSeeExport, canSeeTrash, hasLevel } from '@/lib/permissions';
 
 export type NavItem = {
   key: string;        // khóa trang (trùng tên trong giao diện mẫu, để tra cứu)
   path: string;       // đường dẫn
   icon: string;       // Material Symbols
   label: string;      // tên tab
-  module: ModuleKey | 'trash';
+  module: ModuleKey | 'trash' | 'export';
   isNew?: boolean;    // gắn nhãn MỚI
 };
 
@@ -46,6 +46,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Hệ thống',
     items: [
+      { key: 'xuatdulieu', path: '/xuat-du-lieu', icon: 'download', label: 'Xuất Dữ Liệu', module: 'export', isNew: true },
       { key: 'danhmuc', path: '/danh-muc', icon: 'tune', label: 'Danh Mục & Sao Lưu', module: 'catalog' },
       { key: 'taikhoan', path: '/tai-khoan', icon: 'manage_accounts', label: 'Tài Khoản & Quyền', module: 'accounts' },
     ],
@@ -66,6 +67,7 @@ export const ALL_ITEMS: NavItem[] = [...NAV_GROUPS.flatMap((g) => g.items), TRAS
 
 export function canSeeItem(perms: PermissionMap, item: NavItem): boolean {
   if (item.module === 'trash') return canSeeTrash(perms);
+  if (item.module === 'export') return canSeeExport(perms);
   return hasLevel(perms, item.module, 'view');
 }
 
@@ -84,12 +86,12 @@ export function firstVisiblePath(perms: PermissionMap): string {
 /** Mục "Thêm" trên điện thoại (thứ tự như MORE của mẫu) */
 export const PHONE_MORE_KEYS = [
   'thongkecphd', 'nhapung', 'congno', 'tytrong', 'thietbi', 'tiendo', 'danhba',
-  'doanhthu', 'loinhuan', 'quyettoan', 'dashboard', 'danhmuc', 'thungrac', 'taikhoan',
+  'doanhthu', 'loinhuan', 'quyettoan', 'dashboard', 'xuatdulieu', 'danhmuc', 'thungrac', 'taikhoan',
 ];
 export const PHONE_SHORT_LABEL: Record<string, string> = {
   thongkecphd: 'Thống kê CP/HĐ', nhapung: 'Chi trả TP/NCC', congno: 'Công nợ phải trả', tytrong: 'Tỉ trọng',
   thietbi: 'Thiết bị', tiendo: 'Tiến độ', danhba: 'Danh bạ', doanhthu: 'Doanh thu', loinhuan: 'Lợi nhuận',
-  quyettoan: 'Quyết toán', dashboard: 'Dashboard', danhmuc: 'Danh mục', thungrac: 'Thùng rác', taikhoan: 'Tài khoản',
+  quyettoan: 'Quyết toán', dashboard: 'Dashboard', xuatdulieu: 'Xuất dữ liệu', danhmuc: 'Danh mục', thungrac: 'Thùng rác', taikhoan: 'Tài khoản',
 };
 
 export function findItemByPath(pathname: string): NavItem | undefined {

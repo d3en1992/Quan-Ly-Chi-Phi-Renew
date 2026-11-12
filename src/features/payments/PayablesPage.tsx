@@ -1,5 +1,6 @@
 // Tab CÔNG NỢ PHẢI TRẢ (PAGES.congno / MP.congno — công ty nợ thầu phụ, nhà cung cấp; mục 4L):
 // HỢP ĐỒNG THẦU PHỤ (master–detail, trả nhanh) · NHÀ CUNG CẤP (sổ nợ theo NCC + Đối chiếu, mục 4J) · TẤT TOÁN.
+import { ExportButton } from '@/features/export/ExportButton';
 import { Fragment, useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -21,7 +22,7 @@ import { hasLevel } from '@/lib/permissions';
 import { exportVoucherImage } from '@/lib/voucher';
 import { findByName } from '@/features/expenses/logic';
 import { matchesSearch, todayIso } from '@/features/reports/shared';
-import { downloadCsv } from '@/features/timesheets/PayrollTab';
+import { downloadKhoi } from '@/lib/export/bang-don';
 import {
   MODE_LABEL, useClosePayable, useCreateParty, useCreatePayments, useDeleteSubcontract, usePayData, useSaveSubcontract, useUndoClosure,
   type Closure, type PayData, type Subcontract,
@@ -253,14 +254,24 @@ function StatementSheet({ ctx, supplierId, onClose, onPay }: { ctx: Ctx; supplie
   const allocated = useMemo(() => allocatedByPayment(data.allocations), [data]);
   const byId = new Map(invoices.map((i) => [i.id, i]));
   const s = calc.supplier.get(supplierId);
-  const csv = () => downloadCsv(
-    [['Ngày', 'Công trình', 'Nội dung', 'Số HĐ', 'Tiền hàng', 'Đã trả', 'Còn lại', 'Cộng dồn'],
-      ...lines.map((l) => [formatDate(l.date), data.projectName(l.project_id), byId.get(l.id)?.description ?? '', byId.get(l.id)?.invoice_no ?? '', l.amount, l.paid, l.remaining, l.running]),
-      [], ['Tổng mua nợ', s?.creditInvoices ?? 0], ['Đã trả', s?.paid ?? 0], ['Còn nợ', s?.debt ?? 0]],
-    `doi_chieu_${name}_${todayIso()}.csv`);
+  const toast = useToast();
+  const access = useAccess();
+  const xlsx = () => void downloadKhoi({
+    title: `ĐỐI CHIẾU CÔNG NỢ · ${name}`, caption: 'Hóa đơn mua nợ, tiền đã trả chia vào hóa đơn cũ nhất trước',
+    columns: [
+      { key: 'date', label: 'NGÀY', width: 11, type: 'date', sum: false }, { key: 'project', label: 'CÔNG TRÌNH', width: 30, type: 'text', sum: false },
+      { key: 'desc', label: 'NỘI DUNG', width: 34, type: 'text', sum: false }, { key: 'no', label: 'SỐ HĐ', width: 10, type: 'text', sum: false },
+      { key: 'amount', label: 'TIỀN HÀNG', width: 14, type: 'money', sum: true }, { key: 'paid', label: 'ĐÃ TRẢ', width: 14, type: 'money', sum: true },
+      { key: 'remaining', label: 'CÒN LẠI', width: 14, type: 'money', sum: true }, { key: 'running', label: 'CỘNG DỒN', width: 14, type: 'money', sum: false },
+    ],
+    rows: lines.map((l) => [l.date, data.projectName(l.project_id), byId.get(l.id)?.description ?? '', byId.get(l.id)?.invoice_no ?? '', l.amount, l.paid, l.remaining, l.running]),
+  }, `DoiChieu_${name.replace(/[^p{L}p{N}]+/gu, '-')}_${todayIso()}.xlsx`, {
+    company: ctx.company, by: access.profile.display_name, filterText: `Nhà cung cấp ${name}`,
+    notes: [`Tổng mua nợ ${formatMoney(s?.creditInvoices ?? 0)} · Đã trả ${formatMoney(s?.paid ?? 0)} · Còn nợ ${formatMoney(s?.debt ?? 0)}`],
+  }).catch((e: Error) => toast(e.message, 'error'));
   return (
     <Sheet wide open onOpenChange={(o) => { if (!o) onClose(); }} title={`Đối chiếu · ${name}`}
-      footer={<><Button onClick={csv}><Icon name="download" />Xuất CSV</Button><div className="flex-1" />{ctx.canPay ? <Button variant="primary" onClick={onPay}><Icon name="payments" />Trả tiền</Button> : null}</>}>
+      footer={<><Button onClick={xlsx}><Icon name="download" />Tải Excel đối chiếu</Button><div className="flex-1" />{ctx.canPay ? <Button variant="primary" onClick={onPay}><Icon name="payments" />Trả tiền</Button> : null}</>}>
       <div className="grid grid-cols-3 gap-2 text-[13px]">
         <div><div className="text-xs text-muted">Tổng mua nợ</div><b className="num" data-testid="dc-total">{formatMoney(s?.creditInvoices ?? 0)}</b></div>
         <div><div className="text-xs text-muted">Đã trả</div><b className="num" data-testid="dc-paid">{formatMoney(s?.paid ?? 0)}</b></div>
@@ -516,7 +527,7 @@ export function PayablesPage() {
   const calc = usePayCalc(data);
   const [tab, setTab] = useState<Tab>('contracts');
   const [pay, setPay] = useState<PayDraft | null>(null);
-  const header = <PageHeader title={phone ? 'Công nợ phải trả' : 'Công Nợ Phải Trả'} sub="Công ty còn nợ thầu phụ, nhà cung cấp bao nhiêu" />;
+  const header = <PageHeader title={phone ? 'Công nợ phải trả' : 'Công Nợ Phải Trả'} sub="Công ty còn nợ thầu phụ, nhà cung cấp bao nhiêu" actions={<ExportButton datasets={['subcontracts', 'payments', 'payment_allocations', 'payable_closures']} />} />;
   if (query.isPending) return <>{header}<Card><LoadingState label="Đang tải công nợ…" /></Card></>;
   if (query.isError || !data || !calc) return <>{header}<Card><ErrorState error={query.error} onRetry={() => void query.refetch()} /></Card></>;
   const ctx: Ctx = {

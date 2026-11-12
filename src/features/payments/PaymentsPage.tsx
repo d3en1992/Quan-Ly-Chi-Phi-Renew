@@ -1,5 +1,6 @@
 // Tab CHI TRẢ TP/NCC (PAGES.nhapung / MP.ung, đổi tên từ "Ứng TP/NCC" — mục 4L): nhập nhiều phiếu chi một lần
 // (Tạm ứng TP · Thanh toán đợt TP · Trả nợ NCC), hiện "còn nợ" ngay khi chọn đối tác, lịch sử phiếu chi, xuất ảnh phiếu, CSV.
+import { ExportButton } from '@/features/export/ExportButton';
 import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -16,7 +17,6 @@ import { hasLevel } from '@/lib/permissions';
 import { exportVoucherImage } from '@/lib/voucher';
 import { findByName } from '@/features/expenses/logic';
 import { matchesSearch, todayIso } from '@/features/reports/shared';
-import { downloadCsv } from '@/features/timesheets/PayrollTab';
 import { KIND_LABEL, MODE_LABEL, useCreateParty, useCreatePayments, usePayData, type PayData, type Payment, type PaymentInput, type PaymentKind } from './api';
 import { autoSubcontractId, blankPayDraft, canEditRow, draftOfPayment, PaymentSheet, paymentVoucher, usePayCalc, type PayCalc, type PayDraft } from './shared';
 
@@ -150,10 +150,6 @@ export function PaymentsPage() {
   if (query.isError || !data || !calc) return <><PageHeader title="Chi Trả TP/NCC" /><Card><ErrorState error={query.error} onRetry={() => void query.refetch()} /></Card></>;
 
   const projOpts = data.projects.map((p) => ({ value: p.id, label: p.name }));
-  const exportCsv = () => downloadCsv(
-    [['Ngày', 'Loại', 'Thầu phụ / NCC', 'Công trình', 'Nội dung', 'Số tiền', 'Người TH'],
-      ...rows.map((p) => [formatDate(p.date), KIND_LABEL[p.kind] ?? p.kind, data.partyName(p), p.project_id ? data.projectName(p.project_id) : '', p.note ?? '', p.amount, data.userName(p.created_by)])],
-    `phieu_chi_${todayIso()}.csv`);
   const image = (p: Payment) => void exportVoucherImage(paymentVoucher(p, data, company)).then(() => toast('Đã tải ảnh phiếu chi'), (e: Error) => toast(e.message, 'error'));
   const open = (p: Payment) => setDraft(draftOfPayment(p, data));
   const where = (p: Payment) => {
@@ -202,7 +198,7 @@ export function PaymentsPage() {
       <PageHeader title="Chi Trả TP/NCC" sub="Phiếu chi cho thầu phụ (tạm ứng, thanh toán đợt) và trả nợ nhà cung cấp"
         actions={<>
           {canAdd ? <Button data-testid="pay-add" onClick={() => setDraft(blankPayDraft({ kind: 'supplier_payment', mode: 'manual' }))}><Icon name="checklist" />Trả NCC theo hóa đơn…</Button> : null}
-          <Button onClick={exportCsv} disabled={!rows.length}><Icon name="download" />Xuất CSV</Button>
+          <ExportButton datasets={['payments']} />
         </>} />
       {canAdd ? <EntryGrid data={data} calc={calc} userName={access.profile.display_name} /> : null}
       {filters}

@@ -44,3 +44,8 @@ export function hasLevel(perms: PermissionMap, module: ModuleKey, min: Level = '
 export function canSeeTrash(perms: PermissionMap): boolean {
   return MODULES.some((m) => m !== 'accounts' && levelRank(perms[m]) >= levelRank('add'));
 }
+
+/** Tab Xuất Dữ Liệu (TN02): thấy khi được Xem ít nhất một mục có dữ liệu (không thêm quyền mới) */
+export function canSeeExport(perms: PermissionMap): boolean {
+  return MODULES.some((m) => m !== 'accounts' && levelRank(perms[m]) >= levelRank('view'));
+}

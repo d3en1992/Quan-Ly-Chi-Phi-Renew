@@ -1,4 +1,5 @@
 // Tab DANH MỤC & SAO LƯU: danh sách dùng chung khi nhập liệu, thông tin công ty, sao lưu / khôi phục.
+import { ExportButton } from '@/features/export/ExportButton';
 import { useEffect, useRef, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -29,7 +30,7 @@ export function CatalogPage() {
   const [tab, setTab] = useState<Tab>('catalog');
   return (
     <>
-      {mode !== 'phone' ? <PageHeader title="Danh Mục & Sao Lưu" sub="Danh sách dùng chung khi nhập liệu, thông tin công ty, sao lưu" /> : null}
+      {mode !== 'phone' ? <PageHeader title="Danh Mục & Sao Lưu" sub="Danh sách dùng chung khi nhập liệu, thông tin công ty, sao lưu" actions={<ExportButton datasets={['catalog_items']} year={null} />} /> : null}
       <SubTabs<Tab> tabs={[{ key: 'catalog', label: 'DANH MỤC' }, { key: 'company', label: 'CÔNG TY & SAO LƯU' }]} value={tab} onChange={setTab} />
       {tab === 'catalog' ? <CatalogTab canEdit={hasLevel(access.permissions, 'catalog', 'add')} /> : <CompanyTab isAdmin={access.role.is_admin} />}
     </>

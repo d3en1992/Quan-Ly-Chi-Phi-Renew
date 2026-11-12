@@ -1,5 +1,6 @@
 // Tab THEO DÕI TB (PAGES.thietbi / MP.thietbi): thiết bị Tại công trình (gom theo công trình) · Kho thiết bị · Kho giàn giáo.
 // Một ô tìm chung không dấu (tên thiết bị, công trình / kho, thông tin máy, Người TH). Thêm, luân chuyển, sửa, xóa (chỉ trong kho — như app cũ).
+import { ExportButton } from '@/features/export/ExportButton';
 import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -264,7 +265,7 @@ export function EquipmentPage() {
 
   return (
     <>
-      <PageHeader title="Theo Dõi TB" sub="Thiết bị tại công trình, Kho thiết bị, Kho giàn giáo" actions={actions} />
+      <PageHeader title="Theo Dõi TB" sub="Thiết bị tại công trình, Kho thiết bị, Kho giàn giáo" actions={<><ExportButton datasets={['equipment']} year={null} />{actions}</>} />
       <FilterBar>
         <SearchBox value={q} onChange={setQ} placeholder="Tìm tên thiết bị hoặc công trình (không dấu cũng được)…" className="min-w-[260px] flex-1" />
         <FilterSelect label="Tình trạng" value={cond} onChange={setCond} options={CONDITION_OPTS} />

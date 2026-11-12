@@ -1,5 +1,6 @@
 // Tab DOANH THU (PAGES.doanhthu / MP.doanhthu): HỢP ĐỒNG CHÍNH (form bên trái + danh sách, hạng mục, copy / dán khối lượng)
 // và THU TIỀN (form phiếu thu, tiến độ thu theo công trình, sổ thu, ảnh phiếu thu). Phiếu thu tự động từ quyết toán chỉ xem.
+import { ExportButton } from '@/features/export/ExportButton';
 import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -344,7 +345,7 @@ export function RevenuePage() {
   const years = useMemo(() => toYearFilter(yearSel), [yearSel]);
   const query = useRevData();
   const [tab, setTab] = useState<Tab>(phone ? 'receipts' : 'contracts');
-  const header = <PageHeader title={phone ? 'Doanh thu' : 'Doanh Thu'} sub="Hợp đồng chính và thu tiền" />;
+  const header = <PageHeader title={phone ? 'Doanh thu' : 'Doanh Thu'} sub="Hợp đồng chính và thu tiền" actions={<ExportButton datasets={['main_contracts', 'receipts']} />} />;
   if (query.isPending) return <>{header}<Card><LoadingState label="Đang tải doanh thu…" /></Card></>;
   if (query.isError) return <>{header}<Card><ErrorState error={query.error} onRetry={() => void query.refetch()} /></Card></>;
   const ctx: Ctx = {

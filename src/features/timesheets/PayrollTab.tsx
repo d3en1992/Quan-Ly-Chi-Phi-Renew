@@ -1,5 +1,6 @@
 // TỔNG LƯƠNG & LỊCH SỬ (PAGES.chamcong sub 1): tổng lương tuần theo công nhân (mọi công trình), tick để cộng nhanh,
 // tìm tên, xuất CSV, phiếu lương Zalo cho người đã tick; lịch sử tuần, bấm để mở lại tuần trong Sổ chấm công.
+import { ExportButton } from '@/features/export/ExportButton';
 import { useMemo, useState } from 'react';
 import { Button, Icon } from '@/components/ui/button';
 import { FilterBar, FilterSelect, MobileCard, MobileRow, Money, Pager, SearchBox, usePaged } from '@/components/ui/data';
@@ -12,17 +13,8 @@ import {
 import { formatMoney } from '@/lib/format';
 import { matchesSearch } from '@/features/reports/shared';
 import type { TimesheetData } from './api';
-import { c1, DAY_LABELS, PayslipSheet, RoleTag } from './shared';
+import { c1, PayslipSheet, RoleTag } from './shared';
 
-/** CSV có BOM để Excel đọc đúng tiếng Việt */
-export function downloadCsv(rows: (string | number)[][], filename: string) {
-  const esc = (v: string | number) => { const s = String(v ?? ''); return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-  const blob = new Blob(['﻿' + rows.map((r) => r.map(esc).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 type Props = {
   data: TimesheetData; ix: PayrollIndex; years: YearFilter; yearLabel: string; phone: boolean;
@@ -59,16 +51,6 @@ export function PayrollTab({ data, ix, years, yearLabel, phone, onOpenWeek }: Pr
   const toggle = (k: string) => setTicked((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   const names = (r: PayrollRow) => r.projectIds.map((id) => data.projectName(id));
 
-  const exportCsv = () => {
-    // `exportCCTLTCSV`: TC Lương ở file CSV = lương + phụ cấp + HĐ mua lẻ (giữ như app cũ)
-    const out: (string | number)[][] = [['Tuần', 'Tên CN', ...DAY_LABELS, 'TC', 'TC Lương', 'Lương TB/Ngày', 'Vay Mới', 'Trừ Nợ', 'Thực Lãnh', 'Công Trình']];
-    for (const r of rows) {
-      const tcl = r.wage + r.allowance + r.retail;
-      out.push([week ? `${r.from.slice(8, 10)}/${r.from.slice(5, 7)}–${r.to.slice(8, 10)}/${r.to.slice(5, 7)}` : 'Tổng', data.workerName(r.workerId), ...r.days, r.dayUnits, tcl,
-        r.dayUnits > 0 ? Math.round(tcl / r.dayUnits) : 0, r.legacyLoan, r.deduction, r.netPay, names(r).join(', ')]);
-    }
-    downloadCsv(out, `tong_luong_tuan_${new Date().toISOString().slice(0, 10)}.csv`);
-  };
   const slipFor = (weekStart: string, workerIds: string[]) => {
     const to = weekEnd(weekStart);
     setSlip(workerIds.map((id) => payslipText(payslipData(ix, id, weekStart, to), data.workerName(id), data.projectName)).join('\n\n'));
@@ -92,7 +74,7 @@ export function PayrollTab({ data, ix, years, yearLabel, phone, onOpenWeek }: Pr
       <SearchBox value={q} onChange={setQ} placeholder="Tìm tên công nhân…" />
       <div className="flex-1" />
       <Button onClick={slipTicked}><Icon name="chat" />Phiếu lương Zalo</Button>
-      <Button onClick={exportCsv} disabled={!rows.length}><Icon name="download" />Xuất CSV</Button>
+      <ExportButton datasets={['timesheet_weeks', 'timesheet_lines']} projectId={project || null} timesheet="grouped" />
     </FilterBar>
   );
 
