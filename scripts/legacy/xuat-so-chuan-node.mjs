@@ -108,6 +108,18 @@ out.chamCong = vm.runInContext(`(() => {
   return JSON.stringify({ tuan, no });
 })()`, sandbox, { filename: 'xuat-cham-cong' });
 out.chamCong = JSON.parse(out.chamCong);
+// ── GĐ8: Tỉ trọng — `tytTongHop` trọn vòng đời của từng công trình (4 nhóm, 6 trụ cột, theo loại, từng khoản) ──
+out.tyTrong = JSON.parse(vm.runInContext(`(() => {
+  const res = {};
+  getAllProjects().filter(p => p && p.id !== 'COMPANY' && !p.deletedAt).forEach(p => {
+    const r = tytTongHop(p, { allYears: true });
+    res[p.id] = { ten: p.name, tongChi: r.tongChi, tongSan: r.tongSan, theoNhom: r.theoNhom,
+      theoTru: { sat: r.theoTru.sat, bt: r.theoTru.bt, nc: r.theoTru.nc, tp: r.theoTru.tp, quy: r.theoTru.quy, khac: r.theoTru[''] },
+      theoLoai: r.theoLoai, chuaNhom: r.chuaNhom.length,
+      khoan: r.lines.map(l => ({ key: l.key, tien: l.tien, loai: l.loai, nhom: l.parts.map(pt => pt.nhom + ':' + pt.tien).join(',') })) };
+  });
+  return JSON.stringify(res);
+})()`, sandbox, { filename: 'xuat-ty-trong' }));
 out.taoLuc = new Date(NOW).toISOString();
 out.nguon = 'node: scripts/legacy/xuat-so-chuan-node.mjs (code app cũ chạy trên du-lieu/snapshot.json)';
 out.snapshotXuatLuc = snapshot.exportedAt ?? snapshot.meta?.exportedAt ?? null;

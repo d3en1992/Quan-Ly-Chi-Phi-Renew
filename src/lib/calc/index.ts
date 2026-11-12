@@ -10,3 +10,4 @@ export * from './payables';
 export * from './stats';
 export * from './projectDetail';
 export * from './expense';
+export * from './cost-allocation';
