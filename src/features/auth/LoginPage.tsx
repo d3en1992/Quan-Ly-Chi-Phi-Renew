@@ -38,9 +38,7 @@ export function LoginPage() {
         aria-label="Đăng nhập"
       >
         <div className="flex items-center gap-2.5">
-          <div className="grid size-10 place-items-center rounded-lg bg-accent text-accent-fg">
-            <Icon name="foundation" className="text-[24px]" />
-          </div>
+          <img src="/pwa-192x192.png" alt="" className="size-10 rounded-lg" />
           <div>
             <b className="block text-base leading-tight">Nguyễn Hữu</b>
             <small className="text-xs text-faint">Quản lý chi phí công trình</small>

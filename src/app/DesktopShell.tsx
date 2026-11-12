@@ -58,9 +58,8 @@ export function DesktopShell({ compact }: { compact: boolean }) {
         )}
       >
         <div className={cn('flex items-center', compact ? 'gap-2.5 pb-3' : 'gap-2 px-1.5 pt-1 pb-3.5')}>
-          <div className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-accent text-accent-fg">
-            {access.company.logo_url ? <img src={access.company.logo_url} alt="" className="size-full object-cover" /> : <Icon name="foundation" />}
-          </div>
+          {/* Logo công ty (Danh mục) nếu có, không thì logo app mới (cùng ảnh với icon tab / icon cài app) */}
+          <img src={access.company.logo_url || '/pwa-192x192.png'} alt="" className="size-8 shrink-0 rounded-lg object-cover" />
           {compact ? null : (
             <div className="min-w-0">
               <b className="block truncate text-sm leading-tight" title={companyShort}>{companyShort}</b>

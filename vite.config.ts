@@ -11,7 +11,7 @@ export default defineConfig({
     // PWA: cài được lên màn hình chính. Chỉ cache vỏ app (js/css/icon); KHÔNG cache dữ liệu nghiệp vụ (app chạy online).
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon-32x32.png', 'apple-icon-180x180.png'],
+      includeAssets: ['favicon-32x32.png', 'favicon-16x16.png', 'apple-icon-180x180.png'],
       manifest: {
         name: 'QLCP Nguyễn Hữu',
         short_name: 'QLCP',
@@ -26,6 +26,8 @@ export default defineConfig({
         icons: [
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          // Android tự cắt hình (tròn / giọt nước): bản nền tràn, biểu tượng nằm trong vùng an toàn
+          { src: 'pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
