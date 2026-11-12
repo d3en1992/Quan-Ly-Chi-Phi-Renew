@@ -10,3 +10,4 @@ export function upsertAccount(
   admin: SupabaseClient,
   account: { username: string; displayName: string; roleId: string; password: string; mustChange?: boolean; reset?: boolean },
 ): Promise<{ id: string; changed: boolean }>;
+export const ONLINE: boolean;

@@ -1,9 +1,36 @@
 // Lấy địa chỉ + key của Supabase CHẠY TRÊN MÁY (Docker) bằng `npx supabase status`.
-// Không đọc .env, không bao giờ trỏ tới Supabase online.
+// Mặc định KHÔNG BAO GIỜ trỏ tới Supabase online. Chỉ khi lệnh có cờ `--online` mới đọc .env
+// (SUPABASE_ONLINE_URL + SUPABASE_ONLINE_SECRET_KEY) để đổ dữ liệu / tạo tài khoản lên bản online anh chỉ định.
 import { execSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 
+export const ONLINE = process.argv.includes('--online');
+
+function readDotEnv() {
+  const file = join(dirname(fileURLToPath(import.meta.url)), '..', '.env');
+  const out = {};
+  if (!existsSync(file)) return out;
+  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
+    if (m) out[m[1]] = m[2].replace(/^['"]|['"]$/g, '');
+  }
+  return out;
+}
+
+function onlineEnv() {
+  const env = readDotEnv();
+  const url = env.SUPABASE_ONLINE_URL, serviceKey = env.SUPABASE_ONLINE_SECRET_KEY;
+  if (!url || !serviceKey) throw new Error('Thiếu SUPABASE_ONLINE_URL / SUPABASE_ONLINE_SECRET_KEY trong ban-moi/.env');
+  if (!/^https:\/\/[a-z0-9]+\.supabase\.co\/?$/.test(url)) throw new Error('SUPABASE_ONLINE_URL phải dạng https://<mã>.supabase.co');
+  console.log(`⚠️  Chạy trên Supabase ONLINE: ${url}`);
+  return { url: url.replace(/\/$/, ''), anonKey: env.SUPABASE_ONLINE_PUBLISHABLE_KEY ?? '', serviceKey };
+}
+
 export function localSupabaseEnv() {
+  if (ONLINE) return onlineEnv();
   const out = execSync('npx supabase status -o json', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
   const s = JSON.parse(out.slice(out.indexOf('{')));
   if (!/^http:\/\/(127\.0\.0\.1|localhost)/.test(s.API_URL)) {

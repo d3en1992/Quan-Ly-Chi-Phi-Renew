@@ -6,10 +6,10 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { localAdminClient, ROLE_IDS, upsertAccount } from './local-supabase.mjs';
+import { localAdminClient, localSupabaseEnv, ONLINE, ROLE_IDS, upsertAccount } from './local-supabase.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const outFile = join(root, 'du-lieu', 'tai-khoan-tam.txt');
+const outFile = join(root, 'du-lieu', ONLINE ? 'tai-khoan-online.txt' : 'tai-khoan-tam.txt');
 const reset = process.argv.includes('--reset');
 
 const letters = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ';
@@ -47,7 +47,7 @@ mkdirSync(dirname(outFile), { recursive: true });
 writeFileSync(
   outFile,
   [
-    'TÀI KHOẢN TẠM — Supabase chạy trên máy (http://127.0.0.1:54321)',
+    `TÀI KHOẢN TẠM — ${ONLINE ? `Supabase ONLINE (${localSupabaseEnv().url})` : 'Supabase chạy trên máy (http://127.0.0.1:54321)'}`,
     'Lần đầu đăng nhập phải đổi mật khẩu. File này KHÔNG đưa lên GitHub.',
     '',
     'Tên ĐN | Mật khẩu tạm | Người · Vai trò',
