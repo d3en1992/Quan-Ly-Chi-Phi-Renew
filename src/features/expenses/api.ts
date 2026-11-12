@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { CATALOG_KEY, normalizeCatalogName } from '@/features/catalog/api';
 import { CONTACTS_KEY } from '@/features/contacts/api';
 import { fetchLive, REPORT_DATA_KEY } from '@/features/reports/api';
+import { PAY_KEY, syncSupplierAllocations } from '@/features/payments/api';
 import { expenseInputSchema, type ExpenseInput } from './schema';
 
 const sb = supabase as unknown as SupabaseClient;
@@ -111,7 +112,16 @@ function useRefresh() {
   return () => Promise.all([
     qc.invalidateQueries({ queryKey: ENTRY_EXPENSES_KEY }), qc.invalidateQueries({ queryKey: REPORT_DATA_KEY }),
     qc.invalidateQueries({ queryKey: ['expense-lines'] }), qc.invalidateQueries({ queryKey: ['expense-line-history'] }),
+    qc.invalidateQueries({ queryKey: PAY_KEY }),
   ]);
+}
+
+/**
+ * Hóa đơn mua nợ đổi (thêm / sửa tiền / tích Đã TT / xóa) → tính lại cách chia tiền trả NCC (mục 4J).
+ * Hóa đơn đã lưu xong rồi nên lỗi ở bước này không chặn người nhập; lần lưu phiếu chi / hóa đơn sau sẽ tự chia lại.
+ */
+async function resyncAllocations() {
+  try { await syncSupplierAllocations(); } catch (e) { console.warn('Chưa chia lại được tiền trả NCC:', e); }
 }
 
 const toRow = (e: ExpenseInput) => ({
@@ -141,6 +151,7 @@ export function useCreateExpenses() {
           throw friendly(le);
         }
       }
+      if (list.some((e) => e.supplierId && !e.paid)) await resyncAllocations();
       return rows.map((r) => r.id);
     },
     onSuccess: done,
@@ -171,6 +182,7 @@ export function useUpdateExpense() {
         const lines = toLines(id, e);
         if (lines.length) { const { error: le } = await sb.from('expense_lines').insert(lines); if (le) throw friendly(le); }
       }
+      await resyncAllocations();
       return { overwritten };
     },
     onSuccess: done,
@@ -185,6 +197,7 @@ export function useDeleteExpense() {
       const { data, error } = await sb.from('expenses').update({ deleted_at: new Date().toISOString() }).eq('id', id).select('id');
       if (error) throw friendly(error);
       if (!data?.length) throw new Error('Không xóa được: hóa đơn do người khác nhập (cần quyền "Sửa / xóa dòng người khác nhập").');
+      await resyncAllocations();
     },
     onSuccess: done,
   });

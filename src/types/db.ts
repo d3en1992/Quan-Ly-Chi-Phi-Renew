@@ -968,6 +968,9 @@ isOneToOne: false
 "can_edit_row":
 { Args: { "modules": (string)[],"row_created_by": string }; Returns: boolean
                            },
+"close_payable":
+{ Args: { "p_amount": number,"p_by": string,"p_date": string,"p_note": string,"p_project_id": string,"p_subcontractor_id": string }; Returns: string
+                           },
 "complete_password_change":
 { Args: Record<PropertyKey, never>; Returns: undefined
                            },
@@ -976,6 +979,9 @@ isOneToOne: false
                            },
 "current_company_id":
 { Args: Record<PropertyKey, never>; Returns: string
+                           },
+"delete_settlement":
+{ Args: { "p_id": string }; Returns: undefined
                            },
 "delete_timesheet_week":
 { Args: { "p_week_id": string }; Returns: undefined
@@ -1015,14 +1021,23 @@ isOneToOne: false
 "my_project_ids":
 { Args: Record<PropertyKey, never>; Returns: string[]
                            },
+"replace_payment_allocations":
+{ Args: { "p_allocs": Json,"p_payment_ids": (string)[] }; Returns: number
+                           },
 "restore_backup":
 { Args: { "p_data": Json }; Returns: Json
+                           },
+"save_settlement":
+{ Args: { "p_amount": number,"p_date": string,"p_id": string,"p_is_final": boolean,"p_kind": string,"p_note": string,"p_project_id": string,"p_receipt_amount": number,"p_receipt_mode": string }; Returns: string
                            },
 "save_timesheet_week":
 { Args: { "p_lines": Json,"p_project_id": string,"p_week_start": string }; Returns: string
                            },
 "sees_all_projects":
 { Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"undo_payable_closure":
+{ Args: { "p_closure_id": string }; Returns: undefined
                            },
 "update_my_display_name":
 { Args: { "new_name": string }; Returns: undefined

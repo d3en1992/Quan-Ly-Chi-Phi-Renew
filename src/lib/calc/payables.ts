@@ -109,3 +109,126 @@ export function subcontractPayables(contracts: readonly CalcSubcontract[], payme
     return { subcontractId: h.id, total, paid: p, debt: total - p };
   });
 }
+
+// ───────────────────────── GĐ7 ─────────────────────────
+
+/** Còn nợ ≤ 100.000 đ coi như đã trả đủ (`CN_DONE_TOLERANCE` của app cũ) */
+export const PAYABLE_DONE_TOLERANCE = 100_000;
+
+export type CreditInvoice = { id: string; supplier_id: string; project_id: string; date: string | null; created_at?: string | null; amount: number };
+export type SupplierPaymentIn = {
+  id: string; supplier_id: string; date: string | null; created_at?: string | null; amount: number; project_id: string | null;
+  /** fifo = cũ nhất trước mọi công trình · project = chỉ trong công trình project_id · manual = theo hóa đơn đã tích */
+  allocation_mode: string;
+};
+export type AllocationRow = { payment_id: string; expense_id: string | null; project_id: string; amount: number };
+
+/**
+ * TÍNH LẠI toàn bộ cách chia tiền trả NCC (mục 4J). Gọi mỗi khi lưu / sửa / xóa phiếu Trả nợ NCC hoặc hóa đơn mua nợ.
+ * - Phiếu có chỉ định (tích hóa đơn = manual, "Trả cho công trình…" = project, phiếu đời cũ = project) chia TRƯỚC, theo ngày phiếu.
+ *   · manual: chia vào các hóa đơn đã tích (cũ nhất trước); còn dư thì chia tiếp trong công trình của phiếu, không có công trình thì như fifo.
+ *   · project: chỉ chia trong công trình; trả dư vẫn tính cho công trình đó (1 dòng không gắn hóa đơn) — để A khớp app cũ.
+ * - Phiếu trả theo cục (fifo) chia SAU: hóa đơn mua nợ cũ nhất trước (ngày, rồi ngày tạo), bất kể công trình.
+ *   Trả dư chưa có hóa đơn để chia thì CHƯA tính cho công trình nào (nợ NCC âm = trả trước); có hóa đơn mới sẽ tự chia.
+ * `manualPicks`: phiếu manual → danh sách id hóa đơn đã tích.
+ */
+export function reallocateSupplierPayments(
+  invoices: readonly CreditInvoice[], payments: readonly SupplierPaymentIn[], manualPicks: ReadonlyMap<string, readonly string[]> = new Map(),
+): AllocationRow[] {
+  const out: AllocationRow[] = [];
+  const bySupplier = new Map<string, { inv: CreditInvoice[]; pay: SupplierPaymentIn[] }>();
+  const slot = (id: string) => { let s = bySupplier.get(id); if (!s) { s = { inv: [], pay: [] }; bySupplier.set(id, s); } return s; };
+  for (const i of invoices) slot(i.supplier_id).inv.push(i);
+  for (const p of payments) slot(p.supplier_id).pay.push(p);
+
+  for (const { inv, pay } of bySupplier.values()) {
+    const sortedInv = sortByDateThenCreated(inv);
+    const room = new Map(sortedInv.map((i) => [i.id, i.amount || 0]));
+    const spend = (p: SupplierPaymentIn, amount: number, candidates: readonly CreditInvoice[]) => {
+      let left = amount;
+      for (const i of candidates) {
+        if (left <= 0) break;
+        const r = room.get(i.id) ?? 0;
+        if (r <= 0) continue;
+        const take = Math.min(left, r);
+        out.push({ payment_id: p.id, expense_id: i.id, project_id: i.project_id, amount: take });
+        room.set(i.id, r - take);
+        left -= take;
+      }
+      return left;
+    };
+    const general: { p: SupplierPaymentIn; left: number }[] = [];
+    for (const p of sortByDateThenCreated(pay)) {
+      const amount = p.amount || 0;
+      if (p.allocation_mode === 'manual') {
+        const picks = new Set(manualPicks.get(p.id) ?? []);
+        let left = spend(p, amount, sortedInv.filter((i) => picks.has(i.id)));
+        if (left > 0 && p.project_id) {
+          const pid = p.project_id;
+          left = spend(p, left, sortedInv.filter((i) => i.project_id === pid));
+          if (left > 0) out.push({ payment_id: p.id, expense_id: null, project_id: pid, amount: left });
+        } else if (left > 0) general.push({ p, left });
+      } else if (p.allocation_mode === 'project' && p.project_id) {
+        const pid = p.project_id;
+        const left = amount > 0 ? spend(p, amount, sortedInv.filter((i) => i.project_id === pid)) : amount;
+        if (left !== 0) out.push({ payment_id: p.id, expense_id: null, project_id: pid, amount: left });
+      } else if (amount > 0) general.push({ p, left: amount });
+    }
+    for (const g of general) spend(g.p, g.left, sortedInv);
+  }
+  return out;
+}
+
+/** Đã trả của từng hóa đơn mua nợ (theo các dòng chia) */
+export function paidByInvoice(allocations: readonly { expense_id: string | null; amount: number }[]): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const a of allocations) if (a.expense_id) m.set(a.expense_id, (m.get(a.expense_id) ?? 0) + (a.amount || 0));
+  return m;
+}
+
+/** Phần tiền của từng phiếu chi đã chia (vào hóa đơn / công trình) */
+export function allocatedByPayment(allocations: readonly { payment_id: string; amount: number }[]): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const a of allocations) m.set(a.payment_id, (m.get(a.payment_id) ?? 0) + (a.amount || 0));
+  return m;
+}
+
+export type StatementLine = { id: string; date: string | null; project_id: string; amount: number; paid: number; remaining: number; running: number };
+
+/** ĐỐI CHIẾU với NCC: hóa đơn mua nợ theo ngày, đã trả (phần đã chia), còn lại và cộng dồn tiền hàng */
+export function supplierStatement(invoices: readonly CreditInvoice[], allocations: readonly { expense_id: string | null; amount: number }[]): StatementLine[] {
+  const paid = paidByInvoice(allocations);
+  let running = 0;
+  return sortByDateThenCreated(invoices).map((i) => {
+    const p = paid.get(i.id) ?? 0;
+    running += i.amount || 0;
+    return { id: i.id, date: i.date, project_id: i.project_id, amount: i.amount || 0, paid: p, remaining: (i.amount || 0) - p, running };
+  });
+}
+
+export type PairPayable = { key: string; subcontractorId: string; projectId: string; value: number; paid: number; debt: number; contractCount: number };
+
+/** Công nợ theo cặp THẦU PHỤ × CÔNG TRÌNH (`ungPartnerDebt`, `_ttBuildRows`): giá trị = Σ HĐ thầu phụ, đã trả = Σ phiếu chi */
+export function subcontractorPairPayables(contracts: readonly CalcSubcontract[], payments: readonly CalcPayment[]): PairPayable[] {
+  const m = new Map<string, PairPayable>();
+  const get = (sub: string, project: string) => {
+    const key = `${sub}|${project}`;
+    let r = m.get(key);
+    if (!r) { r = { key, subcontractorId: sub, projectId: project, value: 0, paid: 0, debt: 0, contractCount: 0 }; m.set(key, r); }
+    return r;
+  };
+  for (const h of contracts) { const r = get(h.subcontractor_id, h.project_id); r.value += subcontractTotal(h); r.contractCount++; }
+  for (const u of payments) {
+    if ((u.kind !== 'advance' && u.kind !== 'progress') || !u.subcontractor_id || !u.project_id) continue;
+    get(u.subcontractor_id, u.project_id).paid += u.amount || 0;
+  }
+  for (const r of m.values()) r.debt = r.value - r.paid;
+  return [...m.values()];
+}
+
+/** Cộng một cột tiền của danh sách (màn hình dùng hàm này, không tự cộng) */
+export function sumOf<T>(rows: readonly T[], pick: (r: T) => number): number {
+  let s = 0;
+  for (const r of rows) s += pick(r) || 0;
+  return s;
+}

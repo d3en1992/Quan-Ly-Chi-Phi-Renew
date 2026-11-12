@@ -77,3 +77,37 @@ export function projectRevenue(
   const value = contractValue(baseContract, received, settlement, hasSettlement);
   return { baseContract, received, settlement, hasSettlement, contractValue: value, receivable: value - received };
 }
+
+// ───────────────────────── GĐ7 ─────────────────────────
+
+export type ContractItem = { name: string; donVi: string; sl: number; donGia: number };
+
+/** Giá trị theo hạng mục = Σ khối lượng × đơn giá (`calcHopDongValue`), làm tròn đồng */
+export function contractItemsTotal(items: readonly Pick<ContractItem, 'sl' | 'donGia'>[]): number {
+  return Math.round(items.reduce((s, i) => s + (Number(i.sl) || 0) * (Number(i.donGia) || 0), 0));
+}
+
+/**
+ * Số tiền phiếu thu tự động "tiền còn lại" NÊN có (`_qtTinhConLai`): còn phải thu TOÀN VÒNG ĐỜI sau quyết toán.
+ * `receipts` đưa vào KHÔNG gồm chính phiếu tự động cũ của bản quyết toán này; `settlements` đã gồm bản đang lưu.
+ */
+export function remainingAfterSettlement(
+  contracts: readonly CalcMainContract[], receipts: readonly CalcReceipt[], settlements: readonly CalcSettlement[],
+): number {
+  return Math.round(projectRevenue(contracts, receipts, settlements, []).receivable);
+}
+
+export type SettlementHistoryRow = { id: string; before: number; delta: number; after: number };
+
+/** Lịch sử quyết toán của 1 công trình: giá trị HĐ ngay trước, mức thay đổi, giá trị sau */
+export function settlementHistory(contracts: readonly CalcMainContract[], settlements: readonly CalcSettlement[]): SettlementHistoryRow[] {
+  const base = contracts.reduce((s, c) => s + mainContractTotal(c), 0);
+  const { sorted, deltas } = settlementDeltas(base, settlements);
+  let running = base;
+  return sorted.map((s) => {
+    const delta = deltas.get(s.id) ?? 0;
+    const row = { id: s.id, before: running, delta, after: running + delta };
+    running += delta;
+    return row;
+  });
+}
