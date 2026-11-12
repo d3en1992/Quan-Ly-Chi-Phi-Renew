@@ -1,6 +1,6 @@
-TRẠNG THÁI: GD07 XONG — DỪNG theo yêu cầu anh Tình (không làm sang GĐ sau)
-Nhịp tim: 12/11/2026 13:15 — GD07 xong: typecheck / 155 Vitest / build xanh; Playwright gd07 6/6
-Đang làm: (không) — chờ anh chạy giai đoạn tiếp (GD10)
+TRẠNG THÁI: GD10 XONG (phần không cần key) — DỪNG, không làm sang GĐ sau
+Nhịp tim: 12/11/2026 — GD10: PWA + quét 3 khổ xong; typecheck / 155 Vitest / build xanh; Playwright gd10 7/7
+Đang làm: (không) — chờ anh chạy giai đoạn tiếp (GD08)
 
 # Tiến độ làm lại app
 
@@ -13,7 +13,7 @@ Nhịp tim: 12/11/2026 13:15 — GD07 xong: typecheck / 155 Vitest / build xanh;
 | GD05 | Nhập Chi Phí (lưới Excel, chi tiết) | Fable (medium) | **Xong** 12/11 | typecheck / 126 Vitest / build / 54 Playwright xanh (gd05: 8 test). Ảnh: `anh-chup/GD05/` |
 | GD06 | Chấm Công + Tạm ứng lương | Opus (medium) | **Xong** 12/11 | typecheck / 146 Vitest / build / 59 Playwright xanh (gd06: 5 test). So với app cũ lệch 0 (124 tuần × mọi người). Ảnh: `anh-chup/GD06/` |
 | GD07 | Chi Trả, Công Nợ Phải Trả, Doanh Thu, Quyết Toán | Fable (medium) | **Xong** 12/11 | typecheck / 155 Vitest / build xanh; Playwright 65 test (gd07: 6 test xanh; 1 test sao lưu GĐ4 chập chờn khi chạy cả bộ, chạy riêng xanh). Ví dụ mục 4J đúng từng đồng; so số GĐ3 vẫn lệch 0. Ảnh: `anh-chup/GD07/` |
-| GD10 | Điện thoại, máy tính bảng, PWA, bản thử online | Sonnet (medium) | Chưa | |
+| GD10 | Điện thoại, máy tính bảng, PWA, bản thử online | Sonnet (medium) | **Xong** 12/11 (trừ bản thử online — chưa có key) | typecheck / 155 Vitest / build xanh; Playwright gd10 7 test (mọi màn ở 390 / 820 / 1440 + Chi tiết CT, không lỗi console, không kéo ngang). Ảnh: `anh-chup/GD10/` |
 | GD08 | Thiết bị, Tỉ trọng, Thùng rác | Opus (medium) | Chưa | |
 | GD09 | Chụp đa năng + Xuất Excel | Sonnet (high) | Chưa | |
 | GD12 | Tiến Độ phần 1 | Sonnet (medium) | Chưa | |
@@ -169,3 +169,12 @@ Nhịp tim: 12/11/2026 13:15 — GD07 xong: typecheck / 155 Vitest / build xanh;
    - Git: Production Branch tạm để **`dev`** (hoặc dùng link Preview của nhánh `dev`).
    - Environment Variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (của project Supabase online `qlcp-thu`), `VITE_COMPANY_SLUG` = `nguyenhuu`. Anh tự dán, AI không đụng.
    - `vercel.json` đã có sẵn (mọi đường dẫn trả về `index.html`).
+
+## GD10 — đã có gì (cho GĐ sau)
+- **PWA**: `vite.config.ts` dùng `vite-plugin-pwa` (tự cập nhật). Manifest "QLCP Nguyễn Hữu" (tên ngắn QLCP, standalone, theme #1D5DB5), icon `public/pwa-192x192.png` + `pwa-512x512.png` chép từ app cũ. Service worker chỉ cache vỏ app (js/css/html/icon) + phông Google Fonts; **không cache dữ liệu nghiệp vụ** (Supabase đi thẳng ra mạng). Manifest + sw.js chỉ sinh khi `npm run build` (dev server không có).
+- **Rà 3 khổ**: `e2e/gd10-man-hinh-3-kho.spec.ts` mở mọi tab (+ Tổng quan / Thêm / Chụp ở 390px, + Chi tiết công trình) ở 390 / 820 / 1440, kiểm tra không lỗi console và không kéo ngang cả trang. Tab chưa làm (Tỉ trọng, Thiết bị, Tiến độ, Thùng rác) hiện trang "Đang làm" — làm ở GĐ8 / GĐ12; GĐ đó nhớ làm luôn bản điện thoại `MP.tytrong / thietbi / tiendo / thungrac`.
+- Quyết định AI tự chọn (GD10): chưa tự chứa phông (vẫn Google Fonts, SW cache lại sau lần đầu); bản thử online **bỏ qua** vì `.env` chưa có `SUPABASE_TEST_*`.
+
+## Việc anh cần làm (GD10)
+- Để làm bản thử online: tạo `ban-moi/.env` có `SUPABASE_TEST_URL`, `SUPABASE_TEST_SERVICE_ROLE_KEY`, `SUPABASE_TEST_DB_URL` (project `qlcp-thu`) rồi chạy lại phần 4 của GD10 (db push, deploy Edge Functions, migrate-legacy, 3 tài khoản, nút "Nạp lại dữ liệu mẫu" cho Admin). Link Vercel xem trước: chưa có (cần anh nối Vercel + đặt biến môi trường như mục Vercel bên dưới).
+- Thử cài PWA: `npm run build && npm run preview`, mở trên điện thoại (cần https hoặc localhost) → "Thêm vào màn hình chính".
