@@ -15,6 +15,7 @@ import { ProfitPage } from '@/features/reports/ProfitPage';
 import { ProjectsRoute } from '@/features/projects/ProjectsPage';
 import { CatalogPage } from '@/features/catalog/CatalogPage';
 import { ContactsPage } from '@/features/contacts/ContactsPage';
+import { TimesheetPage } from '@/features/timesheets/TimesheetPage';
 import {
   BlockedPage,
   ComingSoonPage,
@@ -55,6 +56,7 @@ const PAGES: Record<string, () => ReactNode> = {
   taikhoan: () => <AccountsPage />,
   congtrinh: () => <ProjectsRoute />,
   nhap: () => <ExpenseEntryPage />,
+  chamcong: () => <TimesheetPage />,
   danhba: () => <ContactsPage />,
   danhmuc: () => <CatalogPage />,
   loinhuan: () => <ProfitPage />,

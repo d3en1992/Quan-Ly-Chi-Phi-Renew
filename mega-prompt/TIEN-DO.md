@@ -1,5 +1,5 @@
 TRẠNG THÁI: ĐANG CHẠY
-Nhịp tim: 12/11/2026 07:10 — GD06: đọc đề, khảo sát app cũ chấm công
+Nhịp tim: 12/11/2026 07:20 — GD06: xong công thức + migration (đã commit), đang làm màn Sổ chấm công
 Đang làm: GD06
 
 # Tiến độ làm lại app
