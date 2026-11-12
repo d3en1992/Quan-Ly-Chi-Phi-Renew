@@ -188,6 +188,7 @@ create or replace function public.trash_restore(p_table text, p_id uuid) returns
 language plpgsql security invoker set search_path = '' as $$
 declare
   ts timestamptz;
+  n  int;
 begin
   if public._trash_edit_mods(p_table) is null then raise exception 'Loại dữ liệu không hỗ trợ khôi phục' using errcode = '22023'; end if;
   execute format('select deleted_at from public.%I where id = $1 and deleted_at is not null', p_table) into ts using p_id;
@@ -198,7 +199,8 @@ begin
     else
       execute format('update public.%I set deleted_at = null where id = $1', p_table) using p_id;
     end if;
-    if not found then raise exception 'Bạn không có quyền khôi phục bản ghi này (dòng do người khác nhập)' using errcode = '42501'; end if;
+    get diagnostics n = row_count;   -- (FOUND không đổi sau EXECUTE nên phải đếm dòng)
+    if n = 0 then raise exception 'Bạn không có quyền khôi phục bản ghi này (dòng do người khác nhập)' using errcode = '42501'; end if;
     if p_table = 'timesheet_weeks' then
       update public.timesheet_lines set deleted_at = null where week_id = p_id and deleted_at = ts;
       update public.wage_advances set deleted_at = null where source_week_id = p_id and deleted_at = ts;

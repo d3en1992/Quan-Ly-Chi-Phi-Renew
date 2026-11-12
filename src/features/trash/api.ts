@@ -79,7 +79,8 @@ const DEFS: Def[] = [
     describe: (r, c) => ({ content: `${c.catalog(r.name_id)} × ${n(r.quantity).toLocaleString('vi-VN')}${r.note ? ` · ${s(r.note)}` : ''}`, project: r.location === 'project' ? c.project(r.project_id) : PLACE[s(r.location)] ?? '' }) },
   { table: 'projects', tab: 'other', type: 'Công trình', modules: ['projects'], cols: 'name', describe: (r) => ({ content: s(r.name), project: s(r.name) }) },
   { table: 'cost_allocations', tab: 'other', type: 'Định mức', modules: ['cost_allocation'], cols: 'name,kind', filter: (q) => q.eq('kind', 'benchmark'), describe: (r) => ({ content: s(r.name) || 'Định mức' }) },
-  named('customers', 'Khách hàng', ['contacts']), named('workers', 'Công nhân', ['contacts', 'timesheets']), named('employees', 'Nhân viên', ['contacts']),
+  named('customers', 'Khách hàng', ['contacts']), named('workers', 'Công nhân', ['contacts', 'timesheets']),
+  { table: 'employees', tab: 'other', type: 'Nhân viên', modules: ['contacts'], cols: 'full_name', describe: (r) => ({ content: s(r.full_name) }) },
   named('suppliers', 'Nhà cung cấp', ['contacts', 'catalog', 'expenses']), named('subcontractors', 'Thầu phụ', ['contacts', 'catalog']),
   { table: 'catalog_items', tab: 'other', type: (r) => `Danh mục · ${CATALOG_KIND[s(r.kind)] ?? ''}`, modules: ['catalog'], cols: 'name,kind', describe: (r) => ({ content: s(r.name) }) },
 ];
