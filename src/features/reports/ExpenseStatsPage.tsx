@@ -197,7 +197,7 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
       />
       {empty ?? (
         <Card>
-          <div className="tbl">
+          <div className="tbl tbl-tight">
             <table data-testid="expense-table">
               <thead>
                 <tr>
@@ -209,11 +209,11 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
                 {paged.slice.map((r) => (
                   <tr key={r.id} className="cursor-pointer" onClick={() => setOpen(r)}>
                     <td className="num">{formatDate(r.date)}</td>
-                    <td className="whitespace-nowrap">{r.type}</td>
-                    <td className="whitespace-nowrap">{r.project}</td>
-                    <td className="max-w-[280px] min-w-[160px] truncate text-muted" title={r.description}>{r.description}</td>
+                    <td className="max-w-[130px] truncate" title={r.type}>{r.type}</td>
+                    <td className="max-w-[190px] truncate" title={r.project}>{r.project}</td>
+                    <td className="max-w-[220px] min-w-[140px] truncate text-muted" title={r.description}>{r.description}</td>
                     <td className="whitespace-nowrap">{r.buyer}</td>
-                    <td className="whitespace-nowrap">{r.supplier}</td>
+                    <td className="max-w-[150px] truncate" title={r.supplier}>{r.supplier}</td>
                     <td><PaidPill paid={r.paid} /></td>
                     <td className="whitespace-nowrap">{r.enteredBy}</td>
                     <td className="whitespace-nowrap text-muted">{SOURCE_LABEL[r.source] ?? r.source}</td>

@@ -196,18 +196,18 @@ export function SettlementsPage() {
         <Card>
           <CardHeader title="Lịch sử quyết toán" sub={`${rows.length} lần`} actions={<SearchBox value={q} onChange={setQ} />} />
           {rows.length === 0 ? <EmptyState icon="fact_check" title="Chưa có quyết toán trong kỳ này" /> : (
-            <div className="tbl">
+            <div className="tbl tbl-tight">
               <table data-testid="qt-history">
                 <thead><tr><th>Ngày</th><th>Công trình</th><th>Loại</th><th className="!text-right">HĐ trước</th><th className="!text-right">Giá trị</th><th>Nội dung</th><th /></tr></thead>
                 <tbody>
                   {rows.map(({ s, before, auto }) => (
                     <tr key={s.id} className="cursor-pointer" tabIndex={0} onClick={() => open(s)} onKeyDown={(e) => { if (e.key === 'Enter') open(s); }}>
                       <td className="num whitespace-nowrap">{formatDate(s.date)}</td>
-                      <td className="max-w-[260px] truncate">{data.projectName(s.project_id)}</td>
+                      <td className="max-w-[170px] truncate" title={data.projectName(s.project_id)}>{data.projectName(s.project_id)}</td>
                       <td>{kindPill(s)}</td>
                       <td className="num text-right text-muted">{before ? formatMoney(before) : <span className="text-faint">—</span>}</td>
                       <td className="num text-right"><b>{valueText(s)}</b></td>
-                      <td className="max-w-[220px] truncate text-muted" title={s.note ?? ''}>{s.note}</td>
+                      <td className="max-w-[110px] truncate text-muted" title={s.note ?? ''}>{s.note}</td>
                       <td className="whitespace-nowrap">{s.is_final ? <Pill tone="good">Đã chốt</Pill> : null}{auto ? <> <Pill>Thu {formatMoney(auto.amount)}</Pill></> : null}</td>
                     </tr>
                   ))}

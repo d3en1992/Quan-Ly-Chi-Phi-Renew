@@ -105,10 +105,10 @@ export function TrashPage() {
                 {paged.slice.map((r) => (
                   <tr key={r.key} data-trash={r.key}>
                     <td className="whitespace-nowrap"><Pill tone="neutral">{r.type}</Pill></td>
-                    <td>{r.content}</td>
-                    <td className="whitespace-nowrap">{r.project}</td>
+                    <td className="max-w-[420px]" title={r.content}><span className="line-clamp-2">{r.content}</span></td>
+                    <td className="max-w-[240px] truncate" title={r.project}>{r.project}</td>
                     <td className="num text-right">{r.amount !== null ? formatMoney(r.amount) : ''}</td>
-                    <td>{r.deletedBy}</td>
+                    <td className="whitespace-nowrap">{r.deletedBy}</td>
                     <td className="num">{formatDate(r.deletedAt.slice(0, 10))}</td>
                     <td className="text-right whitespace-nowrap"><span className="inline-flex gap-1">{buttons(r)}</span></td>
                   </tr>

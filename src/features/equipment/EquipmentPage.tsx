@@ -267,7 +267,7 @@ export function EquipmentPage() {
     <>
       <PageHeader title="Theo Dõi TB" sub="Thiết bị tại công trình, Kho thiết bị, Kho giàn giáo" actions={<><ExportButton datasets={['equipment']} year={null} />{actions}</>} />
       <FilterBar>
-        <SearchBox value={q} onChange={setQ} placeholder="Tìm tên thiết bị hoặc công trình (không dấu cũng được)…" className="min-w-[260px] flex-1" />
+        <SearchBox value={q} onChange={setQ} placeholder="Tìm tên thiết bị hoặc công trình (không dấu cũng được)…" className="min-w-[260px] flex-1 sm:max-w-[440px]" />
         <FilterSelect label="Tình trạng" value={cond} onChange={setCond} options={CONDITION_OPTS} />
       </FilterBar>
       <KpiStrip items={[

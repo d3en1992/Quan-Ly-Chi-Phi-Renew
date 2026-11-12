@@ -37,8 +37,8 @@ export type Option = { value: string; label: string };
 
 /** Ô lọc có nhãn nhỏ bên trái (.f của mẫu). Giá trị '' = "Tất cả". */
 export function FilterSelect({
-  label, value, onChange, options, allLabel = 'Tất cả', className,
-}: { label: string; value: string; onChange: (v: string) => void; options: Option[]; allLabel?: string | null; className?: string }) {
+  label, value, onChange, options, allLabel = 'Tất cả', className, selectClassName,
+}: { label: string; value: string; onChange: (v: string) => void; options: Option[]; allLabel?: string | null; className?: string; selectClassName?: string }) {
   return (
     <label className={cn('inline-flex h-9 max-w-full min-w-0 items-center gap-1.5 rounded-lg border border-line bg-surface pl-2.5 text-[13px]', className)}>
       <small className="shrink-0 text-[11.5px] text-muted">{label}</small>
@@ -46,7 +46,7 @@ export function FilterSelect({
         aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-full max-w-[220px] min-w-0 cursor-pointer truncate rounded-lg bg-transparent pr-1.5 font-medium text-fg focus:outline-none"
+        className={cn('h-full max-w-[220px] min-w-0 cursor-pointer truncate rounded-lg bg-transparent pr-1.5 font-medium text-fg focus:outline-none', selectClassName)}
       >
         {allLabel !== null ? <option value="">{allLabel}</option> : null}
         {options.map((o) => (

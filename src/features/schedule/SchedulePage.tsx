@@ -431,7 +431,7 @@ function ProjectSchedule(props: {
     <div className="grid min-w-0 gap-4">
       {header(actions)}
       <FilterBar>
-        <FilterSelect label="Công trình" value={projectId} onChange={choose} options={projectOpts} allLabel={null} className="max-w-full" />
+        <FilterSelect label="Công trình" value={projectId} onChange={choose} options={projectOpts} allLabel={null} className="max-w-full" selectClassName="sm:max-w-[400px]" />
         {plan ? <span className="text-[12px] text-muted">Mẫu: {templates.find((t) => t.key === plan.template_key)?.label ?? 'tự lập'} · {REST_DAYS[plan.rest_days]}</span> : null}
       </FilterBar>
 

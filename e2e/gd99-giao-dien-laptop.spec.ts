@@ -149,3 +149,19 @@ test('1536px: menu trái ≈ 200px; sổ chấm công gõ 1.3, không cuộn nga
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test('1536px: bảng Thống Kê CP/HĐ, Quyết Toán, Thùng Rác vừa khung (không cuộn ngang)', async ({ page }) => {
+  const errors = watchConsole(page);
+  await page.setViewportSize({ width: 1536, height: 860 });
+  await login(page, 'e2e.admin');
+  const over: string[] = [];
+  for (const path of ['/thong-ke-cp-hd', '/quyet-toan', '/thung-rac']) {
+    await page.goto(path);
+    await page.locator('.tbl table').first().waitFor();
+    await page.waitForLoadState('networkidle').catch(() => {});
+    const r = await page.evaluate(() => [...document.querySelectorAll('.tbl')].map((b) => b.scrollWidth - b.clientWidth));
+    if (r.some((d) => d > 1)) over.push(`${path}: ${r.join(',')}`);
+  }
+  expect(over).toEqual([]);
+  expect(errors).toEqual([]);
+});
