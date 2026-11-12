@@ -585,19 +585,20 @@ Một giai đoạn hỏng thì bảo AI: "quay lại commit trước giai đoạ
 
 ## 8. Theo dõi tiến độ
 
-- [ ] GĐ0 — Chuẩn bị
-- [ ] GĐ1 — Khung app
-- [ ] GĐ2 — Kho dữ liệu + chuyển dữ liệu
-- [ ] GĐ3 — Báo cáo khớp số ⭐⭐
-- [ ] GĐ4 — Danh Mục, Công Trình, Khách Hàng
-- [ ] GĐ5 — Hóa Đơn
-- [ ] GĐ6 — Chấm Công
-- [ ] GĐ7 — Tiền Ứng, Doanh Thu, Công Nợ, Quyết Toán
-- [ ] GĐ8 — Thiết Bị, Tỉ Trọng, Thùng Rác
-- [ ] GĐ9 — Chụp đa năng (hóa đơn, CCCD, hợp đồng), Xuất Excel
-- [ ] GĐ10 — Điện thoại + PWA
-- [ ] GĐ11 — Chuyển hẳn
-- [ ] GĐ12 — Tiến Độ Thi Công (Phần 1 lõi · Phần 2 báo cáo và nối chi phí)
+- [x] GĐ0 — Chuẩn bị
+- [x] GĐ1 — Khung app
+- [x] GĐ2 — Kho dữ liệu + chuyển dữ liệu
+- [x] GĐ3 — Báo cáo khớp số ⭐⭐
+- [x] GĐ4 — Danh Mục, Công Trình, Khách Hàng
+- [x] GĐ5 — Hóa Đơn
+- [x] GĐ6 — Chấm Công
+- [x] GĐ7 — Tiền Ứng, Doanh Thu, Công Nợ, Quyết Toán
+- [x] GĐ8 — Thiết Bị, Tỉ Trọng, Thùng Rác
+- [x] GĐ9 — Chụp đa năng (hóa đơn, CCCD, hợp đồng), Xuất Excel
+- [x] GĐ10 — Điện thoại + PWA
+- [ ] GĐ11 — Chuyển hẳn (chưa: cần anh xuất dữ liệu mới, đổ lại rồi dùng hẳn bản online)
+- [x] GĐ12 — Tiến Độ Thi Công (Phần 1 lõi · Phần 2 báo cáo và nối chi phí) — xong Phần 1 (12/11/2026); Phần 2 chưa làm
+- [x] GĐ99 — Kiểm tra cuối + chỉnh giao diện laptop theo ý anh Tình (12/11/2026)
 
 ---
 

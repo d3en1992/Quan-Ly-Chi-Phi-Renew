@@ -1,6 +1,6 @@
-TRẠNG THÁI: GD12 XONG (Tiến Độ phần 1) — DỪNG, không làm sang GĐ sau
-Nhịp tim: 12/11/2026 — GD12: Tiến Độ phần 1 xong; typecheck / 200 Vitest / build xanh; Playwright 95/95 (gd12: 6 test)
-Đang làm: (không) — chờ anh chạy giai đoạn tiếp (GD99)
+TRẠNG THÁI: TẠM DỪNG — GD99 xong trên máy; còn việc dở: đưa migration 000012 lên online + đẩy main (AI bị chặn quyền db push --remote, anh tự chạy — xem BAO-CAO-SANG.md mục 7)
+Nhịp tim: 12/11/2026 20:05 — GD99: typecheck / 203 Vitest / build xanh; so số lệch 0; Playwright 117 test xanh (2 test GĐ1 quá giờ lần đầu, chạy lại xanh)
+Đang làm: (không) — chờ anh chạy `npx supabase db push --remote` rồi `git push origin dev:main`
 
 # Tiến độ làm lại app
 
@@ -17,7 +17,7 @@ Nhịp tim: 12/11/2026 — GD12: Tiến Độ phần 1 xong; typecheck / 200 Vit
 | GD08 | Thiết bị, Tỉ trọng, Thùng rác | Fable (medium) | **Xong** 12/11 | typecheck / 165 Vitest / build xanh; Playwright 79 test xanh (gd08: 7 test). Tỉ trọng so với app cũ **lệch 0** (36 công trình, từng khoản). Ảnh: `anh-chup/GD08/` |
 | GD09 | Chụp đa năng + Xuất Dữ Liệu (TN02) | Opus (medium) | **Xong** 12/11 (chụp chạy giả lập — chưa có key Gemini) | typecheck / 188 Vitest / build xanh; Playwright 89 test xanh (gd09: 10 test). Kho trên máy đổi sang snapshot 12/11, so số GĐ3 vẫn **lệch 0**. Ảnh: `anh-chup/GD09/`, file Excel mẫu: `du-lieu/xuat-thu/` |
 | GD12 | Tiến Độ phần 1 | Sonnet (medium) | **Xong** 12/11 | typecheck / 200 Vitest / build xanh; Playwright 95 test xanh (gd12: 6 test). Lập từ mẫu → sửa % → Gantt + số tổng đổi (test). Ảnh: `anh-chup/GD12/` |
-| GD99 | Kiểm tra cuối + báo cáo sáng | Sonnet (medium) | Chưa | |
+| GD99 | Kiểm tra cuối + chỉnh giao diện laptop + báo cáo sáng | Opus (medium) | **Xong trên máy** 12/11 (chưa lên online) | typecheck / 203 Vitest / build xanh; so số lệch 0; Playwright 117 test (gd99: 22 test). Ảnh (chỉ trên máy, không commit): `anh-chup/GD99/`, `anh-chup/CUOI/`. Báo cáo: `BAO-CAO-SANG.md` |
 
 ## GD01 — đã có gì (cho GĐ sau)
 - Khung: `src/app/` (App.tsx = đường dẫn + chặn quyền; `nav.ts` = menu đủ mọi tab; DesktopShell / PhoneShell). Tab chưa làm hiện trang "Đang làm"; thêm trang thật vào `PAGES` trong `App.tsx`.
@@ -98,7 +98,17 @@ Nhịp tim: 12/11/2026 — GD12: Tiến Độ phần 1 xong; typecheck / 200 Vit
 - Thùng rác: 3 loại mới (Kế hoạch / Giai đoạn / Việc tiến độ); việc con bị xóa cùng lúc với mẹ không hiện riêng. Xuất Dữ Liệu: nhóm Tiến độ hết nhãn "sau GĐ12", việc có thêm cột Trạng thái / Loại / Vướng mắc, ghi chú có % lúc ghi.
 - Test: `src/features/schedule/logic.test.ts`, `e2e/gd12-tien-do.spec.ts`. Test GĐ1 trỏ sang trang Tiến Độ thật (không còn tab "Đang làm").
 
+## GD99 — đã có gì
+- **Giao diện laptop 1536px:** menu trái 200px (`DesktopShell.tsx`); Tổng lương / Lịch sử `xl:grid-cols-[1.5fr_1fr]` + bảng gọn `.tbl.tbl-tight` (`index.css`); Thống Kê, Quyết Toán, Thùng Rác cắt chữ dài để vừa khung; `FilterSelect` có thêm `selectClassName`.
+- **Sổ chấm công:** ô ngày gõ số lẻ (`DayCell` gom phím, nhận khi Enter / Tab / mũi tên / rời ô; `PhoneDayInput` cho điện thoại), `parseDayUnit` trả `null` khi sai; bỏ cột Trừ nợ (trừ nợ cũ chỉ xem, chấm cam ở Thực lãnh); 3 cột Phụ cấp / HĐ lẻ / Nội dung ẩn mặc định, nhớ ở localStorage `qlcp-cc-extras`.
+- **Công thức** (`src/lib/calc/timesheet.ts`): `round2`, `dayWage` (công × lương chính xác tới đồng); TC làm tròn 2 số lẻ. Test mới trong `payroll.test.ts`.
+- **Kho:** migration `20261112000012_cham_cong_so_le.sql` — `day_units numeric(8,2)[]`, `save_timesheet_week` không còn đồng bộ / xóa dòng "Trả" và không đụng `debt_deduction`. **Đã áp trên máy, CHƯA áp online.**
+- **Test:** `e2e/gd99-giao-dien-laptop.spec.ts` (1536: menu, gõ 1.3 → lưu → mở lại, không cột Trừ nợ, bật / tắt 3 cột, Tổng lương rộng hơn Lịch sử, bảng vừa khung), `e2e/gd99-cuoi.spec.ts` (5 vai trò × 4 khổ × mọi tab). Test GĐ6 sửa theo việc bỏ cột Trừ nợ (kiểm tra lưu lại tuần không xóa dòng "Trả").
+- Quyết định AI tự chọn + đề xuất giao diện: xem `BAO-CAO-SANG.md` mục 5–6.
+- Lỗi còn biết: chưa lên online (AI bị chặn quyền `db push --remote` nên cũng không đẩy `main`); Lợi Nhuận ở 1536px vẫn cuộn ngang trong khung (đề xuất ở báo cáo); `gd99-cuoi` chạy ~7 phút; ảnh chụp mới không commit (có dữ liệu thật).
+
 ## Kết quả so số với app cũ
+- GD99 (12/11): đổi TC sang làm tròn 2 số lẻ + `dayWage` → so số GĐ3, chấm công 124 tuần, tỉ trọng vẫn **lệch 0**.
 - GD09 (12/11): kho đổi sang snapshot 12/11 + so-chuan chạy lại bằng code app cũ → 165 test so số vẫn **lệch 0**. Xuất dữ liệu: CT Cô Sáu + CT Nhà Tình = **410 hóa đơn** (209 + 201; đặc tả ghi 210 cho Cô Sáu — GĐ2 gộp 1 bản trùng); dòng vật tư Cô Sáu không lẫn Nhà Tình; công nhân theo 2 CT = 25 < 52; **Thực lãnh chi tiết = gộp, lệch 0** (2 CT, tất cả, năm 2025); 3 kiểu gom cùng tổng số dòng.
 - GD08 (12/11): Tỉ trọng so với `tytTongHop` của app cũ, trọn vòng đời, 36 công trình: tổng chi, tổng sàn, 4 nhóm, 6 rổ, theo loại, **từng khoản và cách chia nhóm từng món — lệch 0**. CT Nhà Tình: tổng chi 1.977.513.482, Nhóm 1 = 1.282.198.562.
 - GD07 (12/11): test so số GĐ3 vẫn **lệch 0**; tính lại cách chia phiếu chi NCC đời cũ bằng công thức mới ra đúng từng dòng đang có trong kho (A phần trả NCC không đổi).
