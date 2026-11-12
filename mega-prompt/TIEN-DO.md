@@ -1,6 +1,6 @@
-TRẠNG THÁI: GD10 XONG (phần không cần key) — DỪNG, không làm sang GĐ sau
-Nhịp tim: 12/11/2026 — GD10: PWA + quét 3 khổ xong; typecheck / 155 Vitest / build xanh; Playwright gd10 7/7
-Đang làm: (không) — chờ anh chạy giai đoạn tiếp (GD08)
+TRẠNG THÁI: GD08 XONG — DỪNG, không làm sang GĐ sau
+Nhịp tim: 12/11/2026 — GD08: Thiết bị + Tỉ trọng + Thùng rác xong; typecheck / 165 Vitest / build xanh; Playwright 79/79 (gd08: 7 test)
+Đang làm: (không) — chờ anh chạy giai đoạn tiếp (GD09)
 
 # Tiến độ làm lại app
 
@@ -14,7 +14,7 @@ Nhịp tim: 12/11/2026 — GD10: PWA + quét 3 khổ xong; typecheck / 155 Vites
 | GD06 | Chấm Công + Tạm ứng lương | Opus (medium) | **Xong** 12/11 | typecheck / 146 Vitest / build / 59 Playwright xanh (gd06: 5 test). So với app cũ lệch 0 (124 tuần × mọi người). Ảnh: `anh-chup/GD06/` |
 | GD07 | Chi Trả, Công Nợ Phải Trả, Doanh Thu, Quyết Toán | Fable (medium) | **Xong** 12/11 | typecheck / 155 Vitest / build xanh; Playwright 65 test (gd07: 6 test xanh; 1 test sao lưu GĐ4 chập chờn khi chạy cả bộ, chạy riêng xanh). Ví dụ mục 4J đúng từng đồng; so số GĐ3 vẫn lệch 0. Ảnh: `anh-chup/GD07/` |
 | GD10 | Điện thoại, máy tính bảng, PWA, bản thử online | Sonnet (medium) | **Xong** 12/11 (trừ bản thử online — chưa có key) | typecheck / 155 Vitest / build xanh; Playwright gd10 7 test (mọi màn ở 390 / 820 / 1440 + Chi tiết CT, không lỗi console, không kéo ngang). Ảnh: `anh-chup/GD10/` |
-| GD08 | Thiết bị, Tỉ trọng, Thùng rác | Opus (medium) | Chưa | |
+| GD08 | Thiết bị, Tỉ trọng, Thùng rác | Fable (medium) | **Xong** 12/11 | typecheck / 165 Vitest / build xanh; Playwright 79 test xanh (gd08: 7 test). Tỉ trọng so với app cũ **lệch 0** (36 công trình, từng khoản). Ảnh: `anh-chup/GD08/` |
 | GD09 | Chụp đa năng + Xuất Excel | Sonnet (high) | Chưa | |
 | GD12 | Tiến Độ phần 1 | Sonnet (medium) | Chưa | |
 | GD99 | Kiểm tra cuối + báo cáo sáng | Sonnet (medium) | Chưa | |
