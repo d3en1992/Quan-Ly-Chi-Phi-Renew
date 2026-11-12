@@ -111,3 +111,8 @@ export function settlementHistory(contracts: readonly CalcMainContract[], settle
     return row;
   });
 }
+
+/** Chênh lệch hai số tiền (a − b) — màn hình dùng hàm này, không tự trừ */
+export function moneyDiff(a: number, b: number): number {
+  return (a || 0) - (b || 0);
+}

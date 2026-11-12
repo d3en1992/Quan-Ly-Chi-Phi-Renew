@@ -18,6 +18,8 @@ import { ContactsPage } from '@/features/contacts/ContactsPage';
 import { TimesheetPage } from '@/features/timesheets/TimesheetPage';
 import { PaymentsPage } from '@/features/payments/PaymentsPage';
 import { PayablesPage } from '@/features/payments/PayablesPage';
+import { RevenuePage } from '@/features/revenue/RevenuePage';
+import { SettlementsPage } from '@/features/revenue/SettlementsPage';
 import {
   BlockedPage,
   ComingSoonPage,
@@ -61,6 +63,8 @@ const PAGES: Record<string, () => ReactNode> = {
   chamcong: () => <TimesheetPage />,
   nhapung: () => <PaymentsPage />,
   congno: () => <PayablesPage />,
+  doanhthu: () => <RevenuePage />,
+  quyettoan: () => <SettlementsPage />,
   danhba: () => <ContactsPage />,
   danhmuc: () => <CatalogPage />,
   loinhuan: () => <ProfitPage />,
