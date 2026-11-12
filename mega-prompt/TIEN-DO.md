@@ -1,6 +1,6 @@
-TRẠNG THÁI: TẠM DỪNG — GD99 xong trên máy; còn việc dở: đưa migration 000012 lên online + đẩy main (AI bị chặn quyền db push --remote, anh tự chạy — xem BAO-CAO-SANG.md mục 7)
+TRẠNG THÁI: TẠM DỪNG — GD99 xong và đã lên online (migration 000012 có trên kho online, main = dev)
 Nhịp tim: 12/11/2026 20:05 — GD99: typecheck / 203 Vitest / build xanh; so số lệch 0; Playwright 117 test xanh (2 test GĐ1 quá giờ lần đầu, chạy lại xanh)
-Đang làm: (không) — chờ anh chạy `npx supabase db push --remote` rồi `git push origin dev:main`
+Đang làm: (không) — 12/11 tối: tối ưu giao diện điện thoại (f9bd407) đã đẩy dev + main
 
 # Tiến độ làm lại app
 
