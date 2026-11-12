@@ -1,6 +1,6 @@
-TRẠNG THÁI: ĐANG LÀM GD07 (anh Tình tự chạy 12/11)
-Nhịp tim: 12/11/2026 12:35 — GD07: xong công thức chia tiền NCC + migration + tab Chi Trả, Công Nợ Phải Trả; đang làm Doanh Thu, Quyết Toán
-Đang làm: GD07 — Doanh Thu, Quyết Toán, test Playwright
+TRẠNG THÁI: GD07 XONG — DỪNG theo yêu cầu anh Tình (không làm sang GĐ sau)
+Nhịp tim: 12/11/2026 13:15 — GD07 xong: typecheck / 155 Vitest / build xanh; Playwright gd07 6/6
+Đang làm: (không) — chờ anh chạy giai đoạn tiếp (GD10)
 
 # Tiến độ làm lại app
 
@@ -12,7 +12,7 @@ Nhịp tim: 12/11/2026 12:35 — GD07: xong công thức chia tiền NCC + migra
 | GD04 | Công Trình, Chi tiết CT, Danh Bạ, Danh Mục | Sonnet (medium) | **Xong** 11/11 | typecheck / 96 Vitest / build / Playwright xanh (gd04: 3 file spec). Ảnh: `anh-chup/GD04/` |
 | GD05 | Nhập Chi Phí (lưới Excel, chi tiết) | Fable (medium) | **Xong** 12/11 | typecheck / 126 Vitest / build / 54 Playwright xanh (gd05: 8 test). Ảnh: `anh-chup/GD05/` |
 | GD06 | Chấm Công + Tạm ứng lương | Opus (medium) | **Xong** 12/11 | typecheck / 146 Vitest / build / 59 Playwright xanh (gd06: 5 test). So với app cũ lệch 0 (124 tuần × mọi người). Ảnh: `anh-chup/GD06/` |
-| GD07 | Chi Trả, Công Nợ Phải Trả, Doanh Thu, Quyết Toán | Fable (medium) | Chưa | |
+| GD07 | Chi Trả, Công Nợ Phải Trả, Doanh Thu, Quyết Toán | Fable (medium) | **Xong** 12/11 | typecheck / 155 Vitest / build xanh; Playwright 65 test (gd07: 6 test xanh; 1 test sao lưu GĐ4 chập chờn khi chạy cả bộ, chạy riêng xanh). Ví dụ mục 4J đúng từng đồng; so số GĐ3 vẫn lệch 0. Ảnh: `anh-chup/GD07/` |
 | GD10 | Điện thoại, máy tính bảng, PWA, bản thử online | Sonnet (medium) | Chưa | |
 | GD08 | Thiết bị, Tỉ trọng, Thùng rác | Opus (medium) | Chưa | |
 | GD09 | Chụp đa năng + Xuất Excel | Sonnet (high) | Chưa | |
@@ -65,7 +65,16 @@ Nhịp tim: 12/11/2026 12:35 — GD07: xong công thức chia tiền NCC + migra
 - **Kho:** migration `20261112000005_cham_cong.sql`: cột `wage_advances.source_week_id` + hàm `save_timesheet_week(project, week_start, lines jsonb)` (1 giao dịch: ghi tuần, ghi / sửa dòng theo công nhân, xóa mềm dòng bị bỏ, đồng bộ dòng "Trả" của cột Trừ nợ) và `delete_timesheet_week(id)` (xóa mềm tuần + dòng + dòng "Trả" của tuần). Cả hai chạy bằng quyền người gọi (RLS vẫn kiểm tra).
 - **So số:** `npm run so-chuan` giờ xuất thêm `chamCong` (phiếu lương từng người × từng tuần + nợ còn lại, tính bằng code app cũ). Test `payroll.test.ts` so 124 tuần × mọi người: công, lương, phụ cấp, HĐ lẻ, ứng, trả, thực lãnh, nợ — lệch 0; nợ hiện tại từng công nhân — lệch 0.
 - GĐ8 (Thùng rác): khôi phục một tuần chấm công phải khôi phục cả dòng (`timesheet_lines` cùng `deleted_at`) và dòng "Trả" có `source_week_id` = tuần đó.
+## GD07 — đã có gì (cho GĐ sau)
+- **Công thức** :  (TÍNH LẠI toàn bộ cách chia tiền trả NCC — mục 4J: phiếu có chỉ định công trình / hóa đơn chia trước, phiếu theo cục chia sau, cũ nhất trước), , ,  (Đối chiếu),  (cặp thầu phụ × công trình), , . : ,  (= ), , . Test  (ví dụ VLXD Phương; tính lại phiếu NCC đời cũ ra ĐÚNG các dòng chia script chuyển dữ liệu đã ghi).
+- **Kho:** migration :  (thay dòng chia của các phiếu, có kiểm tra;  là dữ liệu suy ra nên xóa hẳn rồi ghi lại),  /  (tất toán thầu phụ × công trình),  /  (quyết toán + phiếu thu tự động + đóng công trình trong 1 giao dịch).
+- **Chi Trả TP/NCC** :  (, ghi / sửa / xóa phiếu chi,  = chia lại và chỉ ghi NCC có thay đổi — cũng được gọi sau khi lưu / sửa / xóa HÓA ĐƠN ở ),  (lưới nhập nhiều phiếu, dòng "còn nợ", lịch sử, CSV, ảnh phiếu),  ( ghi / sửa 1 phiếu có "Trả cho công trình…" và tích từng hóa đơn;  hạng mục + Copy / Dán KL; ; ).
+- **Công Nợ Phải Trả** : HĐ thầu phụ (form, mở dòng xem lịch sử + trả nhanh, ảnh HĐ), Nhà cung cấp (sổ nợ + bảng trượt Đối chiếu + CSV), Tất toán (chờ / đã tất toán / hoàn tác lần gần nhất).
+- **Doanh Thu / Quyết Toán** :  (),  (HĐ chính 1 công trình 1 bản; Thu tiền: form, tiến độ thu, sổ thu), .
+- **Ảnh phiếu**  (): vẽ thẳng lên canvas, tải PNG — dùng cho phiếu chi, phiếu thu, HĐ thầu phụ.
+- GĐ8 (Thùng rác): khôi phục phiếu Trả nợ NCC hoặc hóa đơn mua nợ xong phải gọi ; khôi phục quyết toán thì khôi phục cả phiếu thu tự động (); khôi phục lần tất toán = bỏ  + khôi phục phiếu chi có .
 ## Kết quả so số với app cũ
+- GD07 (12/11): test so số GĐ3 vẫn **lệch 0**; tính lại cách chia phiếu chi NCC đời cũ bằng công thức mới ra đúng từng dòng đang có trong kho (A phần trả NCC không đổi).
 - GD06 (12/11): Tổng lương tuần / phiếu lương / nợ công nhân so với ccPayslipData + ccWorkerDebtUpTo của app cũ chạy trên snapshot 03/11: **lệch 0** ở 124 tuần (3 tuần đầu / giữa / cuối so riêng tổng TC Lương + Thực lãnh).
 - GD03 (11/11, snapshot 03/11 14:25 + so-chuan xuất bằng code app cũ chạy trong Node): **lệch 0 đồng** ở A, A phần hóa đơn, A phần trả NCC, B, C, Tổng đã chi, Tổng đã thu, Lợi nhuận, HĐ gốc, Quyết toán, Giá trị HĐ, Còn phải thu của 36 công trình × 4 mốc (2024, 2025, 2026, Tất cả) = 1.728 ô; chi phí chung CÔNG TY + bảng phân bổ (trọng số, tiền) khớp; số hóa đơn và tổng theo nguồn khớp (1.527 dòng). Tổng trên màn Lợi Nhuận (Tất cả năm) khớp so-chuan (Playwright).
 - GD02 (11/11, snapshot tạm 02/11/2026): số bản ghi 11/11 kho khớp; 15 tổng tiền lệch 0; A / B / Đã thu từng công trình × từng năm lệch 0 (108 ô). Chưa có `so-chuan.json` nên chưa so với số xuất từ app cũ → GĐ3.
@@ -121,7 +130,20 @@ Nhịp tim: 12/11/2026 12:35 — GD07: xong công thức chia tiền NCC + migra
 - GD06: **Copy tuần** nhớ trong máy (localStorage) để dán sang công trình / tuần khác kể cả sau khi tải lại trang. Chỉ chép tên, vai trò, lương, ngày công (như app cũ).
 - GD06: Sổ Tạm ứng lương: không chọn tháng = cả kỳ của năm đang chọn (nhiều năm = từ năm nhỏ nhất đến lớn nhất; Tất cả = toàn bộ). Lọc Công trình = công nhân có chấm công / phiếu ở công trình đó (số nợ vẫn là nợ tổng của người đó). Phiếu lương in số công dạng "5,5" (app cũ in "5.5").
 - GD06: Công trình đã quyết toán không có trong ô chọn khi chấm công mới (mở lại tuần cũ của nó từ Lịch sử vẫn được).
+- GD07: **Xuất ảnh phiếu vẽ bằng canvas** (không dùng html2canvas như app cũ): ảnh giống nhau trên mọi máy, không dính lỗi màu của Tailwind v4. Mẫu phiếu mới gọn (tên công ty, tiêu đề, các dòng, ô số tiền, 2 chỗ ký).
+- GD07: **Công thức chia tiền NCC chạy ở app** (đúng quy tắc "công thức chỉ ở src/lib/calc"), kho chỉ kiểm tra rồi ghi. Mỗi lần lưu phiếu / hóa đơn thì tính lại TẤT CẢ phiếu của NCC đó từ đầu.
+- GD07: **Thứ tự chia:** phiếu có chỉ định (tích hóa đơn, "Trả cho công trình…", phiếu đời cũ) chia trước theo ngày; phiếu theo cục chia sau, cũ nhất trước. **Trả theo cục mà dư** (chưa có hóa đơn để chia) → phần dư CHƯA tính vào A của công trình nào, NCC hiện "Trả trước"; có hóa đơn mua nợ mới thì tự chia. Trả riêng công trình mà dư → vẫn tính cho công trình đó (như app cũ).
+- GD07: Ở lưới nhập nhanh, Trả nợ NCC có chọn công trình = "Trả cho công trình…"; tích từng hóa đơn làm ở nút "Trả NCC theo hóa đơn…" (bảng trượt). Phiếu thầu phụ: cặp thầu phụ × công trình có đúng 1 HĐ thì tự gắn HĐ đó; nhiều HĐ thì để trống (tính cho HĐ cũ nhất trước), hoặc chọn HĐ trong bảng trượt.
+- GD07: **Tất toán chỉ cho thầu phụ** (theo cặp thầu phụ × công trình). "Chờ tất toán" = đã trả, còn lại ≤ 100.000 đ; tick "Hiện cả khoản còn nợ" thì hiện mọi cặp. Bấm Tất toán: còn nợ > 0 → tạo 1 phiếu chi "Thanh toán đợt" đúng số còn lại (như app cũ); ≤ 0 → chỉ đóng sổ. NCC không có nút tất toán (nợ về 0 là xong). Người TH khi tất toán là ô gõ tay, điền sẵn tên tài khoản.
+- GD07: **Công nợ NCC là nợ cộng dồn mọi năm**, không cắt theo năm đang chọn (khớp sổ NCC). HĐ thầu phụ / phiếu chi / phiếu thu / quyết toán thì lọc theo năm trên thanh trên.
+- GD07: **Quyết toán có 2 ô tick như app cũ** ("Ghi nhận phiếu thu tiền còn lại" và "Chốt quyết toán cuối") thay vì 1 ô gộp của bản mẫu — để sửa được dữ liệu cũ có chốt mà không có phiếu thu. Bản mới mặc định tick cả hai. Mỗi công trình 1 bản quyết toán (chọn công trình đã có → tự vào chế độ sửa).
+- GD07: **Hợp đồng chính** có lại bảng hạng mục (app cũ đã bỏ) theo bản mẫu + đề GĐ7; hạng mục không tự đổi giá trị HĐ, phải bấm "Lấy tổng hạng mục làm Giá trị HĐ". Copy / Dán KL dùng chung giữa HĐ chính và HĐ thầu phụ (nhớ trong máy).
+- GD07: Phiếu thu tự động và phiếu chi tự sinh từ tất toán: chỉ xem ở sổ, sửa / xóa qua Quyết Toán / Hoàn tác tất toán.
 ## Lỗi còn biết
+- GD07: phiếu thu tự động / phiếu chi tất toán mới chặn sửa ở giao diện và ở câu lệnh sửa của app; kho chưa có trigger chặn nếu ai đó gọi thẳng API. "Chốt" đóng công trình cần quyền sửa Công trình — tài khoản chỉ có quyền Quyết toán thì quyết toán vẫn lưu nhưng trạng thái công trình không đổi (không báo).
+- GD07: Kế toán mặc định chỉ XEM Công nợ nên không thêm HĐ thầu phụ / tất toán được (app cũ cho) — Admin bật ô Công nợ = Nhập là được. Chưa có nhập HĐ / phiếu trên Chi tiết công trình (nút Thu tiền ở đó vẫn chưa nối). Chưa xuất Excel (GĐ9). Ảnh phiếu chưa có logo công ty.
+- GD07: sửa hóa đơn mua nợ đã có phiếu trả → app tự chia lại (không còn sai số), nhưng chưa có lời nhắc "hóa đơn này đã được trả X" trong form sửa hóa đơn.
+- Test Playwright "Sao lưu → khôi phục" (GĐ4) thỉnh thoảng quá 5 giây chờ bảng Lợi Nhuận khi chạy cả bộ 65 test; chạy riêng thì xanh.
 - GD06: chưa có Xuất Excel kiểu app cũ cho chấm công (GĐ9); ảnh phiếu ứng (_exportUngImageFrom) chưa làm. Bảng sổ chấm công ở 1440px đủ 18 cột nên cuộn ngang trong khung (cột tên không đứng yên). Ô tìm Ctrl+K chưa tìm công nhân.
 - GD05: tab con CHỤP HÓA ĐƠN và ảnh kèm hóa đơn chưa có (GĐ9). Form hóa đơn chi tiết không có cột chiết khấu (mẫu không vẽ); hóa đơn cũ có chiết khấu vẫn giữ và hiện "CK …" dưới thành tiền khi sửa.
 - GD05: ô gợi ý của form (Combo) không tự đóng khi cuộn trang (lưới nhập nhanh thì có). Ô Ngày của form dùng ô ngày của trình duyệt nên hiện theo ngôn ngữ máy.
