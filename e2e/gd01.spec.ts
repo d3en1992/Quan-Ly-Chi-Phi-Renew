@@ -192,9 +192,9 @@ test.describe('3 khổ màn hình', () => {
         await page.locator('[data-more="taikhoan"]').click();
         await expect(page.locator('main')).toContainText('TÀI KHOẢN');
       } else {
-        await page.goto('/cham-cong'); // tab chưa làm (GĐ6) vẫn hiện trang "Đang làm"
+        await page.goto('/thiet-bi'); // tab chưa làm (GĐ8) vẫn hiện trang "Đang làm"
         await expect(page.locator('main')).toContainText('Đang làm');
-        await page.screenshot({ path: `${SHOTS}/cham-cong-${s.name}.png` });
+        await page.screenshot({ path: `${SHOTS}/dang-lam-${s.name}.png` });
         await page.goto('/tai-khoan');
       }
       await expect(page.getByText('TÀI KHOẢN', { exact: true })).toBeVisible();

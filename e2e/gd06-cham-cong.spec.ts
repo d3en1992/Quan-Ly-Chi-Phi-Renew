@@ -143,6 +143,7 @@ test('Sổ chấm công: thêm thợ, chấm ½ công, Trừ nợ → Lưu tuầ
   await expect(page.getByRole('row', { name: new RegExp(WORKER) })).toContainText('2.500.000');
   await page.getByRole('row', { name: new RegExp(WORKER) }).click();
   await page.getByRole('button', { name: 'Phiếu lương Zalo' }).click();
+  await expect(page.getByTestId('payslip-text')).toHaveValue(/THỰC LÃNH/);
   const slip = await page.getByTestId('payslip-text').inputValue();
   expect(slip).toContain(`Người lao động: ${WORKER}`);
   expect(slip).toContain('5,5 công × 500.000 đ');

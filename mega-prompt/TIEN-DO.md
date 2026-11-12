@@ -1,6 +1,6 @@
 TRẠNG THÁI: ĐANG CHẠY
-Nhịp tim: 12/11/2026 07:20 — GD06: xong công thức + migration (đã commit), đang làm màn Sổ chấm công
-Đang làm: GD06
+Nhịp tim: 12/11/2026 07:35 — GD06 xong: typecheck / 146 Vitest / build / 59 Playwright xanh
+Đang làm: (GD06 xong — chờ GD07)
 
 # Tiến độ làm lại app
 
@@ -11,7 +11,7 @@ Nhịp tim: 12/11/2026 07:20 — GD06: xong công thức + migration (đã commi
 | GD03 | Công thức + báo cáo khớp số ⭐⭐ | Fable | **Xong** 11/11 | So với app cũ **lệch 0 đồng** (36 công trình × 2024, 2025, 2026, Tất cả). typecheck / 75 Vitest / build / 27 Playwright xanh. Ảnh: `anh-chup/GD03/` |
 | GD04 | Công Trình, Chi tiết CT, Danh Bạ, Danh Mục | Sonnet (medium) | **Xong** 11/11 | typecheck / 96 Vitest / build / Playwright xanh (gd04: 3 file spec). Ảnh: `anh-chup/GD04/` |
 | GD05 | Nhập Chi Phí (lưới Excel, chi tiết) | Fable (medium) | **Xong** 12/11 | typecheck / 126 Vitest / build / 54 Playwright xanh (gd05: 8 test). Ảnh: `anh-chup/GD05/` |
-| GD06 | Chấm Công + Tạm ứng lương | Opus (medium) | Chưa | |
+| GD06 | Chấm Công + Tạm ứng lương | Opus (medium) | **Xong** 12/11 | typecheck / 146 Vitest / build / 59 Playwright xanh (gd06: 5 test). So với app cũ lệch 0 (124 tuần × mọi người). Ảnh: `anh-chup/GD06/` |
 | GD07 | Chi Trả, Công Nợ Phải Trả, Doanh Thu, Quyết Toán | Fable (medium) | Chưa | |
 | GD10 | Điện thoại, máy tính bảng, PWA, bản thử online | Sonnet (medium) | Chưa | |
 | GD08 | Thiết bị, Tỉ trọng, Thùng rác | Opus (medium) | Chưa | |
@@ -59,7 +59,14 @@ Nhịp tim: 12/11/2026 07:20 — GD06: xong công thức + migration (đã commi
 - **Thống Kê CP/HĐ:** thêm lọc Thanh toán (Đã trả / Mua nợ) và Nguồn (Nhanh / Chi tiết / Ảnh / Excel / Chấm công); mở dòng có nút "Sửa hóa đơn" (người có quyền Nhập).
 - Lưu / sửa / xóa hóa đơn tự làm mới số của Lợi Nhuận, Dashboard, Thống Kê (cùng `REPORT_DATA_KEY`).
 
+## GD06 — đã có gì (cho GĐ sau)
+- **Tab Chấm Công** `src/features/timesheets/`: `TimesheetPage.tsx` (3 tab con), `WeekSheet.tsx` (SỔ CHẤM CÔNG máy tính + điện thoại MP.cc: tuần CN→T7 lùi / tiến / chọn ngày, chọn công trình, thêm thợ gợi ý từ Danh Bạ + "Tạo mới", ô ngày bấm 1→½→0 hoặc gõ 1 / 5 / 0, Lương/ngày, Phụ cấp, HĐ mua lẻ, Nội dung, Trừ nợ, Thực lãnh, dòng tổng, Copy / Dán tuần (nhớ trong máy), Phiếu lương Zalo, Lưu tuần, Xóa tuần; hỏi trước khi bỏ thay đổi chưa lưu), `PayrollTab.tsx` (Tổng lương tuần tick cộng nhanh + CSV + phiếu lương người đã tick; Lịch sử tuần bấm mở lại), `AdvancesTab.tsx` (sổ Tạm ứng lương theo tháng / cả kỳ, ghi / sửa / xóa mềm phiếu ứng / trả, lịch sử từng người), `sheet-model.ts` (bảng nháp, kiểm tra trước khi lưu, copy / dán — có test), `api.ts`.
+- **Công thức** `src/lib/calc/payroll.ts`: `calcSheetRow`, `sheetTotals`, `debtBefore` / `debtUpTo` / `currentDebt`, `ledgerRows`, `workerLedger`, `weeklyPayroll` (= `renderCCTLT`), `weekHistory`, `payslipData` + `payslipText` (= `ccPayslipData` / `ccPayslipText`), `netPayLedgerAdj`, nhãn tuần. Chi phí lương vào A theo thứ Bảy vẫn là `timesheetCostEntries` (GĐ3) — có thêm test tuần vắt năm ở mức lợi nhuận.
+- **Kho:** migration `20261112000005_cham_cong.sql`: cột `wage_advances.source_week_id` + hàm `save_timesheet_week(project, week_start, lines jsonb)` (1 giao dịch: ghi tuần, ghi / sửa dòng theo công nhân, xóa mềm dòng bị bỏ, đồng bộ dòng "Trả" của cột Trừ nợ) và `delete_timesheet_week(id)` (xóa mềm tuần + dòng + dòng "Trả" của tuần). Cả hai chạy bằng quyền người gọi (RLS vẫn kiểm tra).
+- **So số:** `npm run so-chuan` giờ xuất thêm `chamCong` (phiếu lương từng người × từng tuần + nợ còn lại, tính bằng code app cũ). Test `payroll.test.ts` so 124 tuần × mọi người: công, lương, phụ cấp, HĐ lẻ, ứng, trả, thực lãnh, nợ — lệch 0; nợ hiện tại từng công nhân — lệch 0.
+- GĐ8 (Thùng rác): khôi phục một tuần chấm công phải khôi phục cả dòng (`timesheet_lines` cùng `deleted_at`) và dòng "Trả" có `source_week_id` = tuần đó.
 ## Kết quả so số với app cũ
+- GD06 (12/11): Tổng lương tuần / phiếu lương / nợ công nhân so với ccPayslipData + ccWorkerDebtUpTo của app cũ chạy trên snapshot 03/11: **lệch 0** ở 124 tuần (3 tuần đầu / giữa / cuối so riêng tổng TC Lương + Thực lãnh).
 - GD03 (11/11, snapshot 03/11 14:25 + so-chuan xuất bằng code app cũ chạy trong Node): **lệch 0 đồng** ở A, A phần hóa đơn, A phần trả NCC, B, C, Tổng đã chi, Tổng đã thu, Lợi nhuận, HĐ gốc, Quyết toán, Giá trị HĐ, Còn phải thu của 36 công trình × 4 mốc (2024, 2025, 2026, Tất cả) = 1.728 ô; chi phí chung CÔNG TY + bảng phân bổ (trọng số, tiền) khớp; số hóa đơn và tổng theo nguồn khớp (1.527 dòng). Tổng trên màn Lợi Nhuận (Tất cả năm) khớp so-chuan (Playwright).
 - GD02 (11/11, snapshot tạm 02/11/2026): số bản ghi 11/11 kho khớp; 15 tổng tiền lệch 0; A / B / Đã thu từng công trình × từng năm lệch 0 (108 ô). Chưa có `so-chuan.json` nên chưa so với số xuất từ app cũ → GĐ3.
 
@@ -108,7 +115,14 @@ Nhịp tim: 12/11/2026 07:20 — GD06: xong công thức + migration (đã commi
 - GD05: **Gợi ý ĐVT / tên vật tư** lấy từ danh mục ĐVT + những gì đã gõ trong các hóa đơn cũ; gõ tự do, không bắt buộc có trong danh mục.
 - GD05: **Nguồn** hiện gọn: Nhanh / Chi tiết / Ảnh / Excel / Chấm công. Hóa đơn nhập nhanh được thêm dòng vật tư khi sửa → thành "Chi tiết".
 
+- GD06: **Cột "Trừ nợ" trong sổ chấm công** (app cũ đã bỏ cột này, chuyển sang popup "Tiền ứng CN" tick "tính vào Thực Lãnh") → lưu tuần tự ghi 1 dòng **Trả** trong `wage_advances` (`source_week_id` = tuần, ngày = **thứ Bảy**, `counts_in_net_pay = true`). Thực lãnh 1 dòng sổ = lương + phụ cấp + HĐ mua lẻ − trừ nợ (như mẫu); Thực lãnh ở Tổng lương tuần / phiếu lương vẫn đúng công thức cũ (tl + pc + ứng cũ + HĐ lẻ − trừ cũ + phiếu tính vào Thực lãnh) nên không trừ 2 lần. Dòng Trả này chỉ sửa / xóa ở sổ chấm công.
+- GD06: **Tuần đời cũ có "tru"** (13 dòng): mở lại rồi Lưu thì "tru" chuyển thành dòng Trả (ngày đổi từ Chủ nhật sang thứ Bảy cùng tuần; tổng nợ không đổi). "Ứng" ghi thẳng trong tuần đời cũ (`legacy_loan`, 7 dòng) **giữ nguyên** khi lưu lại (app cũ lưu lại thì xóa mất — chọn an toàn hơn).
+- GD06: **Lưu tuần** cần quyền Chấm công ≥ Nhập; tuần do người khác nhập cần Toàn quyền hoặc "Sửa / xóa dòng người khác nhập" (đúng RLS). Tên công nhân phải có trong Danh Bạ (như app cũ); thêm nhanh bằng "+ Tạo mới" (tên viết HOA).
+- GD06: **Copy tuần** nhớ trong máy (localStorage) để dán sang công trình / tuần khác kể cả sau khi tải lại trang. Chỉ chép tên, vai trò, lương, ngày công (như app cũ).
+- GD06: Sổ Tạm ứng lương: không chọn tháng = cả kỳ của năm đang chọn (nhiều năm = từ năm nhỏ nhất đến lớn nhất; Tất cả = toàn bộ). Lọc Công trình = công nhân có chấm công / phiếu ở công trình đó (số nợ vẫn là nợ tổng của người đó). Phiếu lương in số công dạng "5,5" (app cũ in "5.5").
+- GD06: Công trình đã quyết toán không có trong ô chọn khi chấm công mới (mở lại tuần cũ của nó từ Lịch sử vẫn được).
 ## Lỗi còn biết
+- GD06: chưa có Xuất Excel kiểu app cũ cho chấm công (GĐ9); ảnh phiếu ứng (_exportUngImageFrom) chưa làm. Bảng sổ chấm công ở 1440px đủ 18 cột nên cuộn ngang trong khung (cột tên không đứng yên). Ô tìm Ctrl+K chưa tìm công nhân.
 - GD05: tab con CHỤP HÓA ĐƠN và ảnh kèm hóa đơn chưa có (GĐ9). Form hóa đơn chi tiết không có cột chiết khấu (mẫu không vẽ); hóa đơn cũ có chiết khấu vẫn giữ và hiện "CK …" dưới thành tiền khi sửa.
 - GD05: ô gợi ý của form (Combo) không tự đóng khi cuộn trang (lưới nhập nhanh thì có). Ô Ngày của form dùng ô ngày của trình duyệt nên hiện theo ngôn ngữ máy.
 - GD05: sửa một hóa đơn mua nợ ĐÃ có phiếu chi trả (đổi số tiền / tích Đã TT) chưa có cảnh báo riêng — GĐ7 (Chi Trả) cần chặn hoặc nhắc.

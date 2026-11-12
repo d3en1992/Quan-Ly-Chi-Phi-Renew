@@ -1,5 +1,5 @@
 // Mảnh dùng chung của tab Chấm Công: ô ngày công (1 / ½ / 0), nhãn T/P, bảng trượt phiếu lương, sao chép chữ.
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button, Icon } from '@/components/ui/button';
 import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
@@ -75,7 +75,8 @@ export async function copyText(text: string): Promise<boolean> {
 export function PayslipSheet({ text, title, onClose }: { text: string | null; title: string; onClose: () => void }) {
   const toast = useToast();
   const [value, setValue] = useState(text ?? '');
-  useEffect(() => setValue(text ?? ''), [text]);
+  const [src, setSrc] = useState(text);
+  if (src !== text) { setSrc(text); setValue(text ?? ''); } // phiếu mới → nạp lại ngay trong lần vẽ này
   const copy = async () => {
     const ok = await copyText(value);
     toast(ok ? 'Đã sao chép phiếu lương — dán vào Zalo' : 'Trình duyệt không cho sao chép tự động — bôi đen rồi sao chép tay', ok ? 'ok' : 'error');
