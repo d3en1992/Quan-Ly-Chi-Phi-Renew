@@ -159,7 +159,7 @@ test('1536px: bảng Thống Kê CP/HĐ, Quyết Toán, Thùng Rác vừa khung 
     await page.goto(path);
     await page.locator('.tbl table').first().waitFor();
     await page.waitForLoadState('networkidle').catch(() => {});
-    const r = await page.evaluate(() => [...document.querySelectorAll('.tbl')].map((b) => b.scrollWidth - b.clientWidth));
+    const r = await page.evaluate(() => Array.from(document.querySelectorAll('.tbl'), (b) => b.scrollWidth - b.clientWidth));
     if (r.some((d) => d > 1)) over.push(`${path}: ${r.join(',')}`);
   }
   expect(over).toEqual([]);
