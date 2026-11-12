@@ -83,3 +83,23 @@
 .tbl th { font-size: 11.5px; font-weight: 600; color: var(--muted); text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--surface); white-space: nowrap; }
 .tbl td { padding: 9px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
 .tbl tbody tr:hover td { background: var(--surface-2); }
+
+/* Gantt Tiến Độ (PAGES.tiendo của mẫu): cột trái = bảng việc, cột phải = thanh theo ngày; cuộn ngang trong khung .tbl */
+.gantt { display: grid; grid-template-columns: minmax(260px, 470px) minmax(560px, 1fr); font-size: 12.5px; min-width: 820px; }
+.gantt .gh { padding: 8px 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11.5px; font-weight: 600; display: flex; gap: 8px; min-height: 34px; align-items: center; }
+.gantt .gl { padding: 6px 12px; border-bottom: 1px solid var(--line-soft); display: flex; gap: 8px; align-items: center; height: 36px; min-width: 0; overflow: hidden; }
+.gantt .gl.phase { font-weight: 700; background: var(--surface-2); }
+.gantt .gr { position: relative; border-bottom: 1px solid var(--line-soft); height: 36px; }
+.gantt .gr.phase { background: var(--surface-2); }
+.gweeks { position: relative; border-bottom: 1px solid var(--line); min-height: 34px; }
+.gweeks span { position: absolute; top: 0; bottom: 0; font-size: 10.5px; color: var(--faint); padding: 9px 0 0 3px; border-left: 1px solid var(--line-soft); white-space: nowrap; }
+.gbar { position: absolute; top: 9px; height: 18px; border-radius: 5px; background: var(--accent-soft); border: 1px solid var(--accent); overflow: hidden; }
+.gbar i { display: block; height: 100%; background: var(--accent); opacity: .85; }
+.gbar.done { border-color: var(--good); background: var(--good-soft); } .gbar.done i { background: var(--good); }
+.gbar.behind { border-color: var(--warn); background: var(--warn-soft); } .gbar.behind i { background: var(--warn); }
+.gbar.late { border-color: var(--bad); background: var(--bad-soft); } .gbar.late i { background: var(--bad); }
+.gbar.ph { top: 13px; height: 10px; background: var(--line); border-color: var(--faint); } .gbar.ph i { background: var(--fg); opacity: .55; }
+.gmile { position: absolute; top: 11px; width: 13px; height: 13px; margin-left: -6px; transform: rotate(45deg); background: var(--accent); border-radius: 2px; }
+.gmile.done { background: var(--good); } .gmile.late { background: var(--bad); }
+.today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--bad); z-index: 2; pointer-events: none; }
+.today::after { content: 'Hôm nay'; position: absolute; top: -1px; left: 4px; font-size: 10px; color: var(--bad); font-weight: 600; white-space: nowrap; }

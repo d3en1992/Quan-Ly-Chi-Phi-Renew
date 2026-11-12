@@ -22,7 +22,7 @@ export const GROUPS: { key: GroupKey; label: string; tag?: string; folded?: bool
   { key: 'tien', label: 'Tiền & hợp đồng', tag: 'hay xuất' },
   { key: 'khac', label: 'Khác' },
   { key: 'danh-ba', label: 'Danh mục & danh bạ', tag: 'ít dùng', folded: true },
-  { key: 'tien-do', label: 'Tiến độ', tag: 'sau GĐ12', folded: true },
+  { key: 'tien-do', label: 'Tiến độ', folded: true },
 ];
 
 /**
@@ -250,25 +250,28 @@ export const DATASETS: Dataset[] = [
       ref('customer_id', 'KHÁCH HÀNG', 'customers', 18), txt('address', 'ĐỊA CHỈ', 30), date('start_date', 'BẮT ĐẦU'), date('end_date', 'KẾT THÚC'), dec('cost_weight_k', 'HỆ SỐ K')],
   },
 
-  // ───── TIẾN ĐỘ (chưa có dữ liệu tới GĐ12) ─────
+  // ───── TIẾN ĐỘ (GĐ12) ─────
   {
     key: 'schedule_templates', label: 'Mẫu giai đoạn', sheet: 'Mau giai doan', group: 'tien-do', table: 'schedule_templates', permModule: 'schedule', link: { kind: 'none' },
     columns: [txt('name', 'TÊN MẪU', 24), txt('project_kind', 'LOẠI CT', 8, (r) => lab(L.pKind, r.project_kind)), bool('is_default', 'MẶC ĐỊNH'), txt('data', 'NỘI DUNG', 60, (r) => JSON.stringify(r.data ?? []).slice(0, 30000))],
   },
   {
     key: 'schedule_phases', label: 'Giai đoạn thi công', sheet: 'Giai doan', group: 'tien-do', table: 'schedule_phases', permModule: 'schedule',
-    link: { kind: 'direct', field: 'project_id' }, dateField: 'start_date',
-    columns: [txt('name', 'GIAI ĐOẠN', 26), date('start_date', 'BẮT ĐẦU'), date('end_date', 'KẾT THÚC'), note()],
+    link: { kind: 'direct', field: 'project_id' },
+    // ngày bắt đầu / kết thúc của giai đoạn là số tính ra từ các việc bên trong (không lưu)
+    columns: [txt('name', 'GIAI ĐOẠN', 26), dec('position', 'THỨ TỰ'), note()],
   },
   {
     key: 'schedule_tasks', label: 'Việc thi công', sheet: 'Viec', group: 'tien-do', table: 'schedule_tasks', permModule: 'schedule',
     link: { kind: 'direct', field: 'project_id' }, dateField: 'start_date',
-    columns: [txt('name', 'VIỆC', 28), ref('phase_id', 'GIAI ĐOẠN', 'schedule_phases', 20), date('start_date', 'BẮT ĐẦU'), date('end_date', 'KẾT THÚC'), dec('progress_pct', '% XONG'), txt('assignee', 'PHỤ TRÁCH', 14), note()],
+    columns: [txt('name', 'VIỆC', 28), ref('phase_id', 'GIAI ĐOẠN', 'schedule_phases', 20), date('start_date', 'BẮT ĐẦU'), date('end_date', 'KẾT THÚC'), dec('progress_pct', '% XONG'),
+      txt('status', 'TRẠNG THÁI', 10, (r) => ({ todo: 'Chưa làm', doing: 'Đang làm', paused: 'Tạm dừng', done: 'Xong' } as Record<string, string>)[String(r.status)] ?? ''),
+      txt('kind', 'LOẠI', 6, (r) => (r.kind === 'milestone' ? 'Mốc' : 'Việc')), txt('assignee', 'PHỤ TRÁCH', 14), txt('blocker', 'VƯỚNG MẮC', 24), note()],
   },
   {
     key: 'schedule_notes', label: 'Ghi chú tiến độ', sheet: 'Ghi chu tien do', group: 'tien-do', table: 'schedule_notes', permModule: 'schedule',
     link: { kind: 'direct', field: 'project_id' }, dateField: 'date',
-    columns: [date('date'), txt('content', 'NỘI DUNG', 50), dec('images', 'SỐ ẢNH', (r) => (Array.isArray(r.image_paths) ? r.image_paths.length : 0))],
+    columns: [date('date'), ref('task_id', 'VIỆC', 'schedule_tasks', 24), dec('progress_pct', '% LÚC GHI'), txt('content', 'NỘI DUNG', 50), dec('images', 'SỐ ẢNH', (r) => (Array.isArray(r.image_paths) ? r.image_paths.length : 0))],
   },
 ];
 

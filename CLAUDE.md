@@ -27,6 +27,7 @@ src/components/ui/  nút, ô nhập, bảng trượt (Sheet), hộp xác nhận,
 src/features/reports/  Lợi Nhuận, Dashboard, Thống Kê CP/HĐ (chỉ xem) + api.ts `useReportData()` đọc mọi bảng cho công thức
 src/features/cost-allocation/  Tỉ Trọng & Định Mức (công thức ở lib/calc/cost-allocation.ts; jsonb giữ tên trường app cũ: nhomTay, theoHdtp, nhomLoai…)
 src/features/equipment/  Theo Dõi TB (thêm / chuyển / sửa qua hàm kho save_equipment, transfer_equipment, edit_equipment)
+src/features/schedule/ Tiến Độ (logic.ts = lịch làm việc, trễ / chậm, mẫu giai đoạn, Gantt, báo cáo Zalo — hàm thuần có test; kế hoạch ở schedule_plans)
 src/features/trash/    Thùng Rác (thêm loại dữ liệu mới: thêm 1 dòng vào DEFS ở api.ts + `_trash_edit_mods` trong migration)
 src/lib/            supabase.ts, format.ts, permissions.ts, calc/ (công thức tiền)
 src/features/<tab>/ mỗi tab 1 thư mục tên tiếng Anh: api.ts (đọc/ghi), schema.ts (Zod), các màn .tsx

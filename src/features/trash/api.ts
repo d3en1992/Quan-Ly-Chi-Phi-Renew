@@ -82,6 +82,13 @@ const DEFS: Def[] = [
   named('customers', 'Khách hàng', ['contacts']), named('workers', 'Công nhân', ['contacts', 'timesheets']),
   { table: 'employees', tab: 'other', type: 'Nhân viên', modules: ['contacts'], cols: 'full_name', describe: (r) => ({ content: s(r.full_name) }) },
   named('suppliers', 'Nhà cung cấp', ['contacts', 'catalog', 'expenses']), named('subcontractors', 'Thầu phụ', ['contacts', 'catalog']),
+  // Tiến độ (GĐ12): xóa kế hoạch / giai đoạn kéo theo việc con cùng deleted_at → chỉ hiện bản ghi mẹ (khôi phục mẹ là về đủ)
+  { table: 'schedule_plans', tab: 'other', type: 'Kế hoạch tiến độ', modules: ['schedule'], cols: 'project_id,start_date',
+    describe: (r, c) => ({ content: `Cả kế hoạch tiến độ (khởi công ${dm(r.start_date)})`, project: c.project(r.project_id) }) },
+  { table: 'schedule_phases', tab: 'other', type: 'Giai đoạn tiến độ', modules: ['schedule'], cols: 'project_id,name',
+    describe: (r, c) => ({ content: s(r.name), project: c.project(r.project_id) }) },
+  { table: 'schedule_tasks', tab: 'other', type: 'Việc tiến độ', modules: ['schedule'], cols: 'project_id,phase_id,name,progress_pct',
+    describe: (r, c) => ({ content: `${s(r.name)} · ${n(r.progress_pct)}%`, project: c.project(r.project_id) }) },
   { table: 'catalog_items', tab: 'other', type: (r) => `Danh mục · ${CATALOG_KIND[s(r.kind)] ?? ''}`, modules: ['catalog'], cols: 'name,kind', describe: (r) => ({ content: s(r.name) }) },
 ];
 
@@ -122,9 +129,20 @@ async function fetchTrash(): Promise<TrashRow[]> {
   }
   const ctx: Ctx = { project: map(projects), worker: map(workers), supplier: map(suppliers), subcontractor: map(subcontractors), catalog: map(catalog), weekPay };
 
+  // Giai đoạn / việc bị xóa CÙNG LÚC với kế hoạch / giai đoạn mẹ thì không hiện riêng
+  const rawsOf = (t: string) => raws[DEFS.findIndex((d) => d.table === t)] ?? [];
+  const planKeys = new Set(rawsOf('schedule_plans').map((r) => `${s(r.project_id)}|${Date.parse(r.deleted_at)}`));
+  const phaseKeys = new Set(rawsOf('schedule_phases').map((r) => `${r.id}|${Date.parse(r.deleted_at)}`));
+  const hidden = (table: string, r: Raw) => {
+    if (table !== 'schedule_phases' && table !== 'schedule_tasks') return false;
+    const ts = Date.parse(r.deleted_at);
+    return planKeys.has(`${s(r.project_id)}|${ts}`) || (table === 'schedule_tasks' && phaseKeys.has(`${s(r.phase_id)}|${ts}`));
+  };
+
   const out: TrashRow[] = [];
   DEFS.forEach((d, i) => {
     for (const r of raws[i] ?? []) {
+      if (hidden(d.table, r)) continue;
       const x = d.describe(r, ctx);
       out.push({
         key: `${d.table}:${r.id}`, table: d.table, id: r.id, tab: d.tab, type: typeof d.type === 'function' ? d.type(r) : d.type,

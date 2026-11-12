@@ -634,14 +634,14 @@ isOneToOne: false
                   ]
                 },"schedule_notes": {
                   Row: {
-                    "company_id": string,"content": string,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"deleted_by": string | null,"id": string,"image_paths": (string)[],"project_id": string,"task_id": string | null,"updated_at": string
+                    "company_id": string,"content": string,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"deleted_by": string | null,"id": string,"image_paths": (string)[],"progress_pct": number | null,"project_id": string,"task_id": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "company_id"?: string,"content"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"image_paths"?: (string)[],"project_id": string,"task_id"?: string | null,"updated_at"?: string
+                    "company_id"?: string,"content"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"image_paths"?: (string)[],"progress_pct"?: number | null,"project_id": string,"task_id"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "company_id"?: string,"content"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"image_paths"?: (string)[],"project_id"?: string,"task_id"?: string | null,"updated_at"?: string
+                    "company_id"?: string,"content"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"image_paths"?: (string)[],"progress_pct"?: number | null,"project_id"?: string,"task_id"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -690,16 +690,42 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
-                },"schedule_tasks": {
+                },"schedule_plans": {
                   Row: {
-                    "assignee": string | null,"assignee_id": string | null,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"depends_on": (string)[],"end_date": string | null,"id": string,"name": string,"note": string | null,"phase_id": string | null,"position": number,"progress_pct": number,"project_id": string,"start_date": string | null,"updated_at": string
+                    "company_id": string,"created_at": string,"created_by": string | null,"deadline": string | null,"deleted_at": string | null,"deleted_by": string | null,"holidays": (string)[],"id": string,"note": string | null,"project_id": string,"rest_days": string,"start_date": string,"template_key": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "assignee"?: string | null,"assignee_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"depends_on"?: (string)[],"end_date"?: string | null,"id"?: string,"name": string,"note"?: string | null,"phase_id"?: string | null,"position"?: number,"progress_pct"?: number,"project_id": string,"start_date"?: string | null,"updated_at"?: string
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deadline"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"holidays"?: (string)[],"id"?: string,"note"?: string | null,"project_id": string,"rest_days"?: string,"start_date": string,"template_key"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "assignee"?: string | null,"assignee_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"depends_on"?: (string)[],"end_date"?: string | null,"id"?: string,"name"?: string,"note"?: string | null,"phase_id"?: string | null,"position"?: number,"progress_pct"?: number,"project_id"?: string,"start_date"?: string | null,"updated_at"?: string
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deadline"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"holidays"?: (string)[],"id"?: string,"note"?: string | null,"project_id"?: string,"rest_days"?: string,"start_date"?: string,"template_key"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "schedule_plans_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "schedule_plans_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"schedule_tasks": {
+                  Row: {
+                    "assignee": string | null,"assignee_id": string | null,"blocker": string | null,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"depends_on": (string)[],"end_date": string | null,"id": string,"kind": string,"name": string,"note": string | null,"phase_id": string | null,"position": number,"progress_pct": number,"project_id": string,"start_date": string | null,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "assignee"?: string | null,"assignee_id"?: string | null,"blocker"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"depends_on"?: (string)[],"end_date"?: string | null,"id"?: string,"kind"?: string,"name": string,"note"?: string | null,"phase_id"?: string | null,"position"?: number,"progress_pct"?: number,"project_id": string,"start_date"?: string | null,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "assignee"?: string | null,"assignee_id"?: string | null,"blocker"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"depends_on"?: (string)[],"end_date"?: string | null,"id"?: string,"kind"?: string,"name"?: string,"note"?: string | null,"phase_id"?: string | null,"position"?: number,"progress_pct"?: number,"project_id"?: string,"start_date"?: string | null,"status"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -1005,6 +1031,9 @@ isOneToOne: false
                            },
 "create_backup":
 { Args: { "p_company"?: string,"p_kind"?: string,"p_note"?: string }; Returns: string
+                           },
+"create_schedule":
+{ Args: { "p_phases": Json,"p_plan": Json,"p_project": string }; Returns: string
                            },
 "current_company_id":
 { Args: Record<PropertyKey, never>; Returns: string

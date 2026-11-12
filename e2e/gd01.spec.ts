@@ -192,9 +192,9 @@ test.describe('3 khổ màn hình', () => {
         await page.locator('[data-more="taikhoan"]').click();
         await expect(page.locator('main')).toContainText('TÀI KHOẢN');
       } else {
-        await page.goto('/tien-do'); // tab chưa làm (GĐ12) vẫn hiện trang "Đang làm"
-        await expect(page.locator('main')).toContainText('Đang làm');
-        await page.screenshot({ path: `${SHOTS}/dang-lam-${s.name}.png` });
+        await page.goto('/tien-do'); // GĐ12 đã làm xong mọi tab — mở tab cuối cùng được làm (Tiến Độ)
+        await expect(page.locator('main')).toContainText('Tính năng phụ: theo dõi kế hoạch thi công');
+        await page.screenshot({ path: `${SHOTS}/tien-do-${s.name}.png` });
         await page.goto('/tai-khoan');
       }
       await expect(page.getByText('TÀI KHOẢN', { exact: true })).toBeVisible();

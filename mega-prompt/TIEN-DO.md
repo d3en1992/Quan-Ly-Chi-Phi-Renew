@@ -1,6 +1,6 @@
-TRẠNG THÁI: GD09 XONG (Chụp đa năng + TN02 Xuất Dữ Liệu) — DỪNG, không làm sang GĐ sau
-Nhịp tim: 12/11/2026 — GD09: Chụp đa năng (giả lập) + Xuất Dữ Liệu xong; typecheck / 188 Vitest / build xanh; Playwright 89/89 (gd09: 10 test)
-Đang làm: (không) — chờ anh chạy giai đoạn tiếp (GD12)
+TRẠNG THÁI: GD12 XONG (Tiến Độ phần 1) — DỪNG, không làm sang GĐ sau
+Nhịp tim: 12/11/2026 — GD12: Tiến Độ phần 1 xong; typecheck / 200 Vitest / build xanh; Playwright 95/95 (gd12: 6 test)
+Đang làm: (không) — chờ anh chạy giai đoạn tiếp (GD99)
 
 # Tiến độ làm lại app
 
@@ -16,7 +16,7 @@ Nhịp tim: 12/11/2026 — GD09: Chụp đa năng (giả lập) + Xuất Dữ Li
 | GD10 | Điện thoại, máy tính bảng, PWA, bản thử online | Sonnet (medium) | **Xong** 12/11 (trừ bản thử online — chưa có key) | typecheck / 155 Vitest / build xanh; Playwright gd10 7 test (mọi màn ở 390 / 820 / 1440 + Chi tiết CT, không lỗi console, không kéo ngang). Ảnh: `anh-chup/GD10/` |
 | GD08 | Thiết bị, Tỉ trọng, Thùng rác | Fable (medium) | **Xong** 12/11 | typecheck / 165 Vitest / build xanh; Playwright 79 test xanh (gd08: 7 test). Tỉ trọng so với app cũ **lệch 0** (36 công trình, từng khoản). Ảnh: `anh-chup/GD08/` |
 | GD09 | Chụp đa năng + Xuất Dữ Liệu (TN02) | Opus (medium) | **Xong** 12/11 (chụp chạy giả lập — chưa có key Gemini) | typecheck / 188 Vitest / build xanh; Playwright 89 test xanh (gd09: 10 test). Kho trên máy đổi sang snapshot 12/11, so số GĐ3 vẫn **lệch 0**. Ảnh: `anh-chup/GD09/`, file Excel mẫu: `du-lieu/xuat-thu/` |
-| GD12 | Tiến Độ phần 1 | Sonnet (medium) | Chưa | |
+| GD12 | Tiến Độ phần 1 | Sonnet (medium) | **Xong** 12/11 | typecheck / 200 Vitest / build xanh; Playwright 95 test xanh (gd12: 6 test). Lập từ mẫu → sửa % → Gantt + số tổng đổi (test). Ảnh: `anh-chup/GD12/` |
 | GD99 | Kiểm tra cuối + báo cáo sáng | Sonnet (medium) | Chưa | |
 
 ## GD01 — đã có gì (cho GĐ sau)
@@ -92,6 +92,12 @@ Nhịp tim: 12/11/2026 — GD09: Chụp đa năng (giả lập) + Xuất Dữ Li
 - Nút "Xuất dữ liệu" ở: Nhập Chi Phí, Thống Kê CP/HĐ, Chấm Công (+ tab Tổng lương thay nút CSV), Chi Trả (thay CSV), Công Nợ, Doanh Thu, Quyết Toán, Thiết bị, Tỉ Trọng, Thùng Rác (kèm dòng đã xóa), Danh Bạ, Danh Mục. **Không còn nút CSV nào** (grep `downloadCsv` / `Xuất CSV` = 0).
 - Test: `src/features/export/export.test.ts` + `export-file.test.ts` (trên snapshot thật; ghi file mẫu vào `du-lieu/xuat-thu/`), `src/features/scan/model.test.ts`, `e2e/gd09-chup-xuat-du-lieu.spec.ts`.
 
+## GD12 — đã có gì (cho GĐ sau)
+- **Kho:** migration `20261112000009_tien_do.sql`: bảng `schedule_plans` (1 kế hoạch / công trình: khởi công, hạn bàn giao, lịch nghỉ `sun` / `sat_sun` / `none`, ngày nghỉ lễ, mẫu đã áp; RLS như bảng nghiệp vụ, có trong sao lưu), `schedule_tasks` thêm `kind` (task / milestone), `status` (todo / doing / paused / done), `blocker`; `schedule_notes` thêm `progress_pct` (nhật ký cập nhật %). Hàm `create_schedule(project, plan, phases)` lập kế hoạch trong 1 giao dịch. `trash_restore` / `trash_purge` biết kế hoạch / giai đoạn / việc.
+- **Tab Tiến Độ** `src/features/schedule/`: `logic.ts` (hàm thuần, 12 test: ngày làm việc, % kế hoạch, trễ / chậm, % giai đoạn & công trình theo số ngày, 4 mẫu mặc định của plan cũ, dựng lịch từ mẫu, khung Gantt, báo cáo Zalo, dòng tóm tắt), `api.ts`, `SchedulePage.tsx` (chọn công trình, màn lập từ mẫu, dải số, lọc Trễ / Chậm / Đang làm + tìm, bảng việc + Gantt, "+ Việc" / "+ Thêm giai đoạn" gõ tên Enter, % chọn ngay trên dòng, Cài đặt: lịch nghỉ / ngày lễ / hạn / lưu làm mẫu riêng / xóa kế hoạch; điện thoại MP.tiendo = thẻ việc theo giai đoạn + nút THÊM VIỆC), `TaskSheet.tsx` (chi tiết việc), `ScheduleLine.tsx` (1 dòng ở Chi tiết công trình).
+- Thùng rác: 3 loại mới (Kế hoạch / Giai đoạn / Việc tiến độ); việc con bị xóa cùng lúc với mẹ không hiện riêng. Xuất Dữ Liệu: nhóm Tiến độ hết nhãn "sau GĐ12", việc có thêm cột Trạng thái / Loại / Vướng mắc, ghi chú có % lúc ghi.
+- Test: `src/features/schedule/logic.test.ts`, `e2e/gd12-tien-do.spec.ts`. Test GĐ1 trỏ sang trang Tiến Độ thật (không còn tab "Đang làm").
+
 ## Kết quả so số với app cũ
 - GD09 (12/11): kho đổi sang snapshot 12/11 + so-chuan chạy lại bằng code app cũ → 165 test so số vẫn **lệch 0**. Xuất dữ liệu: CT Cô Sáu + CT Nhà Tình = **410 hóa đơn** (209 + 201; đặc tả ghi 210 cho Cô Sáu — GĐ2 gộp 1 bản trùng); dòng vật tư Cô Sáu không lẫn Nhà Tình; công nhân theo 2 CT = 25 < 52; **Thực lãnh chi tiết = gộp, lệch 0** (2 CT, tất cả, năm 2025); 3 kiểu gom cùng tổng số dòng.
 - GD08 (12/11): Tỉ trọng so với `tytTongHop` của app cũ, trọn vòng đời, 36 công trình: tổng chi, tổng sàn, 4 nhóm, 6 rổ, theo loại, **từng khoản và cách chia nhóm từng món — lệch 0**. CT Nhà Tình: tổng chi 1.977.513.482, Nhóm 1 = 1.282.198.562.
@@ -101,6 +107,15 @@ Nhịp tim: 12/11/2026 — GD09: Chụp đa năng (giả lập) + Xuất Dữ Li
 - GD02 (11/11, snapshot tạm 02/11/2026): số bản ghi 11/11 kho khớp; 15 tổng tiền lệch 0; A / B / Đã thu từng công trình × từng năm lệch 0 (108 ô). Chưa có `so-chuan.json` nên chưa so với số xuất từ app cũ → GĐ3.
 
 ## Quyết định AI tự chọn
+- GD12:
+  - **Bảng mới `schedule_plans`** cho thông tin cả kế hoạch (bảng GĐ2 không có chỗ ghi khởi công / lịch nghỉ / hạn). Khóa ngoại công trình `on delete cascade` để hàm xóa dữ liệu công ty / khôi phục sao lưu cũ vẫn chạy.
+  - **Mẫu mặc định nằm trong code** (`DEFAULT_TEMPLATES`, đúng số ngày của plan cũ — anh chưa sửa số ngày) thay vì ghi vào kho; mẫu riêng ("Lưu làm mẫu riêng") ghi vào `schedule_templates`. Mẫu tạo tay ở Danh Mục chưa có giai đoạn thì không hiện khi lập.
+  - Gợi ý mẫu: CT → Xây mới, SC → Sửa chữa, tên / hạng mục có "sơn" / "chống thấm" → Sơn & chống thấm, còn lại Tự do. Mốc "Ngâm nước thử 2" chiếm 2 ngày rồi thành mốc ở ngày cuối.
+  - **Lịch nghỉ "Nửa T7" không làm** (đếm nửa ngày rắc rối, dễ sai) — có Nghỉ CN / Nghỉ T7 & CN / Làm cả tuần + danh sách ngày nghỉ lễ.
+  - **Trễ** = quá ngày kết thúc mà chưa 100% (tô đỏ, "Trễ n ngày làm việc"); **Chậm** = % thực tế thấp hơn % kế hoạch hôm nay ≥ 20 điểm (tô cam). "Trễ n việc" ở Chi tiết CT đếm việc Trễ. % giai đoạn / công trình = bình quân theo số ngày làm việc (mốc nặng 0).
+  - Đổi lịch nghỉ / khởi công **không tự dời** ngày các việc (an toàn hơn); số ngày và % kế hoạch tính lại. Việc trước – sau chỉ nhắc "bắt đầu trước khi việc trước xong" + nút "Dời sau việc trước"; tự dời dây chuyền để Phần 2.
+  - Ngày bắt đầu / kết thúc của giai đoạn **tính ra** từ việc, không lưu (cột `schedule_phases.start_date / end_date` để trống; Xuất Dữ Liệu bỏ 2 cột này).
+  - Không làm (để sau): kéo thả thanh Gantt / đổi thứ tự, Hoàn tác, checklist, nhãn, ưu tiên, ảnh hiện trường, chế độ Ngày / Tuần, cuộn tới hôm nay; quyền sửa theo RLS chung (Nhập = sửa việc của mình).
 - GD09 (prompt viết lại cho hợp app — anh cho phép tự quyết):
   - **Chuyển kho trên máy sang snapshot 12/11** như prompt yêu cầu (bản 03/11 vẫn giữ). "Cô Sáu 210 hóa đơn" thành **209** trong kho vì GĐ2 gộp 1 hóa đơn trùng → test dùng 209 + 201 = 410.
   - **26 loại dữ liệu** thay vì "29": kho thật có 26 bảng nghiệp vụ. `schedule_tasks` / `schedule_notes` có sẵn `project_id` nên lọc thẳng (đặc tả ghi "qua schedule_phases"). `payable_closures` có `project_id` → nhóm A, không ghép với HĐ thầu phụ. `payment_allocations` lọc theo công trình CỦA PHẦN CHIA (đúng nghĩa "trả cho hóa đơn công trình nào", như tab Lợi Nhuận), ngày theo phiếu chi.
@@ -181,6 +196,7 @@ Nhịp tim: 12/11/2026 — GD09: Chụp đa năng (giả lập) + Xuất Dữ Li
 - GD08: Thùng rác thêm thẻ **KHÁC** (thiết bị, công trình, định mức, danh bạ, danh mục) và gộp ứng lương + phiếu chi + tất toán vào thẻ TIỀN ỨNG. Phiếu thu tự động, phiếu chi tất toán, dòng "Trả" của tuần không hiện riêng (đi theo bản ghi mẹ). Dòng vật tư / dòng chấm công bị bỏ khi SỬA không hiện trong Thùng rác.
 - GD08: Xóa hẳn chạy bằng hàm `trash_purge` (tự kiểm tra quyền) vì dòng con (dòng chia tiền NCC) không qua được RLS xóa; bản ghi còn dữ liệu khác tham chiếu thì báo lỗi, không xóa.
 ## Lỗi còn biết
+- GD12: Phần 2 (phát sinh có duyệt → quyết toán, vật tư cần về, so % tiến độ với % chi, in A3/A4) chưa làm theo đề. Tài khoản Nhập (không Toàn quyền) chỉ sửa được việc do mình tạo — việc tạo từ mẫu thuộc người lập kế hoạch. Tên việc dài bị cắt khi có nhãn "Trễ n ngày" (bấm vào xem đủ). Kế hoạch rất dài thì Gantt cuộn ngang trong khung.
 - GD09: **chưa thử Gemini thật** (chưa có key) — mọi luồng chụp mới chạy bằng giả lập; `fixtures/` chỉ có JSON (chưa có ảnh hóa đơn mẫu để thử khi có key). Kết quả giả lập không phụ thuộc ảnh chụp.
 - GD09: giới hạn 50.000 dòng (mục 9.9) **chưa chạm được** — toàn bộ dữ liệu thật chỉ ≈ 12.000 dòng; chặn bằng số đếm trước khi dựng file + kiểm lại số dòng thật lúc dựng.
 - GD09: ảnh hóa đơn đã lưu chưa hiện ở bảng trượt sửa / Thống Kê CP/HĐ (đã có `useReceiptUrl` để gắn vào).

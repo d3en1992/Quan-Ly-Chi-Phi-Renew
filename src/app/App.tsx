@@ -20,6 +20,7 @@ import { PaymentsPage } from '@/features/payments/PaymentsPage';
 import { PayablesPage } from '@/features/payments/PayablesPage';
 import { CostAllocationPage } from '@/features/cost-allocation/CostAllocationPage';
 import { EquipmentPage } from '@/features/equipment/EquipmentPage';
+import { SchedulePage } from '@/features/schedule/SchedulePage';
 import { TrashPage } from '@/features/trash/TrashPage';
 import { ExportPage } from '@/features/export/ExportPage';
 import { RevenuePage } from '@/features/revenue/RevenuePage';
@@ -76,6 +77,7 @@ const PAGES: Record<string, () => ReactNode> = {
   thongkecphd: () => <ExpenseStatsPage />,
   tytrong: () => <CostAllocationPage />,
   thietbi: () => <EquipmentPage />,
+  tiendo: () => <SchedulePage />,
   thungrac: () => <TrashPage />,
   xuatdulieu: () => <ExportPage />,
 };

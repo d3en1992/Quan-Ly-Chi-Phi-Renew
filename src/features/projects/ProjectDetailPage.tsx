@@ -25,6 +25,7 @@ import { useCustomersLite, useDeleteProject, useProjectsFull, useUpdateProject, 
 import { STATUS_LABEL } from './labels';
 import { ProjectFormSheet } from './ProjectFormSheet';
 import { projectNumbers } from './numbers';
+import { ScheduleLine } from '@/features/schedule/ScheduleLine';
 
 type TabKey = 'summary' | 'invoices' | 'payroll' | 'subs' | 'suppliers' | 'receipts';
 const RECEIPT_KIND: Record<string, string> = { advance: 'Tạm ứng', stage: 'Giai đoạn', settlement: 'Quyết toán', other: 'Khác' };
@@ -168,7 +169,7 @@ function Detail({ data, project, customer }: { data: ReportData; project: Projec
           ...(money ? [{ label: 'Lãi / lỗ', value: signedMoney(n.profit), tone: (Math.round(n.profit) >= 0 ? 'pos' : 'neg') as 'pos' | 'neg', wide: true }] : []),
         ]} />
       ) : <KpiStrip items={kpis} />}
-      <Note icon="view_timeline">Tiến độ thi công sẽ hiện ở đây khi tab Tiến Độ có dữ liệu. <Link to="/tien-do" className="font-semibold text-accent">Xem tiến độ</Link> · {yearLabel}</Note>
+      <Note icon="view_timeline"><ScheduleLine projectId={project.id} /> · {yearLabel}</Note>
       <SubTabs tabs={tabs} value={tab} onChange={setTab} />
 
       {tab === 'summary' ? (
