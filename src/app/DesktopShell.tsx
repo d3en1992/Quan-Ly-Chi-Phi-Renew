@@ -20,17 +20,17 @@ function SideLink({ item, compact }: { item: NavItem; compact: boolean }) {
       aria-current={active ? 'page' : undefined}
       data-nav={item.key}
       className={cn(
-        'flex items-center gap-2.5 rounded-[7px] text-[13.5px] font-medium text-muted hover:bg-surface-2 hover:text-fg',
-        compact ? 'w-11 justify-center py-[9px]' : 'w-full px-2.5 py-[7px]',
+        'flex min-w-0 items-center gap-2 rounded-[7px] text-[13.5px] font-medium text-muted hover:bg-surface-2 hover:text-fg',
+        compact ? 'w-11 justify-center py-[9px]' : 'w-full px-2 py-[7px]',
         active && 'bg-accent-soft font-semibold text-accent hover:bg-accent-soft hover:text-accent',
       )}
     >
-      <Icon name={item.icon} className={compact ? 'text-[21px]' : 'text-[19px]'} />
+      <Icon name={item.icon} className={cn('shrink-0', compact ? 'text-[21px]' : 'text-[19px]')} />
       {compact ? null : (
         <>
           <span className="truncate">{item.label}</span>
           {item.isNew ? (
-            <span className="ml-auto rounded-full bg-good-soft px-1.5 py-px text-[10px] font-bold text-good">MỚI</span>
+            <span className="ml-auto shrink-0 rounded-full bg-good-soft px-1.5 py-px text-[10px] font-bold text-good">MỚI</span>
           ) : null}
         </>
       )}
@@ -48,13 +48,13 @@ export function DesktopShell({ compact }: { compact: boolean }) {
   return (
     <div
       data-layout={compact ? 'tablet' : 'desktop'}
-      className={cn('grid h-dvh', compact ? 'grid-cols-[64px_minmax(0,1fr)]' : 'grid-cols-[236px_minmax(0,1fr)]')}
+      className={cn('grid h-dvh', compact ? 'grid-cols-[64px_minmax(0,1fr)]' : 'grid-cols-[200px_minmax(0,1fr)]')}
     >
       <aside
         aria-label="Menu chính"
         className={cn(
           'flex flex-col gap-0.5 overflow-y-auto border-r border-line bg-surface',
-          compact ? 'items-center px-2 py-3' : 'px-2.5 py-3.5',
+          compact ? 'items-center px-2 py-3' : 'px-2 py-3.5',
         )}
       >
         <div className={cn('flex items-center gap-2.5', compact ? 'pb-3' : 'px-2 pt-1 pb-3.5')}>
@@ -63,8 +63,8 @@ export function DesktopShell({ compact }: { compact: boolean }) {
           </div>
           {compact ? null : (
             <div className="min-w-0">
-              <b className="block text-sm leading-tight">{companyShort}</b>
-              <small className="text-[11.5px] text-faint">Quản lý chi phí công trình</small>
+              <b className="block truncate text-sm leading-tight" title={companyShort}>{companyShort}</b>
+              <small className="block truncate text-[11px] text-faint" title="Quản lý chi phí công trình">Quản lý chi phí công trình</small>
             </div>
           )}
         </div>

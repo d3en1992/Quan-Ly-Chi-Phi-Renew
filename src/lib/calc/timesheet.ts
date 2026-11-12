@@ -8,11 +8,28 @@ export function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-/** Tổng công của 1 người trong tuần (7 ô ngày), làm tròn 1 số lẻ như ô "TC" trên bảng chấm công. */
+/** Làm tròn 2 số lẻ (ô ngày công gõ số lẻ từ GĐ99: 1,3 · 0,75) — khớp kiểu numeric(…,2) trong kho */
+export function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * Tiền công = số công × lương ngày, tính trên phần trăm công (số nguyên) để 2,05 × 400.000 ra đúng 820.000
+ * (nhân số thực trực tiếp ra 819.999,99…). Số công bội số của 0,5 (dữ liệu cũ) cho đúng kết quả cũ.
+ */
+export function dayWage(dayUnits: number, dailyWage: number): number {
+  return (Math.round(dayUnits * 100) * (dailyWage || 0)) / 100;
+}
+
+/**
+ * Tổng công của 1 người trong tuần (7 ô ngày) = ô "TC" trên bảng chấm công.
+ * App cũ làm tròn 1 số lẻ (`round1`) vì ô chỉ có 1 / ½ / 0; GĐ99 cho gõ số lẻ (0,75) nên làm tròn 2 số lẻ.
+ * Dữ liệu cũ (bội số của 0,5) cho cùng kết quả.
+ */
 export function totalDayUnits(dayUnits: readonly (number | null)[]): number {
   let tc = 0;
   for (let i = 0; i < 7; i++) tc += Number(dayUnits[i]) || 0;
-  return round1(tc);
+  return round2(tc);
 }
 
 export type TimesheetRowTotals = {
@@ -26,7 +43,7 @@ export type TimesheetRowTotals = {
 
 export function calcTimesheetRow(line: Pick<CalcTimesheetLine, 'day_units' | 'daily_wage' | 'allowance' | 'retail_purchase'>): TimesheetRowTotals {
   const dayUnits = totalDayUnits(line.day_units);
-  const wage = dayUnits * (line.daily_wage || 0);
+  const wage = dayWage(dayUnits, line.daily_wage || 0);
   return { dayUnits, wage, netPay: wage + (line.allowance || 0) + (line.retail_purchase || 0) };
 }
 
@@ -36,7 +53,7 @@ export function calcTimesheetRow(line: Pick<CalcTimesheetLine, 'day_units' | 'da
  */
 export function lineWageCost(line: Pick<CalcTimesheetLine, 'day_units' | 'daily_wage' | 'allowance'>): number {
   const tc = (line.day_units ?? []).reduce((a: number, v) => a + (Number(v) || 0), 0);
-  return tc * (line.daily_wage || 0) + (line.allowance || 0);
+  return dayWage(tc, line.daily_wage || 0) + (line.allowance || 0);
 }
 
 /**

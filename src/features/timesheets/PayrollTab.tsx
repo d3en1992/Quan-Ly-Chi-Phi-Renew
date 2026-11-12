@@ -13,7 +13,7 @@ import {
 import { formatMoney } from '@/lib/format';
 import { matchesSearch } from '@/features/reports/shared';
 import type { TimesheetData } from './api';
-import { c1, PayslipSheet, RoleTag } from './shared';
+import { cDay, PayslipSheet, RoleTag } from './shared';
 
 
 type Props = {
@@ -86,7 +86,7 @@ export function PayrollTab({ data, ix, years, yearLabel, phone, onOpenWeek }: Pr
             <span className="flex min-w-0 items-center gap-2"><input type="checkbox" readOnly checked={ticked.has(r.key)} aria-label={`Chọn ${data.workerName(r.workerId)}`} className="size-4 accent-[var(--accent)]" /><b className="truncate">{data.workerName(r.workerId)}</b><RoleTag role={r.role} /></span>
             <b className="num">{formatMoney(week ? r.netPay : r.wageWithAllowance)}</b>
           </MobileRow>
-          <MobileRow meta><span>{c1(r.dayUnits)} công · TB {formatMoney(r.avgDaily)}/ngày</span>{week && r.deduction ? <span>trừ {formatMoney(r.deduction)}</span> : null}</MobileRow>
+          <MobileRow meta><span>{cDay(r.dayUnits)} công · TB {formatMoney(r.avgDaily)}/ngày</span>{week && r.deduction ? <span>trừ {formatMoney(r.deduction)}</span> : null}</MobileRow>
           <MobileRow meta><span className="truncate">{names(r).join(' · ')}</span></MobileRow>
         </MobileCard>
       ))}
@@ -106,7 +106,7 @@ export function PayrollTab({ data, ix, years, yearLabel, phone, onOpenWeek }: Pr
               <td><input type="checkbox" readOnly checked={ticked.has(r.key)} aria-label={`Chọn ${data.workerName(r.workerId)}`} className="size-4 accent-[var(--accent)]" /></td>
               <td className="whitespace-nowrap"><b className="font-semibold">{data.workerName(r.workerId)}</b></td>
               <td className="text-center"><RoleTag role={r.role} /></td>
-              <td className="num text-right">{c1(r.dayUnits)}</td>
+              <td className="num text-right">{cDay(r.dayUnits)}</td>
               <td className="text-right"><Money value={r.wageWithAllowance} /></td>
               <td className="text-right"><Money value={r.avgDaily} /></td>
               {week ? <><td className="text-right">{r.deduction ? <span className="num">−{formatMoney(r.deduction)}</span> : <span className="text-faint">—</span>}</td><td className="text-right"><b><Money value={r.netPay} /></b></td></> : null}
@@ -130,7 +130,7 @@ export function PayrollTab({ data, ix, years, yearLabel, phone, onOpenWeek }: Pr
       {hp.slice.map((h) => (
         <MobileCard key={h.weekId} onClick={() => onOpenWeek(h.weekStart, h.projectId)}>
           <MobileRow><b className="num">{weekLabel(h.weekStart)}</b><b className="num">{formatMoney(h.netPay)}</b></MobileRow>
-          <MobileRow meta><span className="truncate">{data.projectName(h.projectId)}</span><span>{h.workers} thợ · {c1(h.dayUnits)} công</span></MobileRow>
+          <MobileRow meta><span className="truncate">{data.projectName(h.projectId)}</span><span>{h.workers} thợ · {cDay(h.dayUnits)} công</span></MobileRow>
         </MobileCard>
       ))}
     </div>
@@ -142,9 +142,9 @@ export function PayrollTab({ data, ix, years, yearLabel, phone, onOpenWeek }: Pr
           {hp.slice.map((h) => (
             <tr key={h.weekId} className="cursor-pointer" tabIndex={0} onClick={() => onOpenWeek(h.weekStart, h.projectId)} onKeyDown={(e) => { if (e.key === 'Enter') onOpenWeek(h.weekStart, h.projectId); }}>
               <td className="num whitespace-nowrap">{weekLabel(h.weekStart)}</td>
-              <td className="whitespace-nowrap">{data.projectName(h.projectId)}</td>
+              <td className="max-w-[180px] truncate" title={data.projectName(h.projectId)}>{data.projectName(h.projectId)}</td>
               <td className="num text-right">{h.workers}</td>
-              <td className="num text-right">{c1(h.dayUnits)}</td>
+              <td className="num text-right">{cDay(h.dayUnits)}</td>
               <td className="text-right"><Money value={h.netPay} /></td>
               <td><Button size="sm" variant="ghost" aria-label="Phiếu lương" onClick={(e) => { e.stopPropagation(); slipWeek(h.weekStart, h.projectId); }}><Icon name="chat" /></Button></td>
             </tr>
@@ -157,7 +157,7 @@ export function PayrollTab({ data, ix, years, yearLabel, phone, onOpenWeek }: Pr
   return (
     <>
       {filters}
-      <div className="grid items-start gap-3 xl:grid-cols-2">
+      <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <Card>
           <CardHeader title="Tổng lương tuần" sub="theo công nhân, mọi công trình" actions={<small className="text-muted">Tick để cộng nhanh{sel.length ? <> · <b className="num text-fg">{sel.length} người: {formatMoney(sumNetPay(sel))}</b></> : null}</small>} />
           {tltBody}

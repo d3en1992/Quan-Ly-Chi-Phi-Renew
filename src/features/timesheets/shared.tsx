@@ -1,49 +1,78 @@
-// Mảnh dùng chung của tab Chấm Công: ô ngày công (1 / ½ / 0), nhãn T/P, bảng trượt phiếu lương, sao chép chữ.
-import { useState } from 'react';
+// Mảnh dùng chung của tab Chấm Công: ô ngày công (1 / ½ / 0 / số lẻ gõ tay), nhãn T/P, bảng trượt phiếu lương, sao chép chữ.
+import { useRef, useState } from 'react';
 import { Button, Icon } from '@/components/ui/button';
 import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
-import { cycleDayUnit } from '@/lib/calc';
+import { cycleDayUnit, parseDayUnit } from '@/lib/calc';
 import { cn } from '@/lib/utils';
 
 export const DAY_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'] as const;
 
-/** "5.5" → "5,5" */
-export const c1 = (n: number) => String(Math.round(n * 10) / 10).replace('.', ',');
+/** Số công kiểu Việt: 5.5 → "5,5", 1.25 → "1,25" (tối đa 2 số lẻ) */
+export const cDay = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',');
 
 export function dayText(v: number): string {
-  if (v >= 1) return v === 1 ? '1' : c1(v);
+  if (v >= 1) return v === 1 ? '1' : cDay(v);
   if (v === 0.5) return '½';
-  if (v > 0) return c1(v);
+  if (v > 0) return cDay(v);
   return '·';
 }
 export const dayTone = (v: number) => (v >= 1 ? 'bg-good-soft text-good' : v > 0 ? 'bg-warn-soft text-warn' : 'text-faint font-normal');
 
-/** Ô ngày công: bấm đổi 1 → ½ → 0; gõ 1 / 5 (½) / 0; mũi tên trái phải để đi ô. */
+const DAY_ERROR = 'Ô ngày công chỉ nhận số ≥ 0 (vd 1 · 0,5 · 1,3) — không nhận số âm hay chữ';
+
+/**
+ * Ô ngày công: bấm đổi 1 → ½ → 0; gõ số (chấm hoặc phẩy, số lẻ, không giới hạn trên) rồi Enter / Tab / mũi tên / bấm ra ngoài
+ * để nhận; đúng chữ "5" một mình = nửa công; Esc bỏ; H = nửa công; Backspace / Delete khi chưa gõ = 0.
+ */
 export function DayCell({ value, onChange, disabled, label }: { value: number; onChange: (v: number) => void; disabled?: boolean; label: string }) {
+  const toast = useToast();
+  const [buf, setBufState] = useState<string | null>(null);
+  const bufRef = useRef<string | null>(null); // giữ bản mới nhất: mũi tên nhận rồi rời ô → onBlur không nhận lần 2
+  const setBuf = (v: string | null) => { bufRef.current = v; setBufState(v); };
+  const commit = (): boolean => {
+    const cur = bufRef.current;
+    if (cur === null) return true;
+    const n = parseDayUnit(cur);
+    setBuf(null);
+    if (n === null) { toast(DAY_ERROR, 'error'); return false; }
+    onChange(n);
+    return true;
+  };
   return (
     <button
       type="button"
       aria-label={label}
       data-day-cell
       disabled={disabled}
-      className={cn('inline-block min-w-[30px] rounded-[5px] px-0 py-[3px] text-[13px] font-semibold focus:outline-2 focus:outline-accent disabled:cursor-default', dayTone(value))}
-      onClick={() => onChange(cycleDayUnit(value))}
+      className={cn('inline-block min-w-[34px] rounded-[5px] px-0.5 py-[3px] text-[13px] font-semibold focus:outline-2 focus:outline-accent disabled:cursor-default',
+        buf !== null ? 'bg-surface text-fg outline-2 outline-accent' : dayTone(value))}
+      onClick={() => { if (bufRef.current !== null) commit(); else onChange(cycleDayUnit(value)); }}
+      onBlur={() => { commit(); }}
       onKeyDown={(e) => {
         const k = e.key;
-        if (k === '1') onChange(1);
-        else if (k === '5' || k === ',' || k === '.' || k.toLowerCase() === 'h') onChange(0.5);
-        else if (k === '0' || k === 'Backspace' || k === 'Delete') onChange(0);
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (k === 'Enter') { commit(); }
+        else if (k === 'Tab') { commit(); return; }
+        else if (k === 'Escape') { if (bufRef.current === null) return; setBuf(null); }
         else if (k === 'ArrowRight' || k === 'ArrowLeft' || k === 'ArrowUp' || k === 'ArrowDown') {
+          commit();
           const all = [...document.querySelectorAll<HTMLButtonElement>('[data-day-cell]:not(:disabled)')];
           const i = all.indexOf(e.currentTarget);
           const step = k === 'ArrowRight' ? 1 : k === 'ArrowLeft' ? -1 : k === 'ArrowDown' ? 7 : -7;
           all[i + step]?.focus();
+        } else if (k === 'Backspace') {
+          if (bufRef.current === null) onChange(0); else setBuf(bufRef.current.slice(0, -1));
+        } else if (k === 'Delete') { setBuf(null); onChange(0); }
+        else if (bufRef.current === null && k.toLowerCase() === 'h') onChange(0.5);
+        else if (k.length === 1 && k !== ' ') {
+          // số, dấu chấm / phẩy / trừ hoặc chữ: gom vào ô; chữ / số âm sẽ bị báo lỗi khi nhận
+          setBuf((bufRef.current ?? '') + k);
         } else return;
         e.preventDefault();
       }}
     >
-      {dayText(value)}
+      {buf !== null ? (buf || ' ') : dayText(value)}
     </button>
   );
 }
@@ -87,5 +116,30 @@ export function PayslipSheet({ text, title, onClose }: { text: string | null; ti
       <textarea aria-label="Phiếu lương" data-testid="payslip-text" value={value} onChange={(e) => setValue(e.target.value)}
         className="num min-h-[60vh] w-full resize-y rounded-lg border border-line bg-surface-2 p-3 text-[13px] leading-relaxed text-fg focus:outline-2 focus:outline-accent" />
     </Sheet>
+  );
+}
+
+/** Điện thoại (MP.cc): ô gõ số công một ngày — bàn phím số, nhận khi rời ô; sai thì báo lỗi và trả lại số cũ */
+export function PhoneDayInput({ value, onChange, disabled, label }: { value: number; onChange: (v: number) => void; disabled?: boolean; label: string }) {
+  const toast = useToast();
+  const shown = value ? cDay(value) : '';
+  const [text, setText] = useState(shown);
+  const [src, setSrc] = useState(value);
+  if (src !== value) { setSrc(value); setText(shown); }
+  return (
+    <input
+      aria-label={label}
+      inputMode="decimal"
+      disabled={disabled}
+      value={text}
+      placeholder="0"
+      className="num h-9 w-full min-w-0 rounded-lg border border-line bg-surface px-1 text-center text-[13px] text-fg focus:outline-2 focus:outline-accent"
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        const n = parseDayUnit(text);
+        if (n === null) { toast(DAY_ERROR, 'error'); setText(shown); return; }
+        if (n !== value) onChange(n); else setText(shown);
+      }}
+    />
   );
 }

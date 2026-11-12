@@ -14,11 +14,28 @@ import { cn } from '@/lib/utils';
 import { findByName } from '@/features/expenses/logic';
 import { useCreateWorker, useDeleteWeek, useSaveWeek, type TimesheetData } from './api';
 import { blankRow, checkSheet, copyRows, pasteRows, rowsFromWeek, sameRows, toCalcRow, type DraftRow } from './sheet-model';
-import { c1, DAY_LABELS, DayCell, PayslipSheet, RoleTag } from './shared';
+import { cDay, DAY_LABELS, DayCell, dayText, PayslipSheet, PhoneDayInput, RoleTag } from './shared';
 
 const CLIP_KEY = 'qlcp-cc-clipboard';
 function loadClip(): DraftRow[] | null {
   try { const raw = localStorage.getItem(CLIP_KEY); return raw ? (JSON.parse(raw) as DraftRow[]) : null; } catch { return null; }
+}
+/** Nhớ trong máy: có hiện 3 cột Phụ cấp, HĐ mua lẻ, Nội dung không (mặc định ẩn — GĐ99) */
+const EXTRAS_KEY = 'qlcp-cc-extras';
+function loadExtras(): boolean {
+  try { return localStorage.getItem(EXTRAS_KEY) === '1'; } catch { return false; }
+}
+
+/** Khoản của dòng đang bị ẩn (cột tắt) hoặc không còn cột (Trừ nợ cũ) — để hiện dấu nhỏ ở Thực lãnh */
+function hiddenParts(r: DraftRow, extrasShown: boolean): string[] {
+  const out: string[] = [];
+  if (!extrasShown) {
+    if (r.allowance) out.push(`Phụ cấp ${formatMoney(r.allowance)}`);
+    if (r.retail) out.push(`HĐ mua lẻ ${formatMoney(r.retail)}`);
+    if (r.note.trim()) out.push(`Nội dung: ${r.note.trim()}`);
+  }
+  if (r.deduction) out.push(`Trừ nợ ${formatMoney(r.deduction)} (ghi ở Tạm ứng lương)`);
+  return out;
 }
 
 type Props = {
@@ -48,6 +65,9 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [slip, setSlip] = useState<string | null>(null);
   const [openRow, setOpenRow] = useState<string | null>(null);
+  const [extras, setExtras] = useState<boolean>(loadExtras);
+  const [phoneExtras, setPhoneExtras] = useState<string | null>(null);
+  const toggleExtras = () => setExtras((v) => { try { localStorage.setItem(EXTRAS_KEY, v ? '0' : '1'); } catch { /* bỏ qua */ } return !v; });
   const focusKey = useRef<string | null>(null);
 
   // Nạp lại bảng khi đổi tuần / công trình hoặc sau khi lưu (updated_at đổi); tải lại dữ liệu y nguyên thì giữ bảng đang sửa
@@ -105,7 +125,7 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
     if (!c.length) { toast('Bảng trống, chưa có gì để copy!', 'error'); return; }
     setClip(c);
     try { localStorage.setItem(CLIP_KEY, JSON.stringify(c)); } catch { /* bỏ qua */ }
-    toast(`Đã copy ${c.length} công nhân (${c1(c.reduce((s, r) => s + r.days.reduce((a, v) => a + v, 0), 0))} công) — bấm Dán tuần để áp dụng`);
+    toast(`Đã copy ${c.length} công nhân (${cDay(c.reduce((s, r) => s + r.days.reduce((a, v) => a + v, 0), 0))} công) — bấm Dán tuần để áp dụng`);
   };
   const doPaste = () => {
     if (!clip?.length) { toast('Chưa copy tuần nào!', 'error'); return; }
@@ -161,7 +181,7 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
         message="Bảng chấm công tuần này còn thay đổi chưa lưu. Chuyển đi sẽ mất các thay đổi đó." confirmLabel="Bỏ thay đổi" danger
         onConfirm={() => { const p = pending; setPending(null); if (p) onNavigate(p); }} />
       <ConfirmDialog open={confirmDelete} onOpenChange={setConfirmDelete} title="Xóa tuần chấm công?" danger busy={del.isPending} confirmLabel="Xóa tuần"
-        message={<>Xóa {weekRangeLabel(weekStart)} của <b>{data.projectName(projectId)}</b> ({saved.length} công nhân). Dòng “Trả” do cột Trừ nợ sinh ra cũng bị xóa. Tuần vào Thùng rác, khôi phục được.</>}
+        message={<>Xóa {weekRangeLabel(weekStart)} của <b>{data.projectName(projectId)}</b> ({saved.length} công nhân). Dòng “Trả” gắn với tuần này (từ cột Trừ nợ trước đây, nếu có) cũng bị xóa. Tuần vào Thùng rác, khôi phục được.</>}
         onConfirm={doDelete} />
       <PayslipSheet text={slip} title={`Phiếu lương ${weekRangeLabel(weekStart)}`} onClose={() => setSlip(null)} />
     </>
@@ -183,7 +203,7 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
           {projectSel}
           {status}
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-[var(--r)] border border-line bg-surface px-3 py-2"><small className="block text-[11.5px] text-muted">Tổng công</small><b className="num text-[17px]">{c1(totals.dayUnits)}</b></div>
+            <div className="rounded-[var(--r)] border border-line bg-surface px-3 py-2"><small className="block text-[11.5px] text-muted">Tổng công</small><b className="num text-[17px]">{cDay(totals.dayUnits)}</b></div>
             <div className="rounded-[var(--r)] border border-line bg-surface px-3 py-2"><small className="block text-[11.5px] text-muted">Thực lãnh</small><b className="num text-[17px]" data-testid="cc-net-total">{formatMoney(totals.netPay)}</b></div>
           </div>
           {rows.length === 0 ? <div className="rounded-[var(--r)] border border-dashed border-line px-3.5 py-4 text-center text-[12.5px] text-muted">Chưa có công nhân. Bấm “Thêm công nhân” hoặc “Dán tuần”.</div> : null}
@@ -204,22 +224,35 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
                     <button key={i} type="button" disabled={readOnly} aria-label={`${DAY_LABELS[i]} ${r.name}`}
                       className={cn('grid h-11 place-items-center rounded-lg border border-line text-[14px] font-bold', v >= 1 ? 'border-transparent bg-good-soft text-good' : v > 0 ? 'border-transparent bg-warn-soft text-warn' : 'text-faint')}
                       onClick={() => setRow(r.key, { days: r.days.map((x, j) => (j === i ? (x >= 1 ? 0.5 : x > 0 ? 0 : 1) : x)) })}>
-                      <small className="text-[10px] font-medium text-muted">{DAY_LABELS[i]}</small>{v >= 1 ? '1' : v > 0 ? '½' : '·'}
+                      <small className="text-[10px] font-medium text-muted">{DAY_LABELS[i]}</small>{dayText(v)}
                     </button>
                   ))}
                 </div>
                 {open ? (
                   <div className="grid grid-cols-2 gap-2 text-[12px] text-muted">
-                    <label className="grid gap-1">Lương/ngày<MoneyInput aria-label="Lương/ngày" value={r.wage} onChange={(v) => setRow(r.key, { wage: v })} disabled={readOnly} /></label>
-                    <label className="grid gap-1">Phụ cấp<MoneyInput aria-label="Phụ cấp" value={r.allowance} onChange={(v) => setRow(r.key, { allowance: v })} disabled={readOnly} /></label>
-                    <label className="grid gap-1">HĐ mua lẻ<MoneyInput aria-label="HĐ mua lẻ" value={r.retail} onChange={(v) => setRow(r.key, { retail: v })} disabled={readOnly} /></label>
-                    <label className="grid gap-1">Trừ nợ<MoneyInput aria-label="Trừ nợ" value={r.deduction} onChange={(v) => setRow(r.key, { deduction: v })} disabled={readOnly} /></label>
-                    <label className="col-span-2 grid gap-1">Nội dung<Input aria-label="Nội dung" value={r.note} onChange={(e) => setRow(r.key, { note: e.target.value })} disabled={readOnly} /></label>
+                    <div className="col-span-2 grid gap-1">Gõ số công (được số lẻ: 1,3 · 0,75; “5” = nửa công)
+                      <div className="grid grid-cols-7 gap-1">
+                        {r.days.map((v, d) => (
+                          <PhoneDayInput key={d} label={`Số công ${DAY_LABELS[d]} ${r.name}`} value={v} disabled={readOnly}
+                            onChange={(nv) => setRow(r.key, { days: r.days.map((x, j) => (j === d ? nv : x)) })} />
+                        ))}
+                      </div>
+                    </div>
+                    <label className="col-span-2 grid gap-1">Lương/ngày<MoneyInput aria-label="Lương/ngày" value={r.wage} onChange={(v) => setRow(r.key, { wage: v })} disabled={readOnly} /></label>
+                    {phoneExtras === r.key || r.allowance || r.retail || r.note.trim() ? (
+                      <>
+                        <label className="grid gap-1">Phụ cấp<MoneyInput aria-label="Phụ cấp" value={r.allowance} onChange={(v) => setRow(r.key, { allowance: v })} disabled={readOnly} /></label>
+                        <label className="grid gap-1">HĐ mua lẻ<MoneyInput aria-label="HĐ mua lẻ" value={r.retail} onChange={(v) => setRow(r.key, { retail: v })} disabled={readOnly} /></label>
+                        <label className="col-span-2 grid gap-1">Nội dung<Input aria-label="Nội dung" value={r.note} onChange={(e) => setRow(r.key, { note: e.target.value })} disabled={readOnly} /></label>
+                      </>
+                    ) : !readOnly ? (
+                      <Button variant="ghost" size="sm" className="col-span-2 justify-self-start" onClick={() => setPhoneExtras(r.key)}><Icon name="add" />Thêm… (phụ cấp, HĐ lẻ, nội dung)</Button>
+                    ) : null}
                     {!readOnly ? <Button variant="ghost-danger" size="sm" className="col-span-2 justify-self-start" onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))}><Icon name="delete" />Bỏ khỏi tuần</Button> : null}
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between text-[12px] text-muted">
-                  <span>{c1(c.dayUnits)} công × {formatMoney(r.wage)}{r.deduction ? ` · trừ ${formatMoney(r.deduction)}` : ''}</span>
+                  <span>{cDay(c.dayUnits)} công × {formatMoney(r.wage)}{r.deduction ? ` · trừ ${formatMoney(r.deduction)}` : ''}{r.allowance || r.retail ? ` · +${formatMoney(r.allowance + r.retail)}` : ''}</span>
                   <b className="num text-[13px] text-fg">{formatMoney(c.netPay)}</b>
                 </div>
               </div>
@@ -254,13 +287,16 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
         {projectSel}
         {!readOnly ? <Button variant="ghost" onClick={addRow} data-testid="cc-add"><Icon name="person_add" />Thêm công nhân</Button> : null}
         <div className="flex-1" />
+        <Button variant="ghost" size="sm" aria-pressed={extras} data-testid="cc-extras" onClick={toggleExtras}>
+          <Icon name={extras ? 'visibility_off' : 'visibility'} />{extras ? 'Ẩn phụ cấp, HĐ lẻ, nội dung' : 'Hiện phụ cấp, HĐ lẻ, nội dung'}
+        </Button>
         {!readOnly && week ? <Button variant="ghost-danger" onClick={() => setConfirmDelete(true)}><Icon name="delete" />Xóa tuần</Button> : null}
       </FilterBar>
       <KpiStrip items={[
-        { label: 'Tổng công', value: c1(totals.dayUnits), sub: `${rows.filter((r) => r.name.trim()).length} công nhân` },
+        { label: 'Tổng công', value: cDay(totals.dayUnits), sub: `${rows.filter((r) => r.name.trim()).length} công nhân` },
         { label: 'Tổng lương', value: formatMoney(totals.wage), sub: 'đ' },
         { label: 'Phụ cấp + HĐ mua lẻ', value: formatMoney(totals.allowance + totals.retail), sub: 'đ' },
-        { label: 'Trừ nợ ứng', value: formatMoney(totals.deduction), sub: 'đ' },
+        ...(totals.deduction ? [{ label: 'Trừ nợ ứng (tuần cũ)', value: formatMoney(totals.deduction), sub: 'đ' }] : []),
         { label: 'Thực lãnh', value: <span data-testid="cc-net-total">{formatMoney(totals.netPay)}</span>, sub: 'đ', tone: 'pos' },
       ]} />
       {status}
@@ -274,13 +310,15 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
                 <tr>
                   <th className="w-8">#</th><th className="min-w-[140px]">Tên CN</th><th className="!text-center">T/P</th>
                   {DAY_LABELS.map((d) => <th key={d} className="w-11 !text-center">{d}</th>)}
-                  <th className="!text-right">TC</th><th className="!text-right">Lương/ngày</th><th className="!text-right">TC Lương</th><th className="!text-right">Phụ cấp</th>
-                  <th className="!text-right">HĐ mua lẻ</th><th className="min-w-[110px]">Nội dung</th><th className="!text-right">Trừ nợ</th><th className="!text-right">Thực lãnh</th><th className="w-8" />
+                  <th className="!text-right">TC</th><th className="!text-right">Lương/ngày</th><th className="!text-right">TC Lương</th>
+                  {extras ? <><th className="!text-right">Phụ cấp</th><th className="!text-right">HĐ mua lẻ</th><th className="min-w-[240px]">Nội dung</th></> : null}
+                  <th className="!text-right">Thực lãnh</th><th className="w-8" />
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r, i) => {
                   const c = calcSheetRow(toCalcRow(r));
+                  const hid = hiddenParts(r, extras);
                   return (
                     <tr key={r.key} data-row={r.key} className={bad.includes(r.key) ? '[&>td]:bg-bad-soft' : undefined}>
                       <td className="text-faint">{i + 1}</td>
@@ -289,14 +327,20 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
                       {r.days.map((v, d) => (
                         <td key={d} className="text-center !px-1"><DayCell value={v} disabled={readOnly} label={`${DAY_LABELS[d]} dòng ${i + 1}`} onChange={(nv) => setRow(r.key, { days: r.days.map((x, j) => (j === d ? nv : x)) })} /></td>
                       ))}
-                      <td className={num}>{c1(c.dayUnits)}</td>
+                      <td className={num}>{cDay(c.dayUnits)}</td>
                       <td><MoneyInput aria-label={`Lương/ngày dòng ${i + 1}`} value={r.wage} onChange={(v) => setRow(r.key, { wage: v })} disabled={readOnly} className="h-8 w-[88px]" /></td>
                       <td className={num}><Money value={c.wage} /></td>
-                      <td><MoneyInput aria-label={`Phụ cấp dòng ${i + 1}`} value={r.allowance} onChange={(v) => setRow(r.key, { allowance: v })} disabled={readOnly} className="h-8 w-[78px]" /></td>
-                      <td><MoneyInput aria-label={`HĐ mua lẻ dòng ${i + 1}`} value={r.retail} onChange={(v) => setRow(r.key, { retail: v })} disabled={readOnly} className="h-8 w-[78px]" /></td>
-                      <td><Input aria-label={`Nội dung dòng ${i + 1}`} value={r.note} onChange={(e) => setRow(r.key, { note: e.target.value })} disabled={readOnly} className="h-8" placeholder="Nội dung…" /></td>
-                      <td><MoneyInput aria-label={`Trừ nợ dòng ${i + 1}`} value={r.deduction} onChange={(v) => setRow(r.key, { deduction: v })} disabled={readOnly} className="h-8 w-[78px]" /></td>
-                      <td className={num}><b className={c.netPay < 0 ? 'text-bad' : ''}>{c.netPay ? (c.netPay < 0 ? `(${formatMoney(-c.netPay)})` : formatMoney(c.netPay)) : '—'}</b></td>
+                      {extras ? (
+                        <>
+                          <td><MoneyInput aria-label={`Phụ cấp dòng ${i + 1}`} value={r.allowance} onChange={(v) => setRow(r.key, { allowance: v })} disabled={readOnly} className="h-8 w-[78px]" /></td>
+                          <td><MoneyInput aria-label={`HĐ mua lẻ dòng ${i + 1}`} value={r.retail} onChange={(v) => setRow(r.key, { retail: v })} disabled={readOnly} className="h-8 w-[78px]" /></td>
+                          <td><Input aria-label={`Nội dung dòng ${i + 1}`} value={r.note} title={r.note || undefined} onChange={(e) => setRow(r.key, { note: e.target.value })} disabled={readOnly} className="h-8 w-full min-w-[230px]" placeholder="Nội dung…" /></td>
+                        </>
+                      ) : null}
+                      <td className={num}>
+                        {hid.length ? <span className="mr-1 inline-block size-[7px] rounded-full bg-warn align-middle" title={`Có khoản không hiện trên bảng:\n${hid.join('\n')}`} aria-label={`Có khoản ẩn: ${hid.join('; ')}`} data-testid="cc-hidden-mark" /> : null}
+                        <b className={c.netPay < 0 ? 'text-bad' : ''}>{c.netPay ? (c.netPay < 0 ? `(${formatMoney(-c.netPay)})` : formatMoney(c.netPay)) : '—'}</b>
+                      </td>
                       <td>{!readOnly ? <Button size="icon" variant="ghost" aria-label={`Bỏ dòng ${i + 1}`} onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))}><Icon name="close" /></Button> : null}</td>
                     </tr>
                   );
@@ -305,10 +349,10 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
               <tfoot>
                 <tr className="font-bold [&>td]:bg-surface-2">
                   <td colSpan={3}>Tổng tuần</td>
-                  {totals.days.map((v, i) => <td key={i} className="num text-center">{v ? c1(v) : ''}</td>)}
-                  <td className={num}>{c1(totals.dayUnits)}</td><td />
-                  <td className={num}>{formatMoney(totals.wage)}</td><td className={num}>{formatMoney(totals.allowance)}</td><td className={num}>{formatMoney(totals.retail)}</td><td />
-                  <td className={num}>{totals.deduction ? '−' + formatMoney(totals.deduction) : '—'}</td>
+                  {totals.days.map((v, i) => <td key={i} className="num text-center">{v ? cDay(v) : ''}</td>)}
+                  <td className={num}>{cDay(totals.dayUnits)}</td><td />
+                  <td className={num}>{formatMoney(totals.wage)}</td>
+                  {extras ? <><td className={num}>{formatMoney(totals.allowance)}</td><td className={num}>{formatMoney(totals.retail)}</td><td /></> : null}
                   <td className={num} data-testid="cc-foot-net">{formatMoney(totals.netPay)}</td><td />
                 </tr>
               </tfoot>
@@ -316,7 +360,7 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
           </div>
         )}
       </Card>
-      <Note>Ô ngày: bấm để đổi 1 → ½ → 0, hoặc gõ 1 / 5 (nửa công) / 0, mũi tên để đi ô. Tiền <b>Trừ nợ</b> tự ghi thành dòng “Trả” ở tab Tạm ứng lương (trừ vào Thực lãnh tuần này).</Note>
+      <Note>Ô ngày: bấm để đổi 1 → ½ → 0, hoặc gõ số rồi Enter / mũi tên — được số lẻ dấu chấm hoặc phẩy (1,3 · 0.75 · 2). Gõ đúng <b>5</b> một mình = nửa công; 5,5 hay 15 là đúng số đó. Phụ cấp / HĐ mua lẻ / nội dung đang ẩn vẫn tính vào Thực lãnh (dòng có khoản ẩn có chấm cam ở Thực lãnh). Trả nợ ứng lương ghi ở tab <b>Tạm ứng lương</b>.</Note>
       {dialogs}
     </>
   );

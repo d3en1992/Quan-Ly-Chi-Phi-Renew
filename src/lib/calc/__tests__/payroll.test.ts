@@ -59,8 +59,43 @@ describe('một dòng sổ chấm công (calcCCRow + Trừ nợ)', () => {
     expect(cycleDayUnit(0)).toBe(1);
     expect(parseDayUnit('0,5')).toBe(0.5);
     expect(parseDayUnit('1')).toBe(1);
-    expect(parseDayUnit('abc')).toBe(0);
-    expect(parseDayUnit('8')).toBe(0);
+  });
+  it('GĐ99: gõ số lẻ dấu chấm / phẩy, không giới hạn trên; đúng "5" một mình = nửa công; âm / chữ = null', () => {
+    expect(parseDayUnit('1.3')).toBe(1.3);
+    expect(parseDayUnit('1,5')).toBe(1.5);
+    expect(parseDayUnit('2')).toBe(2);
+    expect(parseDayUnit('0.75')).toBe(0.75);
+    expect(parseDayUnit(',5')).toBe(0.5);
+    expect(parseDayUnit('5')).toBe(0.5);
+    expect(parseDayUnit('5.5')).toBe(5.5);
+    expect(parseDayUnit('15')).toBe(15);
+    expect(parseDayUnit('8')).toBe(8);
+    expect(parseDayUnit('1.333')).toBe(1.33);
+    expect(parseDayUnit('')).toBe(0);
+    expect(parseDayUnit('-1')).toBeNull();
+    expect(parseDayUnit('abc')).toBeNull();
+    expect(parseDayUnit('1a')).toBeNull();
+    expect(parseDayUnit('1.2.3')).toBeNull();
+  });
+  it('GĐ99: TC, TC Lương, Thực lãnh, dòng tổng với số công lẻ 1,3 và 1,5', () => {
+    const a = { day_units: [0, 1.3, 1.5, 1, 0, 0, 0], daily_wage: 500_000, allowance: 20_000, retail_purchase: 10_000, deduction: 0 };
+    const b = { day_units: [0, 0.75, 0, 0, 0, 0, 1.3], daily_wage: 400_000, allowance: 0, retail_purchase: 0, deduction: 0 };
+    expect(calcSheetRow(a)).toEqual({ dayUnits: 3.8, wage: 1_900_000, netPay: 1_930_000 });
+    expect(calcSheetRow(b)).toEqual({ dayUnits: 2.05, wage: 820_000, netPay: 820_000 });
+    const t = sheetTotals([a, b]);
+    expect(t.days).toEqual([0, 2.05, 1.5, 1, 0, 0, 1.3]);
+    expect(t.dayUnits).toBe(5.85);
+    expect(t.wage).toBe(2_720_000);
+    expect(t.netPay).toBe(2_750_000);
+  });
+  it('GĐ99: Tổng lương tuần + phiếu lương với số công lẻ', () => {
+    const wk: PayWeek = { id: 'wx', project_id: 'A', week_start: '2026-11-08' };
+    const ix = buildPayrollIndex([wk], [line({ week_id: 'wx', worker_id: 'L', day_units: [0, 1.3, 1.5, 0, 0, 0, 0], daily_wage: 500_000, allowance: 50_000 })], []);
+    const p = payslipData(ix, 'L', '2026-11-08', '2026-11-14');
+    expect(p.dayUnits).toBe(2.8);
+    expect(p.wage).toBe(1_400_000);
+    expect(p.netPay).toBe(1_450_000);
+    expect(payslipText(p, 'LONG', () => 'CT A')).toContain('2,8 công × 500.000');
   });
 });
 

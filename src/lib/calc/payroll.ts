@@ -7,7 +7,7 @@
 // ngày = thứ Bảy) trong sổ Tạm ứng lương. Vì vậy Thực lãnh một dòng sổ = lương + phụ cấp + HĐ mua lẻ − trừ nợ, còn
 // Thực lãnh ở Tổng lương tuần vẫn đúng công thức cũ: tl + pc + loan + hdml − tru + điều chỉnh từ sổ cái.
 import type { CalcTimesheetLine, IsoDate } from './types';
-import { round1, totalDayUnits } from './timesheet';
+import { dayWage, round2, totalDayUnits } from './timesheet';
 import { addDays, inYear, weekEnd, type YearFilter } from './year';
 
 export type PayWeek = { id: string; project_id: string; week_start: IsoDate };
@@ -70,7 +70,7 @@ export type SheetRowTotals = { dayUnits: number; wage: number; netPay: number };
 /** `calcCCRow` + cột Trừ nợ: Thực lãnh = công × lương ngày + phụ cấp + HĐ mua lẻ − trừ nợ */
 export function calcSheetRow(r: SheetRowInput): SheetRowTotals {
   const dayUnits = totalDayUnits(r.day_units);
-  const wage = dayUnits * (r.daily_wage || 0);
+  const wage = dayWage(dayUnits, r.daily_wage || 0);
   return { dayUnits, wage, netPay: wage + (r.allowance || 0) + (r.retail_purchase || 0) - (r.deduction || 0) };
 }
 
@@ -90,8 +90,8 @@ export function sheetTotals(rows: readonly SheetRowInput[]): SheetTotals {
     t.deduction += r.deduction || 0;
     t.netPay += c.netPay;
   }
-  t.days = days.map(round1);
-  t.dayUnits = round1(t.dayUnits);
+  t.days = days.map(round2);
+  t.dayUnits = round2(t.dayUnits);
   return t;
 }
 
@@ -102,11 +102,18 @@ export function cycleDayUnit(v: number): number {
   return 1;
 }
 
-/** Ô ngày công gõ tay: "1", "0,5", ".5" → số; ngoài [0, 1,5] → 0 (app cũ nhận mọi số, chặn số vô lý như 5 công/ngày) */
-export function parseDayUnit(text: string): number {
-  const n = parseFloat(text.replace(',', '.'));
-  if (!Number.isFinite(n) || n < 0 || n > 1.5) return 0;
-  return round1(n);
+/**
+ * Ô ngày công gõ tay (GĐ99, anh Tình chọn): nhận số lẻ dấu chấm hoặc phẩy, không giới hạn trên — "1,3", "1.5", "2", "0.75".
+ * Riêng đúng chữ "5" một mình = nửa công (0,5) như app cũ; "5.5", "15" là đúng số đó. Rỗng = 0.
+ * Số âm / có chữ → null (báo lỗi, không nhận). Làm tròn 2 số lẻ.
+ */
+export function parseDayUnit(text: string): number | null {
+  const t = text.trim();
+  if (t === '') return 0;
+  if (t === '5') return 0.5;
+  if (!/^(\d+([.,]\d*)?|[.,]\d+)$/.test(t)) return null;
+  const n = Number(t.replace(',', '.'));
+  return Number.isFinite(n) && n >= 0 ? round2(n) : null;
 }
 
 // ───────────── Sổ cái nợ công nhân ─────────────
@@ -292,7 +299,7 @@ export function weeklyPayroll(ix: PayrollIndex, f: PayrollFilter): PayrollRow[] 
       line.day_units.forEach((v, i) => { r!.days[i] = (r!.days[i] ?? 0) + (Number(v) || 0); });
       const tc = totalDayUnits(line.day_units);
       r.dayUnits += tc;
-      r.wage += tc * (line.daily_wage || 0);
+      r.wage += dayWage(tc, line.daily_wage || 0);
       r.allowance += line.allowance || 0;
       r.retail += line.retail_purchase || 0;
       r.legacyLoan += line.legacy_loan || 0;
@@ -305,8 +312,8 @@ export function weeklyPayroll(ix: PayrollIndex, f: PayrollFilter): PayrollRow[] 
   }
   const rows = [...map.values()];
   for (const r of rows) {
-    r.dayUnits = round1(r.dayUnits);
-    r.days = r.days.map(round1);
+    r.dayUnits = round2(r.dayUnits);
+    r.days = r.days.map(round2);
     r.ledgerAdj = netPayLedgerAdj(ix, r.workerId, r.from, r.to);
     r.wageWithAllowance = r.wage + r.allowance;
     r.avgDaily = r.dayUnits > 0 ? Math.round(r.wageWithAllowance / r.dayUnits) : 0;
@@ -344,10 +351,10 @@ export function weekHistory(weeks: readonly PayWeek[], lines: readonly PayrollLi
     for (const l of ls) {
       const c = totalDayUnits(l.day_units);
       tc += c;
-      wage += c * (l.daily_wage || 0);
-      net += c * (l.daily_wage || 0) + (l.allowance || 0) + (l.retail_purchase || 0) + (l.legacy_loan || 0) - (l.debt_deduction || 0);
+      wage += dayWage(c, l.daily_wage || 0);
+      net += dayWage(c, l.daily_wage || 0) + (l.allowance || 0) + (l.retail_purchase || 0) + (l.legacy_loan || 0) - (l.debt_deduction || 0);
     }
-    out.push({ weekId: w.id, weekStart: w.week_start, projectId: w.project_id, workers: ls.length, dayUnits: round1(tc), wage, netPay: net - (dedByWeek.get(w.id) ?? 0) });
+    out.push({ weekId: w.id, weekStart: w.week_start, projectId: w.project_id, workers: ls.length, dayUnits: round2(tc), wage, netPay: net - (dedByWeek.get(w.id) ?? 0) });
   }
   return out.sort((a, b) => (a.weekStart < b.weekStart ? 1 : a.weekStart > b.weekStart ? -1 : 0));
 }
@@ -367,7 +374,7 @@ export function payslipData(ix: PayrollIndex, workerId: string, from: IsoDate, t
     if (week.week_start < from || week.week_start > to) continue;
     const c = totalDayUnits(line.day_units);
     d.dayUnits += c;
-    d.wage += c * (line.daily_wage || 0);
+    d.wage += dayWage(c, line.daily_wage || 0);
     d.allowance += line.allowance || 0;
     d.retail += line.retail_purchase || 0;
     d.advance += line.legacy_loan || 0;
@@ -378,7 +385,7 @@ export function payslipData(ix: PayrollIndex, workerId: string, from: IsoDate, t
     if (!a.counts_in_net_pay || !a.date || a.date < from || a.date > to) continue;
     if (a.direction === 'repay') d.repay += a.amount || 0; else d.advance += a.amount || 0;
   }
-  d.dayUnits = round1(d.dayUnits);
+  d.dayUnits = round2(d.dayUnits);
   d.netPay = d.wage + d.allowance + d.retail + d.advance - d.repay;
   d.debt = debtUpTo(ix, workerId, to);
   return d;
@@ -415,7 +422,7 @@ export function payslipText(d: Payslip, workerName: string, projectName: (id: st
  */
 export function exportLineNetPay(line: Pick<PayrollLine, 'day_units' | 'daily_wage' | 'allowance' | 'retail_purchase' | 'legacy_loan' | 'debt_deduction'>): number {
   const tc = totalDayUnits(line.day_units);
-  return tc * (line.daily_wage || 0) + (line.allowance || 0) + (line.legacy_loan || 0) + (line.retail_purchase || 0) - (line.debt_deduction || 0);
+  return dayWage(tc, line.daily_wage || 0) + (line.allowance || 0) + (line.legacy_loan || 0) + (line.retail_purchase || 0) - (line.debt_deduction || 0);
 }
 
 /** Các phiếu ứng (+) / trả (−) "tính vào Thực lãnh" trong khoảng — tổng đúng bằng `netPayLedgerAdj` cùng khoảng */

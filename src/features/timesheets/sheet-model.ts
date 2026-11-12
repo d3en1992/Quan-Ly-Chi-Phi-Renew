@@ -26,8 +26,8 @@ export function blankRow(): DraftRow {
 export const toCalcRow = (r: DraftRow): SheetRowInput => ({ day_units: r.days, daily_wage: r.wage, allowance: r.allowance, retail_purchase: r.retail, deduction: r.deduction });
 
 /**
- * Dòng nháp của một tuần đã lưu. Trừ nợ = "tru" đời cũ còn nằm trong dòng + dòng "Trả" do tuần này sinh ra
- * (lưu lại thì gộp hết thành dòng "Trả" trong sổ Tạm ứng lương).
+ * Dòng nháp của một tuần đã lưu. Trừ nợ (chỉ xem, sổ không còn cột Trừ nợ từ GĐ99) = "tru" đời cũ trong dòng + dòng "Trả" gắn với tuần
+ * — vẫn trừ vào Thực lãnh của sổ như trước; lưu lại tuần không đụng tới (hàm save_timesheet_week bỏ qua).
  */
 export function rowsFromWeek(week: TsWeek | null, lines: readonly TsLine[], advances: readonly TsAdvance[], workerName: (id: string) => string): DraftRow[] {
   if (!week) return [];
@@ -67,7 +67,7 @@ export function checkSheet(rows: readonly DraftRow[], workers: readonly TsWorker
       const w = findByName(r.name, workers)!;
       return {
         worker_id: w.id, role: r.role ?? w.role ?? null, day_units: r.days.map((v) => Number(v) || 0), daily_wage: r.wage, allowance: r.allowance,
-        retail_purchase: r.retail, note: r.note.trim(), debt_deduction: r.deduction,
+        retail_purchase: r.retail, note: r.note.trim(),
       };
     }),
   };

@@ -83,7 +83,7 @@ function useRefresh() {
 }
 
 export type SaveLine = {
-  worker_id: string; role: string | null; day_units: number[]; daily_wage: number; allowance: number; retail_purchase: number; note: string; debt_deduction: number;
+  worker_id: string; role: string | null; day_units: number[]; daily_wage: number; allowance: number; retail_purchase: number; note: string;
 };
 
 export function useSaveWeek() {

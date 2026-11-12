@@ -9,6 +9,7 @@
 // truLoai, quyMuc, roTay / roLoai / roLuat (đời cũ, tự chuyển khi đọc), dgNhom, dgRo1, ro1…
 import type { CalcExpense, CalcPayment, CalcPaymentAllocation, CalcTimesheetLine, CalcTimesheetWeek, IsoDate } from './types';
 import { weekEnd, type YearFilter, inYear } from './year';
+import { dayWage } from './timesheet';
 
 export const ALLOC_TYPE_SUBCONTRACT = 'Thầu Phụ'; // loại cho tiền trả thầu phụ
 export const ALLOC_TYPE_SUPPLIER = 'Ứng Nhà Cung Cấp'; // dự phòng khi không đoán được loại của NCC
@@ -138,7 +139,7 @@ export function allocCostLines(projectId: string, src: AllocSource, years: YearF
         doiTuong: TIMESHEET_PARTY, tien: l.retail_purchase, items: null, hdtpId: '', refId: w.id,
       });
     }
-    const wage = ls.reduce((s, l) => s + (l.day_units ?? []).reduce((a: number, v) => a + (Number(v) || 0), 0) * (l.daily_wage || 0) + (l.allowance || 0), 0);
+    const wage = ls.reduce((s, l) => s + dayWage((l.day_units ?? []).reduce((a: number, v) => a + (Number(v) || 0), 0), l.daily_wage || 0) + (l.allowance || 0), 0);
     if (wage > 0) {
       lines.push({
         key: pfx + 'nhanCong', kind: 'cc', ngay: to, loai: 'Nhân Công', nd: `Lương tuần ${vnDayMonth(w.week_start)}–${vnDayMonth(to)}`,

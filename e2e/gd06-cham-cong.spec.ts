@@ -1,4 +1,4 @@
-// GĐ6 — Chấm Công: Sổ chấm công (thêm thợ, chấm ngày, Trừ nợ, Lưu tuần), cột Trừ nợ thành dòng "Trả" ở Tạm ứng lương,
+// GĐ6 — Chấm Công: Sổ chấm công (thêm thợ, chấm ngày, Lưu tuần); dòng "Trả" gắn với tuần (từ cột Trừ nợ cũ — GĐ99 bỏ cột) được giữ,
 // Tổng lương tuần, phiếu lương, 3 khổ màn hình. Chạy trên Supabase trong máy; dọn dữ liệu test sau khi xong.
 import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
@@ -81,7 +81,7 @@ for (const size of [{ name: '1440', width: 1440, height: 900 }, { name: '800', w
   });
 }
 
-test('Sổ chấm công: thêm thợ, chấm ½ công, Trừ nợ → Lưu tuần → dòng "Trả" ở Tạm ứng lương, Tổng lương tuần, phiếu lương', async ({ page }) => {
+test('Sổ chấm công: thêm thợ, chấm ½ công → Lưu tuần; dòng "Trả" cũ của tuần → Tạm ứng lương, Tổng lương tuần, phiếu lương; lưu lại không xóa "Trả"', async ({ page }) => {
   const errors = watchConsole(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await login(page, 'e2e.kt');
@@ -112,21 +112,24 @@ test('Sổ chấm công: thêm thợ, chấm ½ công, Trừ nợ → Lưu tuầ
   await page.getByRole('button', { name: 'T7 dòng 1' }).click(); // 1 → ½
   await expect(page.getByRole('button', { name: 'T7 dòng 1' })).toHaveText('½');
   await page.getByLabel('Lương/ngày dòng 1').fill('500000');
+  await expect(page.getByLabel('Trừ nợ dòng 1')).toHaveCount(0); // GĐ99: sổ không còn cột Trừ nợ
+  await page.getByTestId('cc-extras').click(); // Phụ cấp / HĐ lẻ / Nội dung ẩn mặc định
   await page.getByLabel('Phụ cấp dòng 1').fill('50000');
-  await page.getByLabel('Trừ nợ dòng 1').fill('300000');
-  // 5,5 công × 500.000 + 50.000 − 300.000
-  await expect(page.getByTestId('cc-foot-net')).toHaveText('2.500.000');
+  // 5,5 công × 500.000 + 50.000
+  await expect(page.getByTestId('cc-foot-net')).toHaveText('2.800.000');
   await page.screenshot({ path: `${SHOTS}/so-cham-cong-dang-nhap.png`, fullPage: true });
   await page.getByTestId('cc-save').click();
   await expect(page.getByText(/Đã lưu CN 06\/01/)).toBeVisible();
 
-  // Kho: 1 tuần, 1 dòng, 1 dòng Trả 300.000 (tính vào Thực lãnh, ngày thứ Bảy)
+  // Kho: 1 tuần, 1 dòng; giả lập dòng Trả 300.000 do cột Trừ nợ (trước GĐ99) sinh ra cho tuần này
   const { data: wk } = await admin.from('timesheet_weeks').select('id').eq('project_id', projectId).eq('week_start', WEEK).is('deleted_at', null).single();
-  const { data: ln } = await admin.from('timesheet_lines').select('day_units,daily_wage,allowance,debt_deduction').eq('week_id', wk!.id).is('deleted_at', null);
+  const { data: ln } = await admin.from('timesheet_lines').select('day_units,daily_wage,allowance,debt_deduction,worker_id').eq('week_id', wk!.id).is('deleted_at', null);
   expect(ln).toHaveLength(1);
   expect(ln![0]!.day_units.map(Number)).toEqual([0, 1, 1, 1, 1, 1, 0.5]);
-  const { data: rp } = await admin.from('wage_advances').select('amount,direction,counts_in_net_pay,date').eq('source_week_id', wk!.id).is('deleted_at', null);
-  expect(rp).toEqual([{ amount: 300000, direction: 'repay', counts_in_net_pay: true, date: '2030-01-12' }]);
+  const { error: ie } = await admin.from('wage_advances').insert({ company_id: COMPANY, worker_id: ln![0]!.worker_id, project_id: projectId, date: '2030-01-12', direction: 'repay', amount: 300000, counts_in_net_pay: true, source_week_id: wk!.id, note: 'Trừ nợ trong sổ chấm công (E2E)' });
+  expect(ie).toBeNull();
+  await page.reload(); // dòng Trả ghi thẳng vào kho → tải lại để app đọc
+  await expect(page.getByTestId('cc-week')).toBeVisible();
 
   // Tạm ứng lương: nợ 1.000.000 − 300.000 = 700.000
   await page.getByRole('tab', { name: 'TẠM ỨNG LƯƠNG' }).click();
@@ -153,13 +156,16 @@ test('Sổ chấm công: thêm thợ, chấm ½ công, Trừ nợ → Lưu tuầ
   await page.screenshot({ path: `${SHOTS}/phieu-luong.png` });
   await page.keyboard.press('Escape');
 
-  // Sửa Trừ nợ về 0 → dòng Trả bị xóa mềm, nợ về 1.000.000
+  // Mở lại tuần: Thực lãnh của sổ vẫn trừ 300.000 (có dấu khoản ẩn); sửa ngày rồi lưu lại → dòng Trả KHÔNG bị xóa (GĐ99)
   await page.getByRole('row', { name: new RegExp(`06/01–12/01/2030`) }).first().click();
-  await expect(page.getByLabel('Trừ nợ dòng 1')).toHaveValue('300.000');
-  await page.getByLabel('Trừ nợ dòng 1').fill('');
+  await expect(page.getByTestId('cc-foot-net')).toHaveText('2.500.000');
+  await expect(page.getByTestId('cc-hidden-mark')).toHaveCount(1);
+  await page.getByRole('button', { name: 'CN dòng 1' }).click();
   await page.getByTestId('cc-save').click();
   await expect(page.getByText(/Đã lưu CN 06\/01/)).toBeVisible();
-  await expect.poll(async () => (await admin.from('wage_advances').select('id').eq('source_week_id', wk!.id).is('deleted_at', null)).data?.length).toBe(0);
+  await expect.poll(async () => (await admin.from('timesheet_lines').select('day_units').eq('week_id', wk!.id).is('deleted_at', null)).data?.[0]?.day_units.map(Number)).toEqual([1, 1, 1, 1, 1, 1, 0.5]);
+  const { data: rp } = await admin.from('wage_advances').select('amount,direction,counts_in_net_pay,date').eq('source_week_id', wk!.id).is('deleted_at', null);
+  expect(rp).toEqual([{ amount: 300000, direction: 'repay', counts_in_net_pay: true, date: '2030-01-12' }]);
   expect(errors).toEqual([]);
 });
 
@@ -176,7 +182,7 @@ test('Điện thoại: chạm ô ngày đổi 1 → ½ → 0', async ({ page }) 
   await expect(cell).toContainText('½');
   await cell.click();
   await expect(cell).toContainText('·');
-  await expect(page.getByTestId('cc-net-total')).toHaveText('2.300.000'); // 4,5 công × 500.000 + 50.000
+  await expect(page.getByTestId('cc-net-total')).toHaveText('2.500.000'); // 5,5 công × 500.000 + 50.000 − 300.000 (dòng Trả của tuần)
   await page.screenshot({ path: `${SHOTS}/dien-thoai-cham-cong.png`, fullPage: true });
   expect(await noSideScroll(page)).toBe(true);
   expect(errors).toEqual([]);

@@ -29,7 +29,7 @@ describe('sổ chấm công — bảng nháp', () => {
     expect(checkSheet([row({ name: 'long' }), row({ name: 'LONG' })], workers)).toMatchObject({ ok: false, message: 'Còn tên trùng nhau! Sửa trước khi lưu.' });
     const ok = checkSheet([row({ name: 'cuong', days: [0, 1, 1, 0.5, 0, 0, 0], wage: 500_000, deduction: 200_000 }), blankRow()], workers);
     expect(ok.ok).toBe(true);
-    if (ok.ok) expect(ok.lines).toEqual([{ worker_id: workers[1]!.id, role: 'T', day_units: [0, 1, 1, 0.5, 0, 0, 0], daily_wage: 500_000, allowance: 0, retail_purchase: 0, note: '', debt_deduction: 200_000 }]);
+    if (ok.ok) expect(ok.lines).toEqual([{ worker_id: workers[1]!.id, role: 'T', day_units: [0, 1, 1, 0.5, 0, 0, 0], daily_wage: 500_000, allowance: 0, retail_purchase: 0, note: '' }]);
   });
 
   it('Copy / Dán tuần: chỉ chép tên, vai trò, lương, ngày công', () => {
