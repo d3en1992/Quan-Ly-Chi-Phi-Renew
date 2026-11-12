@@ -1,6 +1,6 @@
-TRẠNG THÁI: TẠM DỪNG — anh Tình yêu cầu dừng sau GD06; GD07 mới bắt đầu (chưa làm)
-Nhịp tim: 12/11/2026 07:15 — GD06 đã kiểm lại xanh; bắt đầu GD07
-Đang làm: (không) — chờ anh tự chạy GD07
+TRẠNG THÁI: ĐANG LÀM GD07 (anh Tình tự chạy 12/11)
+Nhịp tim: 12/11/2026 12:35 — GD07: xong công thức chia tiền NCC + migration + tab Chi Trả, Công Nợ Phải Trả; đang làm Doanh Thu, Quyết Toán
+Đang làm: GD07 — Doanh Thu, Quyết Toán, test Playwright
 
 # Tiến độ làm lại app
 

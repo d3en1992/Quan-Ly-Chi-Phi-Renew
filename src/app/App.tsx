@@ -17,6 +17,7 @@ import { CatalogPage } from '@/features/catalog/CatalogPage';
 import { ContactsPage } from '@/features/contacts/ContactsPage';
 import { TimesheetPage } from '@/features/timesheets/TimesheetPage';
 import { PaymentsPage } from '@/features/payments/PaymentsPage';
+import { PayablesPage } from '@/features/payments/PayablesPage';
 import {
   BlockedPage,
   ComingSoonPage,
@@ -59,6 +60,7 @@ const PAGES: Record<string, () => ReactNode> = {
   nhap: () => <ExpenseEntryPage />,
   chamcong: () => <TimesheetPage />,
   nhapung: () => <PaymentsPage />,
+  congno: () => <PayablesPage />,
   danhba: () => <ContactsPage />,
   danhmuc: () => <CatalogPage />,
   loinhuan: () => <ProfitPage />,
