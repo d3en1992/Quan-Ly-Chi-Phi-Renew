@@ -51,7 +51,7 @@ export function useLists(): { query: ReturnType<typeof useLookups>; lists: Lists
       projects: data.projects, projectOptions: data.projectOptions, units: data.units,
       types: merge(data.types, 'expense_type', (n) => n),
       buyers: merge(data.buyers, 'person', (n) => n),
-      suppliers: merge(data.suppliers, 'supplier', (n) => ({ ...n, address: null, buys_on_credit: false, archived: false })),
+      suppliers: merge(data.suppliers, 'supplier', (n) => ({ ...n, address: null, phone: null, buys_on_credit: false, archived: false })),
       nameOf: (id) => (id ? names.get(id) ?? '' : ''),
       create,
     };

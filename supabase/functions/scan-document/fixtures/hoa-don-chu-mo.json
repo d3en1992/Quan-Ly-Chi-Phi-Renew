@@ -1,0 +1,16 @@
+{
+  "kind": "invoice",
+  "invoice": {
+    "date": "2026-11-09", "invoice_no": "",
+    "supplier_name": "SẮT THÉP AN PHÚ", "supplier_address": "45 Nguyễn Văn Quá, Q12", "supplier_phone": "0283 888 999",
+    "supplier_match": "SẮT THÉP AN PHÚ", "project_match": "", "expense_type_match": "Sắt Thép", "buyer_match": "",
+    "printed_total": 16120000,
+    "lines": [
+      { "name": "Thép D16", "unit": "cây", "quantity": 40, "unit_price": 245000, "amount": 9800000, "low_confidence": [] },
+      { "name": "Thép D10", "unit": "cây", "quantity": 30, "unit_price": 98000, "amount": 2940000, "low_confidence": ["unit_price"] },
+      { "name": "Đai 8", "unit": "kg", "quantity": 120, "unit_price": 18500, "amount": 2220000, "low_confidence": ["quantity", "amount"] },
+      { "name": "Kẽm buộc", "unit": "kg", "quantity": 20, "unit_price": 28000, "amount": 560000, "low_confidence": ["name"] }
+    ],
+    "low_confidence": ["date", "invoice_no", "printed_total"]
+  }
+}

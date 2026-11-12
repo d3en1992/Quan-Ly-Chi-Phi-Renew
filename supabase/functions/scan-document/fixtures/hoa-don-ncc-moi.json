@@ -1,0 +1,18 @@
+{
+  "kind": "invoice",
+  "invoice": {
+    "date": "2026-11-10", "invoice_no": "0001284",
+    "supplier_name": "CH VLXD THANH BÌNH", "supplier_address": "128 Tỉnh lộ 8, Tân An Hội, Củ Chi", "supplier_phone": "0908 123 456",
+    "supplier_match": "", "project_match": "", "expense_type_match": "Copha", "buyer_match": "KS LAM",
+    "printed_total": 8500000,
+    "lines": [
+      { "name": "Ván ép coffa 20 x 4", "unit": "tấm", "quantity": 10, "unit_price": 140000, "amount": 1400000, "low_confidence": [] },
+      { "name": "Ván ép coffa 25 x 4", "unit": "tấm", "quantity": 10, "unit_price": 175000, "amount": 1750000, "low_confidence": [] },
+      { "name": "Ván ép coffa 30 x 4", "unit": "tấm", "quantity": 10, "unit_price": 210000, "amount": 2100000, "low_confidence": [] },
+      { "name": "Ván ép coffa 40 x 4", "unit": "tấm", "quantity": 5, "unit_price": 280000, "amount": 1400000, "low_confidence": ["name"] },
+      { "name": "Ván ép coffa 50 x 4", "unit": "tấm", "quantity": 5, "unit_price": 350000, "amount": 1750000, "low_confidence": ["quantity"] },
+      { "name": "Vận chuyển", "unit": "chuyến", "quantity": 1, "unit_price": 100000, "amount": 100000, "low_confidence": [] }
+    ],
+    "low_confidence": ["supplier_phone"]
+  }
+}

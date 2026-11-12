@@ -47,11 +47,19 @@ type Props = {
   compact?: boolean;
   /** Công trình được chọn (khi sửa hóa đơn cũ của công trình đã quyết toán thì truyền thêm công trình đó) */
   projectItems?: readonly SuggestItem[];
+  /** Chụp hóa đơn: ô đầu phiếu AI không chắc (tô vàng) — 'date' | 'project' | 'type' | 'supplier' | 'buyer' | 'invoiceNo' */
+  unsureHead?: readonly string[];
+  /** Chụp hóa đơn: ô dòng vật tư AI không chắc, dạng `${key dòng}:${cột 0–3}` */
+  unsureCells?: readonly string[];
 };
+
+const UNSURE = '!border-warn !bg-warn-soft';
 
 const cellInput = '!h-[34px] !rounded-none !border-0 !bg-transparent focus:!outline-2 focus:!-outline-offset-2';
 
-export function InvoiceFields({ draft, setDraft, lists, suggestions, descriptions, bad = [], compact = false, projectItems }: Props) {
+export function InvoiceFields({ draft, setDraft, lists, suggestions, descriptions, bad = [], compact = false, projectItems, unsureHead = [], unsureCells = [] }: Props) {
+  const u = (k: string) => (unsureHead.includes(k) ? UNSURE : undefined);
+  const uc = (key: number, col: number) => (unsureCells.includes(`${key}:${col}`) ? '!bg-warn-soft' : undefined);
   const set = <K extends keyof InvoiceDraft>(k: K, v: InvoiceDraft[K]) => setDraft((d) => ({ ...d, [k]: v }));
   const setLine = (key: number, patch: Partial<LineDraft>) =>
     setDraft((d) => (d.lines ? { ...d, lines: d.lines.map((l) => (l.key === key ? { ...l, ...patch } : l)) } : d));
@@ -77,16 +85,16 @@ export function InvoiceFields({ draft, setDraft, lists, suggestions, description
   return (
     <>
       <div className={cn('grid gap-3', compact ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4')}>
-        <Field label="Ngày"><Input type="date" aria-label="Ngày hóa đơn" aria-invalid={isBad('date')} value={draft.date} onChange={(e) => set('date', e.target.value)} /></Field>
+        <Field label="Ngày"><Input type="date" aria-label="Ngày hóa đơn" aria-invalid={isBad('date')} className={u('date')} value={draft.date} onChange={(e) => set('date', e.target.value)} /></Field>
         <Field label="Công trình *" className={compact ? 'col-span-2' : 'col-span-2'}>
-          <Combo aria-label="Công trình" value={draft.project} onChange={(v) => set('project', v)} items={projectItems ?? lists.projectOptions} groupLabel="Công trình" invalid={isBad('project')} />
+          <Combo aria-label="Công trình" value={draft.project} onChange={(v) => set('project', v)} items={projectItems ?? lists.projectOptions} groupLabel="Công trình" invalid={isBad('project')} className={u('project')} />
         </Field>
         <Field label="Loại chi phí *" className={compact ? 'col-span-2' : undefined}>
-          <Combo aria-label="Loại chi phí" value={draft.type} onChange={(v) => set('type', v)} items={lists.types} groupLabel="Loại chi phí" onCreate={(t) => lists.create('expense_type', t)} invalid={isBad('type')} />
+          <Combo aria-label="Loại chi phí" value={draft.type} onChange={(v) => set('type', v)} items={lists.types} groupLabel="Loại chi phí" onCreate={(t) => lists.create('expense_type', t)} invalid={isBad('type')} className={u('type')} />
         </Field>
         <Field label="Nhà cung cấp" className={compact ? 'col-span-2' : undefined}>
           <Combo
-            aria-label="Nhà cung cấp" value={draft.supplier} items={lists.suppliers} groupLabel="Nhà cung cấp" onCreate={(t) => lists.create('supplier', t)} invalid={isBad('supplier')}
+            aria-label="Nhà cung cấp" value={draft.supplier} items={lists.suppliers} groupLabel="Nhà cung cấp" onCreate={(t) => lists.create('supplier', t)} invalid={isBad('supplier')} className={u('supplier')}
             onChange={(v) => setDraft((d) => {
               // Đổi sang NCC khác → ô Đã TT theo công tắc Mua nợ của NCC mới (vẫn tích lại được)
               const before = findByName(d.supplier, lists.suppliers)?.id, after = findByName(v, lists.suppliers)?.id;
@@ -95,9 +103,9 @@ export function InvoiceFields({ draft, setDraft, lists, suggestions, description
           />
         </Field>
         <Field label="Người mua">
-          <Combo aria-label="Người mua" value={draft.buyer} onChange={(v) => set('buyer', v)} items={lists.buyers} groupLabel="Người mua" onCreate={(t) => lists.create('person', t)} invalid={isBad('buyer')} />
+          <Combo aria-label="Người mua" value={draft.buyer} onChange={(v) => set('buyer', v)} items={lists.buyers} groupLabel="Người mua" onCreate={(t) => lists.create('person', t)} invalid={isBad('buyer')} className={u('buyer')} />
         </Field>
-        <Field label="Số HĐ"><Input aria-label="Số HĐ" value={draft.invoiceNo} maxLength={60} onChange={(e) => set('invoiceNo', e.target.value)} /></Field>
+        <Field label="Số HĐ"><Input aria-label="Số HĐ" className={u('invoiceNo')} value={draft.invoiceNo} maxLength={60} onChange={(e) => set('invoiceNo', e.target.value)} /></Field>
         <Field label="Thanh toán">
           <span className="flex h-9 items-center"><Checkbox checked={draft.paid} onChange={(v) => set('paid', v)} label="Đã thanh toán lúc mua" /></span>
         </Field>
@@ -133,10 +141,10 @@ export function InvoiceFields({ draft, setDraft, lists, suggestions, description
               {draft.lines.map((l, i) => (
                 <tr key={l.key}>
                   <td className="!px-0 text-center text-[12px] text-faint">{i + 1}</td>
-                  <td className="!p-0"><Combo free data-lr={i} data-lc={0} aria-label={`Tên vật tư dòng ${i + 1}`} className={cellInput} value={l.name} maxLength={300} items={suggestions.names} groupLabel="Vật tư đã nhập" onChange={(v) => setLine(l.key, { name: v })} onKeyDown={(e) => onLineKey(e, i, 0)} /></td>
-                  <td className="!p-0"><Combo free data-lr={i} data-lc={1} aria-label={`ĐVT dòng ${i + 1}`} className={cellInput} value={l.unit} maxLength={30} items={suggestions.units} groupLabel="Đơn vị tính" onChange={(v) => setLine(l.key, { unit: v })} onKeyDown={(e) => onLineKey(e, i, 1)} /></td>
-                  <td className="!p-0"><Input data-lr={i} data-lc={2} aria-label={`Số lượng dòng ${i + 1}`} inputMode="decimal" autoComplete="off" className={cn(cellInput, 'num text-right')} value={l.quantity} onChange={(e) => setLine(l.key, { quantity: e.target.value.replace(/[^\d.,]/g, '') })} onKeyDown={(e) => onLineKey(e, i, 2)} /></td>
-                  <td className="!p-0"><MoneyInput data-lr={i} data-lc={3} aria-label={`Đơn giá dòng ${i + 1}`} className={cellInput} placeholder="" value={l.unitPrice} onChange={(v) => setLine(l.key, { unitPrice: v })} onKeyDown={(e) => onLineKey(e, i, 3)} /></td>
+                  <td className={cn('!p-0', uc(l.key, 0))}><Combo free data-lr={i} data-lc={0} aria-label={`Tên vật tư dòng ${i + 1}`} className={cellInput} value={l.name} maxLength={300} items={suggestions.names} groupLabel="Vật tư đã nhập" onChange={(v) => setLine(l.key, { name: v })} onKeyDown={(e) => onLineKey(e, i, 0)} /></td>
+                  <td className={cn('!p-0', uc(l.key, 1))}><Combo free data-lr={i} data-lc={1} aria-label={`ĐVT dòng ${i + 1}`} className={cellInput} value={l.unit} maxLength={30} items={suggestions.units} groupLabel="Đơn vị tính" onChange={(v) => setLine(l.key, { unit: v })} onKeyDown={(e) => onLineKey(e, i, 1)} /></td>
+                  <td className={cn('!p-0', uc(l.key, 2))}><Input data-lr={i} data-lc={2} aria-label={`Số lượng dòng ${i + 1}`} inputMode="decimal" autoComplete="off" className={cn(cellInput, 'num text-right')} value={l.quantity} onChange={(e) => setLine(l.key, { quantity: e.target.value.replace(/[^\d.,]/g, '') })} onKeyDown={(e) => onLineKey(e, i, 2)} /></td>
+                  <td className={cn('!p-0', uc(l.key, 3))}><MoneyInput data-lr={i} data-lc={3} aria-label={`Đơn giá dòng ${i + 1}`} className={cellInput} placeholder="" value={l.unitPrice} onChange={(v) => setLine(l.key, { unitPrice: v })} onKeyDown={(e) => onLineKey(e, i, 3)} /></td>
                   <td className="num text-right">{lineIsBlank(l) ? '' : formatMoney(lineTotal(l))}{l.discount.trim() ? <div className="text-[11px] text-muted">CK {l.discount}</div> : null}</td>
                   <td className="!p-0 text-center"><button type="button" tabIndex={-1} aria-label={`Xóa dòng ${i + 1}`} className="grid h-[34px] w-full place-items-center text-faint hover:text-bad" onClick={() => removeLine(l.key)}><Icon name="close" className="text-[17px]" /></button></td>
                 </tr>

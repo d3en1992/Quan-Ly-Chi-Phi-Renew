@@ -1,8 +1,9 @@
 // Trang tạm cho các tab chưa làm, trang "không có quyền", và các màn riêng của điện thoại (Thêm, Tổng quan, Chụp)
 import { Link, useNavigate } from 'react-router-dom';
-import { Button, Icon } from '@/components/ui/button';
+import { Icon } from '@/components/ui/button';
 import { Card, EmptyState, PageHeader } from '@/components/ui/misc';
 import { useAccess, useAuth } from '@/app/auth';
+import { ScanWorkspace } from '@/features/scan/ScanWorkspace';
 import { ALL_ITEMS, canSeeItem, PHONE_MORE_KEYS, PHONE_SHORT_LABEL, type NavItem } from '@/app/nav';
 
 /** Tab chưa làm: tên đúng, trạng thái "Đang làm", ghi giai đoạn sẽ làm */
@@ -91,18 +92,7 @@ export function PhoneHomePage() {
   );
 }
 
-/** Điện thoại: màn Chụp đa năng (GĐ9) */
+/** Điện thoại: màn Chụp đa năng (MP.chupmenu → MP.chup / MP.cccd) */
 export function PhoneCapturePage() {
-  return (
-    <Card>
-      <EmptyState icon="photo_camera" title="Chụp hóa đơn, CCCD — đang làm">
-        Tính năng chụp đa năng sẽ có ở GĐ9.
-      </EmptyState>
-      <div className="px-4 pb-4">
-        <Button asChild className="w-full">
-          <Link to="/nhap-chi-phi">Nhập tay</Link>
-        </Button>
-      </div>
-    </Card>
-  );
+  return <ScanWorkspace compact />;
 }

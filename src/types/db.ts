@@ -20,6 +20,26 @@ export type Database = {
                   Relationships: [
                     
                   ]
+                },"audit_log": {
+                  Row: {
+                    "action": string,"company_id": string,"created_at": string,"detail": NonNullable<Json>,"id": string,"row_count": number,"user_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "action": string,"company_id"?: string,"created_at"?: string,"detail"?: NonNullable<Json>,"id"?: string,"row_count"?: number,"user_id"?: string | null
+                  }
+                  Update: {
+                    "action"?: string,"company_id"?: string,"created_at"?: string,"detail"?: NonNullable<Json>,"id"?: string,"row_count"?: number,"user_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "audit_log_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"backups": {
                   Row: {
                     "company_id": string,"counts": NonNullable<Json>,"created_at": string,"created_by": string | null,"data": NonNullable<Json>,"id": string,"kind": string,"note": string | null,"size_bytes": number
@@ -1000,6 +1020,11 @@ isOneToOne: false
                            },
 "export_company_snapshot":
 { Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"export_contact_private":
+{ Args: { "note"?: Json }; Returns: {
+              "bank_account": string,"bank_holder": string,"bank_name": string,"customer_id": string,"date_of_birth": string,"employee_id": string,"gender": string,"hometown": string,"id_issued_on": string,"id_issued_place": string,"id_number": string,"permanent_address": string,"phone": string,"subcontractor_id": string,"worker_id": string
+            }[]
                            },
 "get_backup_data":
 { Args: { "p_id": string }; Returns: Json

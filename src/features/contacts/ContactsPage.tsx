@@ -1,5 +1,6 @@
 // Tab DANH BẠ: Khách hàng · Công nhân · Nhân viên · Nhà cung cấp · Thầu phụ.
-// SĐT, CCCD che theo quyền "Xem SĐT, số CCCD" (`see_contact_ids`). Nút Chụp CCCD làm ở GĐ9 (để nút sẵn).
+// SĐT, CCCD che theo quyền "Xem SĐT, số CCCD" (`see_contact_ids`). Nút Chụp CCCD mở bảng trượt Chụp đa năng (features/scan) — chỉ lưu chữ, không lưu ảnh.
+import { ExportButton } from '@/features/export/ExportButton';
 import { useMemo, useState, type ReactNode } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -16,6 +17,8 @@ import { matchesSearch } from '@/features/reports/shared';
 import { projectNumbers } from '@/features/projects/numbers';
 import { useDeleteContact, useContacts, useToggleCredit, type ContactKind, type ContactsData } from './api';
 import { ContactForm, KIND_TITLE } from './ContactForm';
+import { Sheet } from '@/components/ui/sheet';
+import { ScanWorkspace } from '@/features/scan/ScanWorkspace';
 
 const TABS: { key: ContactKind; label: string }[] = [
   { key: 'customer', label: 'KHÁCH HÀNG' }, { key: 'worker', label: 'CÔNG NHÂN' }, { key: 'employee', label: 'NHÂN VIÊN' },
@@ -44,6 +47,8 @@ export function ContactsPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('');
   const [form, setForm] = useState<{ kind: ContactKind; id: string | null } | null>(null);
+  const [scanOpen, setScanOpen] = useState(false);
+  const canScanId = canEdit && access.special.see_contact_ids;
   const [deleting, setDeleting] = useState<{ kind: ContactKind; id: string; name: string } | null>(null);
 
   const rows = useMemo<RowDef[]>(() => {
@@ -71,7 +76,8 @@ export function ContactsPage() {
 
   const actions = (
     <>
-      <Button disabled title="Chụp CCCD làm ở giai đoạn 9"><Icon name="badge" />Chụp CCCD / giấy tờ</Button>
+      <ExportButton datasets={['customers', 'workers', 'suppliers', 'subcontractors', 'employees']} year={null} />
+      {canScanId ? <Button onClick={() => setScanOpen(true)}><Icon name="badge" />Chụp CCCD / giấy tờ</Button> : null}
       {canEdit ? <Button variant="primary" onClick={() => setForm({ kind: tab, id: null })}><Icon name="person_add" />Thêm</Button> : null}
     </>
   );
@@ -116,8 +122,11 @@ export function ContactsPage() {
           </div>
         </Card>
       )}
-      {tab === 'worker' ? <Note icon="badge">Bấm <b>Chụp CCCD</b> (giai đoạn 9): AI đọc họ tên, ngày sinh, số CCCD, quê quán. <b>Chỉ lưu chữ, không lưu ảnh.</b> Số CCCD che bớt, chỉ vai trò có quyền "Xem SĐT, số CCCD" mới thấy đủ.</Note> : null}
+      {tab === 'worker' ? <Note icon="badge">Bấm <b>Chụp CCCD</b>: AI đọc họ tên, ngày sinh, số CCCD, quê quán. <b>Chỉ lưu chữ, không lưu ảnh.</b> Số CCCD che bớt, chỉ vai trò có quyền "Xem SĐT, số CCCD" mới thấy đủ.</Note> : null}
       {tab === 'supplier' ? <Note><b>Mua nợ</b> bật sẵn cho nhà cung cấp từng có tiền ứng trong dữ liệu cũ. Địa chỉ, SĐT sẽ tự điền dần khi chụp hóa đơn.</Note> : null}
+      <Sheet open={scanOpen} onOpenChange={setScanOpen} title="Chụp CCCD" wide>
+        {scanOpen ? <ScanWorkspace defaultKind="id_card" lockKind compact onSaved={() => setScanOpen(false)} /> : null}
+      </Sheet>
       {form ? <ContactForm open onClose={() => setForm(null)} kind={form.kind} id={form.id} data={q.data} canSeeIds={canSeeIds} /> : null}
       <ConfirmDialog open={!!deleting} onOpenChange={(o) => { if (!o) setDeleting(null); }} title="Xóa khỏi Danh Bạ?" danger busy={del.isPending} confirmLabel="Xóa"
         message={<>Xóa <b>{deleting?.name}</b>? Mục bị xóa vào Thùng Rác, khôi phục được.</>} onConfirm={() => void doDelete()} />

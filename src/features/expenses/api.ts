@@ -17,7 +17,7 @@ const projectSchema = z.object({
   id: z.string(), name: z.string(), status: z.string(), is_company_overhead: z.boolean(), address: z.string().nullable(), kind: z.string().nullable(),
 });
 const catalogSchema = z.object({ id: z.string(), name: z.string(), kind: z.string(), archived: z.boolean() });
-const supplierSchema = z.object({ id: z.string(), name: z.string(), address: z.string().nullable(), buys_on_credit: z.boolean(), archived: z.boolean() });
+const supplierSchema = z.object({ id: z.string(), name: z.string(), address: z.string().nullable(), phone: z.string().nullable(), buys_on_credit: z.boolean(), archived: z.boolean() });
 const expenseSchema = z.object({
   id: z.string(), project_id: z.string(), date: z.string(), expense_type_id: z.string(), supplier_id: z.string().nullable(), buyer_id: z.string().nullable(),
   paid_at_purchase: z.boolean(), description: z.string().nullable().transform((v) => v ?? ''), amount: z.coerce.number(), invoice_no: z.string().nullable(),
@@ -127,6 +127,7 @@ async function resyncAllocations() {
 const toRow = (e: ExpenseInput) => ({
   project_id: e.projectId, date: e.date, expense_type_id: e.typeId, supplier_id: e.supplierId, buyer_id: e.buyerId,
   paid_at_purchase: e.paid, description: e.description, amount: e.amount, invoice_no: e.invoiceNo || null, source: e.source,
+  ...(e.receiptImagePath !== undefined ? { receipt_image_path: e.receiptImagePath } : {}),
 });
 const toLines = (expenseId: string, e: ExpenseInput) =>
   (e.lines ?? []).map((l, i) => ({

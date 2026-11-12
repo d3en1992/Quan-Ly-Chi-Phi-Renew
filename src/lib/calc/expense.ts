@@ -48,3 +48,13 @@ export function sumAmounts(amounts: readonly (number | null | undefined)[]): num
   for (const a of amounts) t += Math.round(Number(a) || 0);
   return t;
 }
+
+/**
+ * Chụp hóa đơn (GĐ9): so tổng các dòng AI đọc với số TỔNG in trên hóa đơn.
+ * Trả về số chênh = in trên hóa đơn − cộng các dòng (0 = khớp). Không thấy số tổng in (0) → null.
+ */
+export function printedTotalGap(printedTotal: number, linesTotal: number): number | null {
+  const printed = Math.round(Number(printedTotal) || 0);
+  if (printed <= 0) return null;
+  return printed - Math.round(Number(linesTotal) || 0);
+}

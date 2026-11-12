@@ -1,5 +1,6 @@
-// Tab NHẬP CHI PHÍ (PAGES.nhap của mẫu): NHẬP NHANH (lưới kiểu Excel + hóa đơn trong ngày) · HÓA ĐƠN CHI TIẾT · CHỤP HÓA ĐƠN (GĐ9).
+// Tab NHẬP CHI PHÍ (PAGES.nhap của mẫu): NHẬP NHANH (lưới kiểu Excel + hóa đơn trong ngày) · HÓA ĐƠN CHI TIẾT · CHỤP HÓA ĐƠN (AI đọc ảnh, features/scan).
 // Điện thoại: màn Nhập tay (MP.nhap) ở PhoneEntry.tsx.
+import { ExportButton } from '@/features/export/ExportButton';
 import { useCallback, useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -16,6 +17,7 @@ import { InvoiceFields, useLineSuggestions } from './InvoiceForm';
 import { blankInvoice, checkInvoice, type InvoiceDraft, type InvoiceField } from './invoice-model';
 import { findDuplicates, historySuggest, isoToVn, type DupHit } from './logic';
 import { PhoneEntry } from './PhoneEntry';
+import { ScanWorkspace } from '@/features/scan/ScanWorkspace';
 import { QuickGrid } from './QuickGrid';
 import type { ExpenseInput } from './schema';
 import { DuplicateDialog, toDupCandidate, today, useLists, type Lists } from './shared';
@@ -145,7 +147,7 @@ export function ExpenseEntryPage() {
   const expenses = expensesQuery.data;
 
   const header = mode === 'phone' ? null : (
-    <PageHeader title="Nhập Chi Phí" sub="Hóa đơn, vật tư, chi phí công trình" actions={<Button onClick={() => setTab('scan')}><Icon name="photo_camera" />Chụp hóa đơn</Button>} />
+    <PageHeader title="Nhập Chi Phí" sub="Hóa đơn, vật tư, chi phí công trình" actions={<><ExportButton datasets={['expenses', 'expense_lines']} /><Button onClick={() => setTab('scan')}><Icon name="photo_camera" />Chụp hóa đơn</Button></>} />
   );
   if (query.isPending || expensesQuery.isPending) return <>{header}<Card><LoadingState label="Đang tải danh mục…" /></Card></>;
   if (query.isError || expensesQuery.isError || !lists || !expenses) {
@@ -172,7 +174,7 @@ export function ExpenseEntryPage() {
           <DayInvoices date={activeDate} expenses={expenses} lists={lists} onOpen={setEditing} />
         </>
       ) : (
-        <Card><EmptyState icon="photo_camera" title="Chụp hóa đơn — đang làm">AI đọc ảnh hóa đơn sẽ có ở GĐ9. Hiện nhập bằng NHẬP NHANH hoặc HÓA ĐƠN CHI TIẾT.</EmptyState></Card>
+        canAdd ? <ScanWorkspace defaultKind="invoice" /> : null
       )}
       {sheet}
     </>
