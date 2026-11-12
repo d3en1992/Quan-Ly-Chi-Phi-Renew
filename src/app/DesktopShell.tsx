@@ -57,14 +57,14 @@ export function DesktopShell({ compact }: { compact: boolean }) {
           compact ? 'items-center px-2 py-3' : 'px-2 py-3.5',
         )}
       >
-        <div className={cn('flex items-center gap-2.5', compact ? 'pb-3' : 'px-2 pt-1 pb-3.5')}>
+        <div className={cn('flex items-center', compact ? 'gap-2.5 pb-3' : 'gap-2 px-1.5 pt-1 pb-3.5')}>
           <div className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-accent text-accent-fg">
             {access.company.logo_url ? <img src={access.company.logo_url} alt="" className="size-full object-cover" /> : <Icon name="foundation" />}
           </div>
           {compact ? null : (
             <div className="min-w-0">
               <b className="block truncate text-sm leading-tight" title={companyShort}>{companyShort}</b>
-              <small className="block truncate text-[11px] text-faint" title="Quản lý chi phí công trình">Quản lý chi phí công trình</small>
+              <small className="block truncate text-[10.5px] text-faint" title="Quản lý chi phí công trình">Quản lý chi phí công trình</small>
             </div>
           )}
         </div>

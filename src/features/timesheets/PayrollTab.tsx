@@ -92,7 +92,7 @@ export function PayrollTab({ data, ix, years, yearLabel, phone, onOpenWeek }: Pr
       ))}
     </div>
   ) : (
-    <div className="tbl">
+    <div className="tbl tbl-tight">
       <table data-testid="tlt-table">
         <thead>
           <tr>
@@ -110,7 +110,7 @@ export function PayrollTab({ data, ix, years, yearLabel, phone, onOpenWeek }: Pr
               <td className="text-right"><Money value={r.wageWithAllowance} /></td>
               <td className="text-right"><Money value={r.avgDaily} /></td>
               {week ? <><td className="text-right">{r.deduction ? <span className="num">−{formatMoney(r.deduction)}</span> : <span className="text-faint">—</span>}</td><td className="text-right"><b><Money value={r.netPay} /></b></td></> : null}
-              <td className="max-w-[220px] truncate text-muted" title={names(r).join(', ')}>{names(r)[0] ?? '—'}{r.projectIds.length > 1 ? <small className="ml-1 rounded bg-surface-2 px-1">+{r.projectIds.length - 1}</small> : null}</td>
+              <td className="max-w-[170px] truncate text-muted" title={names(r).join(', ')}>{names(r)[0] ?? '—'}{r.projectIds.length > 1 ? <small className="ml-1 rounded bg-surface-2 px-1">+{r.projectIds.length - 1}</small> : null}</td>
             </tr>
           ))}
         </tbody>
@@ -135,14 +135,14 @@ export function PayrollTab({ data, ix, years, yearLabel, phone, onOpenWeek }: Pr
       ))}
     </div>
   ) : (
-    <div className="tbl">
+    <div className="tbl tbl-tight">
       <table data-testid="cc-history">
         <thead><tr><th>Tuần</th><th>Công trình</th><th className="!text-right">Thợ</th><th className="!text-right">Công</th><th className="!text-right">Thực lãnh</th><th /></tr></thead>
         <tbody>
           {hp.slice.map((h) => (
             <tr key={h.weekId} className="cursor-pointer" tabIndex={0} onClick={() => onOpenWeek(h.weekStart, h.projectId)} onKeyDown={(e) => { if (e.key === 'Enter') onOpenWeek(h.weekStart, h.projectId); }}>
               <td className="num whitespace-nowrap">{weekLabel(h.weekStart)}</td>
-              <td className="max-w-[180px] truncate" title={data.projectName(h.projectId)}>{data.projectName(h.projectId)}</td>
+              <td className="max-w-[130px] truncate" title={data.projectName(h.projectId)}>{data.projectName(h.projectId)}</td>
               <td className="num text-right">{h.workers}</td>
               <td className="num text-right">{cDay(h.dayUnits)}</td>
               <td className="text-right"><Money value={h.netPay} /></td>
@@ -157,7 +157,7 @@ export function PayrollTab({ data, ix, years, yearLabel, phone, onOpenWeek }: Pr
   return (
     <>
       {filters}
-      <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <Card>
           <CardHeader title="Tổng lương tuần" sub="theo công nhân, mọi công trình" actions={<small className="text-muted">Tick để cộng nhanh{sel.length ? <> · <b className="num text-fg">{sel.length} người: {formatMoney(sumNetPay(sel))}</b></> : null}</small>} />
           {tltBody}
