@@ -33,7 +33,7 @@ const receiptSchema = z.object({ project_id: z.string(), date, amount: money });
 const contractSchema = z.object({ project_id: z.string(), date, value: money, extra_value: money, legacy_variation: money });
 const settlementSchema = z.object({ id: z.string(), project_id: z.string(), date, kind: z.string(), amount: money, created_at: z.string().nullable() });
 const subcontractSchema = z.object({
-  id: z.string(), project_id: z.string(), subcontractor_id: z.string(), date, value: money, legacy_variation: money, created_at: z.string().nullable(),
+  id: z.string(), project_id: z.string(), subcontractor_id: z.string(), date, value: money, legacy_variation: money, created_at: z.string().nullable(), description: z.string().nullable(),
 });
 const namedSchema = z.object({ id: z.string(), name: z.string() });
 const catalogSchema = z.object({ id: z.string(), name: z.string(), kind: z.string() });

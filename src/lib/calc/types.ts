@@ -53,6 +53,7 @@ export type CalcPayment = {
   subcontractor_id?: string | null;
   subcontract_id?: string | null;
   created_at?: string | null;
+  note?: string | null;
 };
 
 export type CalcPaymentAllocation = {
@@ -91,6 +92,7 @@ export type CalcSubcontract = {
   value: number;
   legacy_variation: number;
   created_at?: string | null;
+  description?: string | null;
 };
 
 /** Toàn bộ dữ liệu một lần tính báo cáo cần */

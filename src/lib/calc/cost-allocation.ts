@@ -165,12 +165,12 @@ export function allocCostLines(projectId: string, src: AllocSource, years: YearF
       const sid = p.supplier_id ?? '';
       lines.push({
         key: 'ung:' + p.id, kind: 'ungncc', ngay: p.date, loai: topType(sid) || ALLOC_TYPE_SUPPLIER,
-        nd: (p as { note?: string | null }).note || 'Ứng nhà cung cấp', doiTuong: src.supplierName.get(sid) ?? '', tien, items: null, hdtpId: '', refId: p.id,
+        nd: p.note || 'Ứng nhà cung cấp', doiTuong: src.supplierName.get(sid) ?? '', tien, items: null, hdtpId: '', refId: p.id,
       });
     } else if ((p.kind === 'advance' || p.kind === 'progress') && p.project_id === projectId) {
       lines.push({
         key: 'ung:' + p.id, kind: 'ungtp', ngay: p.date, loai: ALLOC_TYPE_SUBCONTRACT,
-        nd: (p as { note?: string | null }).note || 'Ứng thầu phụ', doiTuong: (p.subcontractor_id && src.subcontractorName.get(p.subcontractor_id)) || '',
+        nd: p.note || 'Ứng thầu phụ', doiTuong: (p.subcontractor_id && src.subcontractorName.get(p.subcontractor_id)) || '',
         tien: p.amount, items: null, hdtpId: p.subcontract_id ?? '', refId: p.id,
       });
     }

@@ -18,6 +18,9 @@ import { ContactsPage } from '@/features/contacts/ContactsPage';
 import { TimesheetPage } from '@/features/timesheets/TimesheetPage';
 import { PaymentsPage } from '@/features/payments/PaymentsPage';
 import { PayablesPage } from '@/features/payments/PayablesPage';
+import { CostAllocationPage } from '@/features/cost-allocation/CostAllocationPage';
+import { EquipmentPage } from '@/features/equipment/EquipmentPage';
+import { TrashPage } from '@/features/trash/TrashPage';
 import { RevenuePage } from '@/features/revenue/RevenuePage';
 import { SettlementsPage } from '@/features/revenue/SettlementsPage';
 import {
@@ -70,6 +73,9 @@ const PAGES: Record<string, () => ReactNode> = {
   loinhuan: () => <ProfitPage />,
   dashboard: () => <DashboardPage />,
   thongkecphd: () => <ExpenseStatsPage />,
+  tytrong: () => <CostAllocationPage />,
+  thietbi: () => <EquipmentPage />,
+  thungrac: () => <TrashPage />,
 };
 
 function Guard({ item, children }: { item: NavItem; children: ReactNode }) {

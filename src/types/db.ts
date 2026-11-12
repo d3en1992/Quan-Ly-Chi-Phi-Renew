@@ -42,14 +42,14 @@ isOneToOne: false
                   ]
                 },"catalog_items": {
                   Row: {
-                    "archived": boolean,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"id": string,"kind": string,"name": string,"sort_order": number,"updated_at": string
+                    "archived": boolean,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"id": string,"kind": string,"name": string,"sort_order": number,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "archived"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"id"?: string,"kind": string,"name": string,"sort_order"?: number,"updated_at"?: string
+                    "archived"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"kind": string,"name": string,"sort_order"?: number,"updated_at"?: string
                   }
                   Update: {
-                    "archived"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"id"?: string,"kind"?: string,"name"?: string,"sort_order"?: number,"updated_at"?: string
+                    "archived"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"kind"?: string,"name"?: string,"sort_order"?: number,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -76,14 +76,14 @@ isOneToOne: false
                   ]
                 },"contact_private": {
                   Row: {
-                    "bank_account": string | null,"bank_holder": string | null,"bank_name": string | null,"company_id": string,"created_at": string,"created_by": string | null,"customer_id": string | null,"date_of_birth": string | null,"deleted_at": string | null,"employee_id": string | null,"gender": string | null,"hometown": string | null,"id": string,"id_issued_on": string | null,"id_issued_place": string | null,"id_number": string | null,"permanent_address": string | null,"phone": string | null,"subcontractor_id": string | null,"updated_at": string,"worker_id": string | null
+                    "bank_account": string | null,"bank_holder": string | null,"bank_name": string | null,"company_id": string,"created_at": string,"created_by": string | null,"customer_id": string | null,"date_of_birth": string | null,"deleted_at": string | null,"deleted_by": string | null,"employee_id": string | null,"gender": string | null,"hometown": string | null,"id": string,"id_issued_on": string | null,"id_issued_place": string | null,"id_number": string | null,"permanent_address": string | null,"phone": string | null,"subcontractor_id": string | null,"updated_at": string,"worker_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "bank_account"?: string | null,"bank_holder"?: string | null,"bank_name"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"customer_id"?: string | null,"date_of_birth"?: string | null,"deleted_at"?: string | null,"employee_id"?: string | null,"gender"?: string | null,"hometown"?: string | null,"id"?: string,"id_issued_on"?: string | null,"id_issued_place"?: string | null,"id_number"?: string | null,"permanent_address"?: string | null,"phone"?: string | null,"subcontractor_id"?: string | null,"updated_at"?: string,"worker_id"?: string | null
+                    "bank_account"?: string | null,"bank_holder"?: string | null,"bank_name"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"customer_id"?: string | null,"date_of_birth"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"employee_id"?: string | null,"gender"?: string | null,"hometown"?: string | null,"id"?: string,"id_issued_on"?: string | null,"id_issued_place"?: string | null,"id_number"?: string | null,"permanent_address"?: string | null,"phone"?: string | null,"subcontractor_id"?: string | null,"updated_at"?: string,"worker_id"?: string | null
                   }
                   Update: {
-                    "bank_account"?: string | null,"bank_holder"?: string | null,"bank_name"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"customer_id"?: string | null,"date_of_birth"?: string | null,"deleted_at"?: string | null,"employee_id"?: string | null,"gender"?: string | null,"hometown"?: string | null,"id"?: string,"id_issued_on"?: string | null,"id_issued_place"?: string | null,"id_number"?: string | null,"permanent_address"?: string | null,"phone"?: string | null,"subcontractor_id"?: string | null,"updated_at"?: string,"worker_id"?: string | null
+                    "bank_account"?: string | null,"bank_holder"?: string | null,"bank_name"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"customer_id"?: string | null,"date_of_birth"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"employee_id"?: string | null,"gender"?: string | null,"hometown"?: string | null,"id"?: string,"id_issued_on"?: string | null,"id_issued_place"?: string | null,"id_number"?: string | null,"permanent_address"?: string | null,"phone"?: string | null,"subcontractor_id"?: string | null,"updated_at"?: string,"worker_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -120,14 +120,14 @@ isOneToOne: true
                   ]
                 },"cost_allocations": {
                   Row: {
-                    "company_id": string,"created_at": string,"created_by": string | null,"data": NonNullable<Json>,"deleted_at": string | null,"id": string,"kind": string,"name": string | null,"project_id": string | null,"updated_at": string
+                    "company_id": string,"created_at": string,"created_by": string | null,"data": NonNullable<Json>,"deleted_at": string | null,"deleted_by": string | null,"id": string,"kind": string,"name": string | null,"project_id": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"data"?: NonNullable<Json>,"deleted_at"?: string | null,"id"?: string,"kind": string,"name"?: string | null,"project_id"?: string | null,"updated_at"?: string
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"data"?: NonNullable<Json>,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"kind": string,"name"?: string | null,"project_id"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"data"?: NonNullable<Json>,"deleted_at"?: string | null,"id"?: string,"kind"?: string,"name"?: string | null,"project_id"?: string | null,"updated_at"?: string
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"data"?: NonNullable<Json>,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"kind"?: string,"name"?: string | null,"project_id"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -146,14 +146,14 @@ isOneToOne: false
                   ]
                 },"customers": {
                   Row: {
-                    "address": string | null,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"email": string | null,"full_name": string | null,"id": string,"name": string,"note": string | null,"tax_code": string | null,"updated_at": string
+                    "address": string | null,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"email": string | null,"full_name": string | null,"id": string,"name": string,"note": string | null,"tax_code": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "address"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"email"?: string | null,"full_name"?: string | null,"id"?: string,"name": string,"note"?: string | null,"tax_code"?: string | null,"updated_at"?: string
+                    "address"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"email"?: string | null,"full_name"?: string | null,"id"?: string,"name": string,"note"?: string | null,"tax_code"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "address"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"email"?: string | null,"full_name"?: string | null,"id"?: string,"name"?: string,"note"?: string | null,"tax_code"?: string | null,"updated_at"?: string
+                    "address"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"email"?: string | null,"full_name"?: string | null,"id"?: string,"name"?: string,"note"?: string | null,"tax_code"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -166,14 +166,14 @@ isOneToOne: false
                   ]
                 },"employees": {
                   Row: {
-                    "archived": boolean,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"full_name": string,"id": string,"note": string | null,"profile_id": string | null,"started_on": string | null,"title": string | null,"updated_at": string
+                    "archived": boolean,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"full_name": string,"id": string,"note": string | null,"profile_id": string | null,"started_on": string | null,"title": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "archived"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"full_name": string,"id"?: string,"note"?: string | null,"profile_id"?: string | null,"started_on"?: string | null,"title"?: string | null,"updated_at"?: string
+                    "archived"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"full_name": string,"id"?: string,"note"?: string | null,"profile_id"?: string | null,"started_on"?: string | null,"title"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "archived"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"full_name"?: string,"id"?: string,"note"?: string | null,"profile_id"?: string | null,"started_on"?: string | null,"title"?: string | null,"updated_at"?: string
+                    "archived"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"full_name"?: string,"id"?: string,"note"?: string | null,"profile_id"?: string | null,"started_on"?: string | null,"title"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -192,14 +192,14 @@ isOneToOne: false
                   ]
                 },"equipment": {
                   Row: {
-                    "company_id": string,"condition": string,"created_at": string,"created_by": string | null,"date": string | null,"deleted_at": string | null,"id": string,"location": string,"name_id": string,"note": string | null,"project_id": string | null,"quantity": number,"updated_at": string
+                    "company_id": string,"condition": string,"created_at": string,"created_by": string | null,"date": string | null,"deleted_at": string | null,"deleted_by": string | null,"id": string,"location": string,"name_id": string,"note": string | null,"project_id": string | null,"quantity": number,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "company_id"?: string,"condition"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"id"?: string,"location": string,"name_id": string,"note"?: string | null,"project_id"?: string | null,"quantity"?: number,"updated_at"?: string
+                    "company_id"?: string,"condition"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"location": string,"name_id": string,"note"?: string | null,"project_id"?: string | null,"quantity"?: number,"updated_at"?: string
                   }
                   Update: {
-                    "company_id"?: string,"condition"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"id"?: string,"location"?: string,"name_id"?: string,"note"?: string | null,"project_id"?: string | null,"quantity"?: number,"updated_at"?: string
+                    "company_id"?: string,"condition"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"location"?: string,"name_id"?: string,"note"?: string | null,"project_id"?: string | null,"quantity"?: number,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -224,14 +224,14 @@ isOneToOne: false
                   ]
                 },"expense_lines": {
                   Row: {
-                    "amount": number,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"discount": string | null,"expense_id": string,"id": string,"name": string,"note": string | null,"position": number,"quantity": number,"unit": string | null,"unit_price": number,"updated_at": string
+                    "amount": number,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"discount": string | null,"expense_id": string,"id": string,"name": string,"note": string | null,"position": number,"quantity": number,"unit": string | null,"unit_price": number,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"discount"?: string | null,"expense_id": string,"id"?: string,"name"?: string,"note"?: string | null,"position"?: number,"quantity"?: number,"unit"?: string | null,"unit_price"?: number,"updated_at"?: string
+                    "amount"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"discount"?: string | null,"expense_id": string,"id"?: string,"name"?: string,"note"?: string | null,"position"?: number,"quantity"?: number,"unit"?: string | null,"unit_price"?: number,"updated_at"?: string
                   }
                   Update: {
-                    "amount"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"discount"?: string | null,"expense_id"?: string,"id"?: string,"name"?: string,"note"?: string | null,"position"?: number,"quantity"?: number,"unit"?: string | null,"unit_price"?: number,"updated_at"?: string
+                    "amount"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"discount"?: string | null,"expense_id"?: string,"id"?: string,"name"?: string,"note"?: string | null,"position"?: number,"quantity"?: number,"unit"?: string | null,"unit_price"?: number,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -250,14 +250,14 @@ isOneToOne: false
                   ]
                 },"expenses": {
                   Row: {
-                    "amount": number,"buyer_id": string | null,"company_id": string,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"description": string,"expense_type_id": string,"id": string,"invoice_no": string | null,"paid_at_purchase": boolean,"project_id": string,"receipt_image_path": string | null,"source": string,"supplier_id": string | null,"updated_at": string
+                    "amount": number,"buyer_id": string | null,"company_id": string,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"deleted_by": string | null,"description": string,"expense_type_id": string,"id": string,"invoice_no": string | null,"paid_at_purchase": boolean,"project_id": string,"receipt_image_path": string | null,"source": string,"supplier_id": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount": number,"buyer_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date": string,"deleted_at"?: string | null,"description"?: string,"expense_type_id": string,"id"?: string,"invoice_no"?: string | null,"paid_at_purchase"?: boolean,"project_id": string,"receipt_image_path"?: string | null,"source"?: string,"supplier_id"?: string | null,"updated_at"?: string
+                    "amount": number,"buyer_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date": string,"deleted_at"?: string | null,"deleted_by"?: string | null,"description"?: string,"expense_type_id": string,"id"?: string,"invoice_no"?: string | null,"paid_at_purchase"?: boolean,"project_id": string,"receipt_image_path"?: string | null,"source"?: string,"supplier_id"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "amount"?: number,"buyer_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"description"?: string,"expense_type_id"?: string,"id"?: string,"invoice_no"?: string | null,"paid_at_purchase"?: boolean,"project_id"?: string,"receipt_image_path"?: string | null,"source"?: string,"supplier_id"?: string | null,"updated_at"?: string
+                    "amount"?: number,"buyer_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"deleted_by"?: string | null,"description"?: string,"expense_type_id"?: string,"id"?: string,"invoice_no"?: string | null,"paid_at_purchase"?: boolean,"project_id"?: string,"receipt_image_path"?: string | null,"source"?: string,"supplier_id"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -294,14 +294,14 @@ isOneToOne: false
                   ]
                 },"main_contracts": {
                   Row: {
-                    "company_id": string,"created_at": string,"created_by": string | null,"customer_name": string | null,"date": string | null,"deleted_at": string | null,"description": string | null,"extra_value": number,"id": string,"items": NonNullable<Json>,"legacy_variation": number,"project_id": string,"quantity": number | null,"unit_price": number | null,"updated_at": string,"value": number
+                    "company_id": string,"created_at": string,"created_by": string | null,"customer_name": string | null,"date": string | null,"deleted_at": string | null,"deleted_by": string | null,"description": string | null,"extra_value": number,"id": string,"items": NonNullable<Json>,"legacy_variation": number,"project_id": string,"quantity": number | null,"unit_price": number | null,"updated_at": string,"value": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"customer_name"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"description"?: string | null,"extra_value"?: number,"id"?: string,"items"?: NonNullable<Json>,"legacy_variation"?: number,"project_id": string,"quantity"?: number | null,"unit_price"?: number | null,"updated_at"?: string,"value"?: number
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"customer_name"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"description"?: string | null,"extra_value"?: number,"id"?: string,"items"?: NonNullable<Json>,"legacy_variation"?: number,"project_id": string,"quantity"?: number | null,"unit_price"?: number | null,"updated_at"?: string,"value"?: number
                   }
                   Update: {
-                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"customer_name"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"description"?: string | null,"extra_value"?: number,"id"?: string,"items"?: NonNullable<Json>,"legacy_variation"?: number,"project_id"?: string,"quantity"?: number | null,"unit_price"?: number | null,"updated_at"?: string,"value"?: number
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"customer_name"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"description"?: string | null,"extra_value"?: number,"id"?: string,"items"?: NonNullable<Json>,"legacy_variation"?: number,"project_id"?: string,"quantity"?: number | null,"unit_price"?: number | null,"updated_at"?: string,"value"?: number
                   }
                   Relationships: [
                     {
@@ -320,14 +320,14 @@ isOneToOne: false
                   ]
                 },"payable_closures": {
                   Row: {
-                    "amount": number,"closed_by_name": string | null,"closed_on": string,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"id": string,"note": string | null,"party_kind": string,"project_id": string | null,"subcontractor_id": string | null,"supplier_id": string | null,"undone_at": string | null,"updated_at": string
+                    "amount": number,"closed_by_name": string | null,"closed_on": string,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"id": string,"note": string | null,"party_kind": string,"project_id": string | null,"subcontractor_id": string | null,"supplier_id": string | null,"undone_at": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount"?: number,"closed_by_name"?: string | null,"closed_on": string,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"id"?: string,"note"?: string | null,"party_kind": string,"project_id"?: string | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"undone_at"?: string | null,"updated_at"?: string
+                    "amount"?: number,"closed_by_name"?: string | null,"closed_on": string,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"note"?: string | null,"party_kind": string,"project_id"?: string | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"undone_at"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "amount"?: number,"closed_by_name"?: string | null,"closed_on"?: string,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"id"?: string,"note"?: string | null,"party_kind"?: string,"project_id"?: string | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"undone_at"?: string | null,"updated_at"?: string
+                    "amount"?: number,"closed_by_name"?: string | null,"closed_on"?: string,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"note"?: string | null,"party_kind"?: string,"project_id"?: string | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"undone_at"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -358,14 +358,14 @@ isOneToOne: false
                   ]
                 },"payment_allocations": {
                   Row: {
-                    "amount": number,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"expense_id": string | null,"id": string,"payment_id": string,"project_id": string,"updated_at": string
+                    "amount": number,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"expense_id": string | null,"id": string,"payment_id": string,"project_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount": number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"expense_id"?: string | null,"id"?: string,"payment_id": string,"project_id": string,"updated_at"?: string
+                    "amount": number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"expense_id"?: string | null,"id"?: string,"payment_id": string,"project_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "amount"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"expense_id"?: string | null,"id"?: string,"payment_id"?: string,"project_id"?: string,"updated_at"?: string
+                    "amount"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"expense_id"?: string | null,"id"?: string,"payment_id"?: string,"project_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -396,14 +396,14 @@ isOneToOne: false
                   ]
                 },"payments": {
                   Row: {
-                    "allocation_mode": string,"amount": number,"closure_id": string | null,"company_id": string,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"id": string,"kind": string,"note": string | null,"project_id": string | null,"subcontract_id": string | null,"subcontractor_id": string | null,"supplier_id": string | null,"updated_at": string
+                    "allocation_mode": string,"amount": number,"closure_id": string | null,"company_id": string,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"deleted_by": string | null,"id": string,"kind": string,"note": string | null,"project_id": string | null,"subcontract_id": string | null,"subcontractor_id": string | null,"supplier_id": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "allocation_mode"?: string,"amount": number,"closure_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date": string,"deleted_at"?: string | null,"id"?: string,"kind": string,"note"?: string | null,"project_id"?: string | null,"subcontract_id"?: string | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string
+                    "allocation_mode"?: string,"amount": number,"closure_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date": string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"kind": string,"note"?: string | null,"project_id"?: string | null,"subcontract_id"?: string | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "allocation_mode"?: string,"amount"?: number,"closure_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"id"?: string,"kind"?: string,"note"?: string | null,"project_id"?: string | null,"subcontract_id"?: string | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string
+                    "allocation_mode"?: string,"amount"?: number,"closure_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"kind"?: string,"note"?: string | null,"project_id"?: string | null,"subcontract_id"?: string | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -504,14 +504,14 @@ isOneToOne: false
                   ]
                 },"projects": {
                   Row: {
-                    "address": string | null,"aliases": (string)[],"closed_date": string | null,"company_id": string,"completed_date": string | null,"cost_weight_k": number | null,"created_at": string,"created_by": string | null,"created_year": number | null,"customer_id": string | null,"deleted_at": string | null,"end_date": string | null,"floor_areas": NonNullable<Json>,"id": string,"is_company_overhead": boolean,"kind": string | null,"name": string,"note": string | null,"owner_name": string | null,"scope_note": string | null,"start_date": string | null,"start_date_user_edited": boolean,"status": string,"updated_at": string
+                    "address": string | null,"aliases": (string)[],"closed_date": string | null,"company_id": string,"completed_date": string | null,"cost_weight_k": number | null,"created_at": string,"created_by": string | null,"created_year": number | null,"customer_id": string | null,"deleted_at": string | null,"deleted_by": string | null,"end_date": string | null,"floor_areas": NonNullable<Json>,"id": string,"is_company_overhead": boolean,"kind": string | null,"name": string,"note": string | null,"owner_name": string | null,"scope_note": string | null,"start_date": string | null,"start_date_user_edited": boolean,"status": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "address"?: string | null,"aliases"?: (string)[],"closed_date"?: string | null,"company_id"?: string,"completed_date"?: string | null,"cost_weight_k"?: number | null,"created_at"?: string,"created_by"?: string | null,"created_year"?: number | null,"customer_id"?: string | null,"deleted_at"?: string | null,"end_date"?: string | null,"floor_areas"?: NonNullable<Json>,"id"?: string,"is_company_overhead"?: boolean,"kind"?: string | null,"name": string,"note"?: string | null,"owner_name"?: string | null,"scope_note"?: string | null,"start_date"?: string | null,"start_date_user_edited"?: boolean,"status"?: string,"updated_at"?: string
+                    "address"?: string | null,"aliases"?: (string)[],"closed_date"?: string | null,"company_id"?: string,"completed_date"?: string | null,"cost_weight_k"?: number | null,"created_at"?: string,"created_by"?: string | null,"created_year"?: number | null,"customer_id"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"end_date"?: string | null,"floor_areas"?: NonNullable<Json>,"id"?: string,"is_company_overhead"?: boolean,"kind"?: string | null,"name": string,"note"?: string | null,"owner_name"?: string | null,"scope_note"?: string | null,"start_date"?: string | null,"start_date_user_edited"?: boolean,"status"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "address"?: string | null,"aliases"?: (string)[],"closed_date"?: string | null,"company_id"?: string,"completed_date"?: string | null,"cost_weight_k"?: number | null,"created_at"?: string,"created_by"?: string | null,"created_year"?: number | null,"customer_id"?: string | null,"deleted_at"?: string | null,"end_date"?: string | null,"floor_areas"?: NonNullable<Json>,"id"?: string,"is_company_overhead"?: boolean,"kind"?: string | null,"name"?: string,"note"?: string | null,"owner_name"?: string | null,"scope_note"?: string | null,"start_date"?: string | null,"start_date_user_edited"?: boolean,"status"?: string,"updated_at"?: string
+                    "address"?: string | null,"aliases"?: (string)[],"closed_date"?: string | null,"company_id"?: string,"completed_date"?: string | null,"cost_weight_k"?: number | null,"created_at"?: string,"created_by"?: string | null,"created_year"?: number | null,"customer_id"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"end_date"?: string | null,"floor_areas"?: NonNullable<Json>,"id"?: string,"is_company_overhead"?: boolean,"kind"?: string | null,"name"?: string,"note"?: string | null,"owner_name"?: string | null,"scope_note"?: string | null,"start_date"?: string | null,"start_date_user_edited"?: boolean,"status"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -530,14 +530,14 @@ isOneToOne: false
                   ]
                 },"receipts": {
                   Row: {
-                    "amount": number,"company_id": string,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"id": string,"is_auto": boolean,"kind": string,"note": string | null,"project_id": string,"settlement_id": string | null,"updated_at": string
+                    "amount": number,"company_id": string,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"deleted_by": string | null,"id": string,"is_auto": boolean,"kind": string,"note": string | null,"project_id": string,"settlement_id": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount": number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date": string,"deleted_at"?: string | null,"id"?: string,"is_auto"?: boolean,"kind"?: string,"note"?: string | null,"project_id": string,"settlement_id"?: string | null,"updated_at"?: string
+                    "amount": number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date": string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"is_auto"?: boolean,"kind"?: string,"note"?: string | null,"project_id": string,"settlement_id"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "amount"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"id"?: string,"is_auto"?: boolean,"kind"?: string,"note"?: string | null,"project_id"?: string,"settlement_id"?: string | null,"updated_at"?: string
+                    "amount"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"is_auto"?: boolean,"kind"?: string,"note"?: string | null,"project_id"?: string,"settlement_id"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -614,14 +614,14 @@ isOneToOne: false
                   ]
                 },"schedule_notes": {
                   Row: {
-                    "company_id": string,"content": string,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"id": string,"image_paths": (string)[],"project_id": string,"task_id": string | null,"updated_at": string
+                    "company_id": string,"content": string,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"deleted_by": string | null,"id": string,"image_paths": (string)[],"project_id": string,"task_id": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "company_id"?: string,"content"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"id"?: string,"image_paths"?: (string)[],"project_id": string,"task_id"?: string | null,"updated_at"?: string
+                    "company_id"?: string,"content"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"image_paths"?: (string)[],"project_id": string,"task_id"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "company_id"?: string,"content"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"id"?: string,"image_paths"?: (string)[],"project_id"?: string,"task_id"?: string | null,"updated_at"?: string
+                    "company_id"?: string,"content"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"image_paths"?: (string)[],"project_id"?: string,"task_id"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -646,14 +646,14 @@ isOneToOne: false
                   ]
                 },"schedule_phases": {
                   Row: {
-                    "company_id": string,"cost_phase_key": string | null,"created_at": string,"created_by": string | null,"deleted_at": string | null,"end_date": string | null,"id": string,"name": string,"note": string | null,"position": number,"project_id": string,"start_date": string | null,"updated_at": string
+                    "company_id": string,"cost_phase_key": string | null,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"end_date": string | null,"id": string,"name": string,"note": string | null,"position": number,"project_id": string,"start_date": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "company_id"?: string,"cost_phase_key"?: string | null,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"end_date"?: string | null,"id"?: string,"name": string,"note"?: string | null,"position"?: number,"project_id": string,"start_date"?: string | null,"updated_at"?: string
+                    "company_id"?: string,"cost_phase_key"?: string | null,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"end_date"?: string | null,"id"?: string,"name": string,"note"?: string | null,"position"?: number,"project_id": string,"start_date"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "company_id"?: string,"cost_phase_key"?: string | null,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"end_date"?: string | null,"id"?: string,"name"?: string,"note"?: string | null,"position"?: number,"project_id"?: string,"start_date"?: string | null,"updated_at"?: string
+                    "company_id"?: string,"cost_phase_key"?: string | null,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"end_date"?: string | null,"id"?: string,"name"?: string,"note"?: string | null,"position"?: number,"project_id"?: string,"start_date"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -672,14 +672,14 @@ isOneToOne: false
                   ]
                 },"schedule_tasks": {
                   Row: {
-                    "assignee": string | null,"assignee_id": string | null,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"depends_on": (string)[],"end_date": string | null,"id": string,"name": string,"note": string | null,"phase_id": string | null,"position": number,"progress_pct": number,"project_id": string,"start_date": string | null,"updated_at": string
+                    "assignee": string | null,"assignee_id": string | null,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"depends_on": (string)[],"end_date": string | null,"id": string,"name": string,"note": string | null,"phase_id": string | null,"position": number,"progress_pct": number,"project_id": string,"start_date": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "assignee"?: string | null,"assignee_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"depends_on"?: (string)[],"end_date"?: string | null,"id"?: string,"name": string,"note"?: string | null,"phase_id"?: string | null,"position"?: number,"progress_pct"?: number,"project_id": string,"start_date"?: string | null,"updated_at"?: string
+                    "assignee"?: string | null,"assignee_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"depends_on"?: (string)[],"end_date"?: string | null,"id"?: string,"name": string,"note"?: string | null,"phase_id"?: string | null,"position"?: number,"progress_pct"?: number,"project_id": string,"start_date"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "assignee"?: string | null,"assignee_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"depends_on"?: (string)[],"end_date"?: string | null,"id"?: string,"name"?: string,"note"?: string | null,"phase_id"?: string | null,"position"?: number,"progress_pct"?: number,"project_id"?: string,"start_date"?: string | null,"updated_at"?: string
+                    "assignee"?: string | null,"assignee_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"depends_on"?: (string)[],"end_date"?: string | null,"id"?: string,"name"?: string,"note"?: string | null,"phase_id"?: string | null,"position"?: number,"progress_pct"?: number,"project_id"?: string,"start_date"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -710,14 +710,14 @@ isOneToOne: false
                   ]
                 },"schedule_templates": {
                   Row: {
-                    "company_id": string,"created_at": string,"created_by": string | null,"data": NonNullable<Json>,"deleted_at": string | null,"id": string,"is_default": boolean,"kind": string,"name": string,"project_kind": string | null,"updated_at": string
+                    "company_id": string,"created_at": string,"created_by": string | null,"data": NonNullable<Json>,"deleted_at": string | null,"deleted_by": string | null,"id": string,"is_default": boolean,"kind": string,"name": string,"project_kind": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"data"?: NonNullable<Json>,"deleted_at"?: string | null,"id"?: string,"is_default"?: boolean,"kind"?: string,"name": string,"project_kind"?: string | null,"updated_at"?: string
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"data"?: NonNullable<Json>,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"is_default"?: boolean,"kind"?: string,"name": string,"project_kind"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"data"?: NonNullable<Json>,"deleted_at"?: string | null,"id"?: string,"is_default"?: boolean,"kind"?: string,"name"?: string,"project_kind"?: string | null,"updated_at"?: string
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"data"?: NonNullable<Json>,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"is_default"?: boolean,"kind"?: string,"name"?: string,"project_kind"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -730,14 +730,14 @@ isOneToOne: false
                   ]
                 },"settlements": {
                   Row: {
-                    "amount": number,"company_id": string,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"id": string,"is_final": boolean,"kind": string,"note": string | null,"project_id": string,"updated_at": string
+                    "amount": number,"company_id": string,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"deleted_by": string | null,"id": string,"is_final": boolean,"kind": string,"note": string | null,"project_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount": number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date": string,"deleted_at"?: string | null,"id"?: string,"is_final"?: boolean,"kind": string,"note"?: string | null,"project_id": string,"updated_at"?: string
+                    "amount": number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date": string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"is_final"?: boolean,"kind": string,"note"?: string | null,"project_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "amount"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"id"?: string,"is_final"?: boolean,"kind"?: string,"note"?: string | null,"project_id"?: string,"updated_at"?: string
+                    "amount"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"is_final"?: boolean,"kind"?: string,"note"?: string | null,"project_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -756,14 +756,14 @@ isOneToOne: false
                   ]
                 },"subcontractors": {
                   Row: {
-                    "archived": boolean,"company_id": string,"contact_person": string | null,"created_at": string,"created_by": string | null,"deleted_at": string | null,"field": string | null,"id": string,"name": string,"note": string | null,"updated_at": string
+                    "archived": boolean,"company_id": string,"contact_person": string | null,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"field": string | null,"id": string,"name": string,"note": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "archived"?: boolean,"company_id"?: string,"contact_person"?: string | null,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"field"?: string | null,"id"?: string,"name": string,"note"?: string | null,"updated_at"?: string
+                    "archived"?: boolean,"company_id"?: string,"contact_person"?: string | null,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"field"?: string | null,"id"?: string,"name": string,"note"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "archived"?: boolean,"company_id"?: string,"contact_person"?: string | null,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"field"?: string | null,"id"?: string,"name"?: string,"note"?: string | null,"updated_at"?: string
+                    "archived"?: boolean,"company_id"?: string,"contact_person"?: string | null,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"field"?: string | null,"id"?: string,"name"?: string,"note"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -776,14 +776,14 @@ isOneToOne: false
                   ]
                 },"subcontracts": {
                   Row: {
-                    "company_id": string,"created_at": string,"created_by": string | null,"date": string | null,"deleted_at": string | null,"description": string | null,"id": string,"items": NonNullable<Json>,"legacy_variation": number,"project_id": string,"quantity": number | null,"subcontractor_id": string,"unit_price": number | null,"updated_at": string,"value": number
+                    "company_id": string,"created_at": string,"created_by": string | null,"date": string | null,"deleted_at": string | null,"deleted_by": string | null,"description": string | null,"id": string,"items": NonNullable<Json>,"legacy_variation": number,"project_id": string,"quantity": number | null,"subcontractor_id": string,"unit_price": number | null,"updated_at": string,"value": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"description"?: string | null,"id"?: string,"items"?: NonNullable<Json>,"legacy_variation"?: number,"project_id": string,"quantity"?: number | null,"subcontractor_id": string,"unit_price"?: number | null,"updated_at"?: string,"value"?: number
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"description"?: string | null,"id"?: string,"items"?: NonNullable<Json>,"legacy_variation"?: number,"project_id": string,"quantity"?: number | null,"subcontractor_id": string,"unit_price"?: number | null,"updated_at"?: string,"value"?: number
                   }
                   Update: {
-                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"description"?: string | null,"id"?: string,"items"?: NonNullable<Json>,"legacy_variation"?: number,"project_id"?: string,"quantity"?: number | null,"subcontractor_id"?: string,"unit_price"?: number | null,"updated_at"?: string,"value"?: number
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"description"?: string | null,"id"?: string,"items"?: NonNullable<Json>,"legacy_variation"?: number,"project_id"?: string,"quantity"?: number | null,"subcontractor_id"?: string,"unit_price"?: number | null,"updated_at"?: string,"value"?: number
                   }
                   Relationships: [
                     {
@@ -808,14 +808,14 @@ isOneToOne: false
                   ]
                 },"suppliers": {
                   Row: {
-                    "address": string | null,"archived": boolean,"buys_on_credit": boolean,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"id": string,"name": string,"note": string | null,"phone": string | null,"updated_at": string
+                    "address": string | null,"archived": boolean,"buys_on_credit": boolean,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"id": string,"name": string,"note": string | null,"phone": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "address"?: string | null,"archived"?: boolean,"buys_on_credit"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"id"?: string,"name": string,"note"?: string | null,"phone"?: string | null,"updated_at"?: string
+                    "address"?: string | null,"archived"?: boolean,"buys_on_credit"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"name": string,"note"?: string | null,"phone"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "address"?: string | null,"archived"?: boolean,"buys_on_credit"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"id"?: string,"name"?: string,"note"?: string | null,"phone"?: string | null,"updated_at"?: string
+                    "address"?: string | null,"archived"?: boolean,"buys_on_credit"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"name"?: string,"note"?: string | null,"phone"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -828,14 +828,14 @@ isOneToOne: false
                   ]
                 },"timesheet_lines": {
                   Row: {
-                    "allowance": number,"company_id": string,"created_at": string,"created_by": string | null,"daily_wage": number,"day_units": (number)[],"debt_deduction": number,"deleted_at": string | null,"id": string,"legacy_loan": number,"note": string | null,"position": number,"retail_purchase": number,"role": string | null,"updated_at": string,"week_id": string,"worker_id": string
+                    "allowance": number,"company_id": string,"created_at": string,"created_by": string | null,"daily_wage": number,"day_units": (number)[],"debt_deduction": number,"deleted_at": string | null,"deleted_by": string | null,"id": string,"legacy_loan": number,"note": string | null,"position": number,"retail_purchase": number,"role": string | null,"updated_at": string,"week_id": string,"worker_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "allowance"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"daily_wage"?: number,"day_units"?: (number)[],"debt_deduction"?: number,"deleted_at"?: string | null,"id"?: string,"legacy_loan"?: number,"note"?: string | null,"position"?: number,"retail_purchase"?: number,"role"?: string | null,"updated_at"?: string,"week_id": string,"worker_id": string
+                    "allowance"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"daily_wage"?: number,"day_units"?: (number)[],"debt_deduction"?: number,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"legacy_loan"?: number,"note"?: string | null,"position"?: number,"retail_purchase"?: number,"role"?: string | null,"updated_at"?: string,"week_id": string,"worker_id": string
                   }
                   Update: {
-                    "allowance"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"daily_wage"?: number,"day_units"?: (number)[],"debt_deduction"?: number,"deleted_at"?: string | null,"id"?: string,"legacy_loan"?: number,"note"?: string | null,"position"?: number,"retail_purchase"?: number,"role"?: string | null,"updated_at"?: string,"week_id"?: string,"worker_id"?: string
+                    "allowance"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"daily_wage"?: number,"day_units"?: (number)[],"debt_deduction"?: number,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"legacy_loan"?: number,"note"?: string | null,"position"?: number,"retail_purchase"?: number,"role"?: string | null,"updated_at"?: string,"week_id"?: string,"worker_id"?: string
                   }
                   Relationships: [
                     {
@@ -860,14 +860,14 @@ isOneToOne: false
                   ]
                 },"timesheet_weeks": {
                   Row: {
-                    "company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"id": string,"note": string | null,"project_id": string,"updated_at": string,"week_start": string
+                    "company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"id": string,"note": string | null,"project_id": string,"updated_at": string,"week_start": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"id"?: string,"note"?: string | null,"project_id": string,"updated_at"?: string,"week_start": string
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"note"?: string | null,"project_id": string,"updated_at"?: string,"week_start": string
                   }
                   Update: {
-                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"id"?: string,"note"?: string | null,"project_id"?: string,"updated_at"?: string,"week_start"?: string
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"note"?: string | null,"project_id"?: string,"updated_at"?: string,"week_start"?: string
                   }
                   Relationships: [
                     {
@@ -886,14 +886,14 @@ isOneToOne: false
                   ]
                 },"wage_advances": {
                   Row: {
-                    "amount": number,"company_id": string,"counts_in_net_pay": boolean,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"direction": string,"id": string,"note": string | null,"project_id": string | null,"source_week_id": string | null,"updated_at": string,"worker_id": string
+                    "amount": number,"company_id": string,"counts_in_net_pay": boolean,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"deleted_by": string | null,"direction": string,"id": string,"note": string | null,"project_id": string | null,"source_week_id": string | null,"updated_at": string,"worker_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount": number,"company_id"?: string,"counts_in_net_pay"?: boolean,"created_at"?: string,"created_by"?: string | null,"date": string,"deleted_at"?: string | null,"direction": string,"id"?: string,"note"?: string | null,"project_id"?: string | null,"source_week_id"?: string | null,"updated_at"?: string,"worker_id": string
+                    "amount": number,"company_id"?: string,"counts_in_net_pay"?: boolean,"created_at"?: string,"created_by"?: string | null,"date": string,"deleted_at"?: string | null,"deleted_by"?: string | null,"direction": string,"id"?: string,"note"?: string | null,"project_id"?: string | null,"source_week_id"?: string | null,"updated_at"?: string,"worker_id": string
                   }
                   Update: {
-                    "amount"?: number,"company_id"?: string,"counts_in_net_pay"?: boolean,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"direction"?: string,"id"?: string,"note"?: string | null,"project_id"?: string | null,"source_week_id"?: string | null,"updated_at"?: string,"worker_id"?: string
+                    "amount"?: number,"company_id"?: string,"counts_in_net_pay"?: boolean,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"deleted_by"?: string | null,"direction"?: string,"id"?: string,"note"?: string | null,"project_id"?: string | null,"source_week_id"?: string | null,"updated_at"?: string,"worker_id"?: string
                   }
                   Relationships: [
                     {
@@ -924,14 +924,14 @@ isOneToOne: false
                   ]
                 },"workers": {
                   Row: {
-                    "archived": boolean,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"full_name": string | null,"id": string,"name": string,"note": string | null,"role": string | null,"updated_at": string
+                    "archived": boolean,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"full_name": string | null,"id": string,"name": string,"note": string | null,"role": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "archived"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"full_name"?: string | null,"id"?: string,"name": string,"note"?: string | null,"role"?: string | null,"updated_at"?: string
+                    "archived"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"full_name"?: string | null,"id"?: string,"name": string,"note"?: string | null,"role"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "archived"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"full_name"?: string | null,"id"?: string,"name"?: string,"note"?: string | null,"role"?: string | null,"updated_at"?: string
+                    "archived"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"full_name"?: string | null,"id"?: string,"name"?: string,"note"?: string | null,"role"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -951,11 +951,20 @@ isOneToOne: false
             "_backup_tables":
 { Args: Record<PropertyKey, never>; Returns: (string)[]
                            },
+"_equipment_note_key":
+{ Args: { "n": string }; Returns: string
+                           },
+"_equipment_put":
+{ Args: { "p_condition": string,"p_date": string,"p_location": string,"p_name_id": string,"p_note": string,"p_project_id": string,"p_qty": number,"p_skip"?: string }; Returns: string
+                           },
 "_snapshot_company":
 { Args: { "p_company": string }; Returns: Json
                            },
 "_snapshot_counts":
 { Args: { "snap": Json }; Returns: Json
+                           },
+"_trash_edit_mods":
+{ Args: { "p_table": string }; Returns: (string)[]
                            },
 "admin_list_accounts":
 { Args: Record<PropertyKey, never>; Returns: {
@@ -985,6 +994,9 @@ isOneToOne: false
                            },
 "delete_timesheet_week":
 { Args: { "p_week_id": string }; Returns: undefined
+                           },
+"edit_equipment":
+{ Args: { "p_condition": string,"p_id": string,"p_note": string,"p_quantity": number }; Returns: string
                            },
 "export_company_snapshot":
 { Args: Record<PropertyKey, never>; Returns: Json
@@ -1027,6 +1039,9 @@ isOneToOne: false
 "restore_backup":
 { Args: { "p_data": Json }; Returns: Json
                            },
+"save_equipment":
+{ Args: { "p_date": string,"p_location": string,"p_project_id": string,"p_rows": Json }; Returns: number
+                           },
 "save_settlement":
 { Args: { "p_amount": number,"p_date": string,"p_id": string,"p_is_final": boolean,"p_kind": string,"p_note": string,"p_project_id": string,"p_receipt_amount": number,"p_receipt_mode": string }; Returns: string
                            },
@@ -1035,6 +1050,15 @@ isOneToOne: false
                            },
 "sees_all_projects":
 { Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"transfer_equipment":
+{ Args: { "p_condition": string,"p_date": string,"p_id": string,"p_location": string,"p_note": string,"p_project_id": string,"p_qty": number }; Returns: string
+                           },
+"trash_purge":
+{ Args: { "p_id": string,"p_table": string }; Returns: undefined
+                           },
+"trash_restore":
+{ Args: { "p_id": string,"p_table": string }; Returns: undefined
                            },
 "undo_payable_closure":
 { Args: { "p_closure_id": string }; Returns: undefined
