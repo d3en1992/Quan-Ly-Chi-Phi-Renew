@@ -1,6 +1,6 @@
-TRẠNG THÁI: GD08 XONG — DỪNG, không làm sang GĐ sau
-Nhịp tim: 12/11/2026 — GD08: Thiết bị + Tỉ trọng + Thùng rác xong; typecheck / 165 Vitest / build xanh; Playwright 79/79 (gd08: 7 test)
-Đang làm: (không) — chờ anh chạy giai đoạn tiếp (GD09)
+TRẠNG THÁI: GD09 XONG (Chụp đa năng + TN02 Xuất Dữ Liệu) — DỪNG, không làm sang GĐ sau
+Nhịp tim: 12/11/2026 — GD09: Chụp đa năng (giả lập) + Xuất Dữ Liệu xong; typecheck / 188 Vitest / build xanh; Playwright 89/89 (gd09: 10 test)
+Đang làm: (không) — chờ anh chạy giai đoạn tiếp (GD12)
 
 # Tiến độ làm lại app
 
@@ -15,7 +15,7 @@ Nhịp tim: 12/11/2026 — GD08: Thiết bị + Tỉ trọng + Thùng rác xong;
 | GD07 | Chi Trả, Công Nợ Phải Trả, Doanh Thu, Quyết Toán | Fable (medium) | **Xong** 12/11 | typecheck / 155 Vitest / build xanh; Playwright 65 test (gd07: 6 test xanh; 1 test sao lưu GĐ4 chập chờn khi chạy cả bộ, chạy riêng xanh). Ví dụ mục 4J đúng từng đồng; so số GĐ3 vẫn lệch 0. Ảnh: `anh-chup/GD07/` |
 | GD10 | Điện thoại, máy tính bảng, PWA, bản thử online | Sonnet (medium) | **Xong** 12/11 (trừ bản thử online — chưa có key) | typecheck / 155 Vitest / build xanh; Playwright gd10 7 test (mọi màn ở 390 / 820 / 1440 + Chi tiết CT, không lỗi console, không kéo ngang). Ảnh: `anh-chup/GD10/` |
 | GD08 | Thiết bị, Tỉ trọng, Thùng rác | Fable (medium) | **Xong** 12/11 | typecheck / 165 Vitest / build xanh; Playwright 79 test xanh (gd08: 7 test). Tỉ trọng so với app cũ **lệch 0** (36 công trình, từng khoản). Ảnh: `anh-chup/GD08/` |
-| GD09 | Chụp đa năng + Xuất Excel | Sonnet (high) | Chưa | |
+| GD09 | Chụp đa năng + Xuất Dữ Liệu (TN02) | Opus (medium) | **Xong** 12/11 (chụp chạy giả lập — chưa có key Gemini) | typecheck / 188 Vitest / build xanh; Playwright 89 test xanh (gd09: 10 test). Kho trên máy đổi sang snapshot 12/11, so số GĐ3 vẫn **lệch 0**. Ảnh: `anh-chup/GD09/`, file Excel mẫu: `du-lieu/xuat-thu/` |
 | GD12 | Tiến Độ phần 1 | Sonnet (medium) | Chưa | |
 | GD99 | Kiểm tra cuối + báo cáo sáng | Sonnet (medium) | Chưa | |
 
@@ -81,7 +81,19 @@ Nhịp tim: 12/11/2026 — GD08: Thiết bị + Tỉ trọng + Thùng rác xong;
 - **Thùng Rác** `src/features/trash/`: `DEFS` trong `api.ts` = danh sách loại dữ liệu; hàm kho `trash_restore(table, id)` (quyền người gọi; kéo theo dòng con cùng `deleted_at`: dòng chấm công + dòng "Trả" của tuần, phiếu thu tự động của quyết toán, phiếu chi của lần tất toán) và `trash_purge(table, id)` (cần `purge_trash` + Toàn quyền). Khôi phục / xóa hẳn hóa đơn, phiếu chi xong tự gọi `syncSupplierAllocations()`.
 - **Người xóa:** mọi bảng nghiệp vụ có thêm cột `deleted_by`, `stamp_row` tự ghi khi xóa mềm, gỡ khi khôi phục. Dữ liệu xóa từ app cũ không có người xóa (để trống).
 
+## GD09 — đã có gì (cho GĐ sau)
+- **Dữ liệu trên máy = snapshot 12/11/2026** (`du-lieu/snapshot.json`; bản 03/11 cất ở `du-lieu/snapshot-2026-11-03.json` + `so-chuan-2026-11-03.json`). Đã chạy lại `migrate:legacy` + `so-chuan`: 165 test so số cũ vẫn lệch 0.
+- **Chụp đa năng** `src/features/scan/`: `ScanWorkspace` (dùng ở tab con CHỤP HÓA ĐƠN, màn /chup điện thoại, nút Chụp CCCD ở Danh Bạ), `CaptureForm` (ảnh, loại, ghi chú, mic `vi-VN` — trình duyệt không hỗ trợ thì ẩn), `ScanInvoice` / `ScanIdCard` / `ScanContract`, `model.ts` (hàm thuần, có test), `api.ts` (thu nhỏ ảnh ≤1600px JPEG, gọi hàm, tải ảnh lên kho, link xem ảnh `useReceiptUrl`).
+- **Edge Function** `supabase/functions/scan-document` + `_shared/scan.ts` (kiểu, JSON schema Gemini, câu lệnh, chuẩn hóa kết quả — dùng chung app / hàm). Key: secret `GEMINI_API_KEY` (hóa đơn), `GEMINI_API_KEY_PAID` (CCCD / "AI tự nhận"), `GEMINI_MODEL` (mặc định `gemini-2.5-flash`). Không có key nào → **giả lập** đọc `fixtures/*.json` (chọn theo loại + ghi chú: "mờ" → hóa đơn chữ mờ, "CCCD" → cccd, "hợp đồng" → hop-dong). Thêm hàm mới phải `npx supabase stop && npx supabase start` thì runtime trên máy mới nhận.
+- **Migration** `…000008_chup_va_xuat_du_lieu.sql`: bucket `receipts` (riêng tư, đường dẫn `<company_id>/<năm>/<uuid>.jpg`, RLS theo công ty), bảng `audit_log` (chỉ Admin đọc), hàm `export_contact_private(note)` (không có `see_contact_ids` → lỗi 42501 = HTTP 403; có → ghi audit_log).
+- `expenses`: lưu `receipt_image_path` qua `ExpenseInput.receiptImagePath` (không truyền = không đụng ảnh cũ). Danh mục NCC trong Nhập Chi Phí có thêm `phone`.
+- **Xuất Dữ Liệu (TN02)** tab `/xuat-du-lieu` (nhóm Hệ thống, trên Danh Mục; hiện với ai Xem được ≥ 1 mục — `canSeeExport`): `src/features/export/` — `registry.ts` (26 loại = mọi bảng nghiệp vụ thật; thêm loại = thêm 1 object), `fetchDataset.ts` (tải kho qua RLS 1.000 dòng/lượt + lọc nhóm A/B/C + thời gian, hàm thuần), `joinDatasets.ts` (khối, ghép cha–con, chấm công chi tiết / gộp), `buildWorkbook.ts` (3 kiểu gom, TONG HOP bằng công thức trỏ dòng tổng từng sheet), `ExportPage.tsx`, `ExportButton.tsx` (nút nhanh, đường dẫn `?ds=…&project=…&year=…&deleted=1&ts=grouped`), `history.ts` (30 lần / tài khoản, localStorage). `src/lib/export/`: `excel-khoi.ts` (vẽ 1 khối), `dau-trang.ts`, `ten-file.ts`, `bang-don.ts` (tải 1 bảng ra Excel — dùng cho bảng đối chiếu NCC). ExcelJS chỉ tải khi bấm Xuất (file riêng ~270 KB gzip).
+- Công thức thêm ở `src/lib/calc`: `printedTotalGap` (so tổng in trên hóa đơn), `exportLineNetPay` + `netPayLedgerItems` (Thực lãnh từng dòng khi xuất chi tiết; cộng lại = Tổng lương tuần).
+- Nút "Xuất dữ liệu" ở: Nhập Chi Phí, Thống Kê CP/HĐ, Chấm Công (+ tab Tổng lương thay nút CSV), Chi Trả (thay CSV), Công Nợ, Doanh Thu, Quyết Toán, Thiết bị, Tỉ Trọng, Thùng Rác (kèm dòng đã xóa), Danh Bạ, Danh Mục. **Không còn nút CSV nào** (grep `downloadCsv` / `Xuất CSV` = 0).
+- Test: `src/features/export/export.test.ts` + `export-file.test.ts` (trên snapshot thật; ghi file mẫu vào `du-lieu/xuat-thu/`), `src/features/scan/model.test.ts`, `e2e/gd09-chup-xuat-du-lieu.spec.ts`.
+
 ## Kết quả so số với app cũ
+- GD09 (12/11): kho đổi sang snapshot 12/11 + so-chuan chạy lại bằng code app cũ → 165 test so số vẫn **lệch 0**. Xuất dữ liệu: CT Cô Sáu + CT Nhà Tình = **410 hóa đơn** (209 + 201; đặc tả ghi 210 cho Cô Sáu — GĐ2 gộp 1 bản trùng); dòng vật tư Cô Sáu không lẫn Nhà Tình; công nhân theo 2 CT = 25 < 52; **Thực lãnh chi tiết = gộp, lệch 0** (2 CT, tất cả, năm 2025); 3 kiểu gom cùng tổng số dòng.
 - GD08 (12/11): Tỉ trọng so với `tytTongHop` của app cũ, trọn vòng đời, 36 công trình: tổng chi, tổng sàn, 4 nhóm, 6 rổ, theo loại, **từng khoản và cách chia nhóm từng món — lệch 0**. CT Nhà Tình: tổng chi 1.977.513.482, Nhóm 1 = 1.282.198.562.
 - GD07 (12/11): test so số GĐ3 vẫn **lệch 0**; tính lại cách chia phiếu chi NCC đời cũ bằng công thức mới ra đúng từng dòng đang có trong kho (A phần trả NCC không đổi).
 - GD06 (12/11): Tổng lương tuần / phiếu lương / nợ công nhân so với ccPayslipData + ccWorkerDebtUpTo của app cũ chạy trên snapshot 03/11: **lệch 0** ở 124 tuần (3 tuần đầu / giữa / cuối so riêng tổng TC Lương + Thực lãnh).
@@ -89,6 +101,19 @@ Nhịp tim: 12/11/2026 — GD08: Thiết bị + Tỉ trọng + Thùng rác xong;
 - GD02 (11/11, snapshot tạm 02/11/2026): số bản ghi 11/11 kho khớp; 15 tổng tiền lệch 0; A / B / Đã thu từng công trình × từng năm lệch 0 (108 ô). Chưa có `so-chuan.json` nên chưa so với số xuất từ app cũ → GĐ3.
 
 ## Quyết định AI tự chọn
+- GD09 (prompt viết lại cho hợp app — anh cho phép tự quyết):
+  - **Chuyển kho trên máy sang snapshot 12/11** như prompt yêu cầu (bản 03/11 vẫn giữ). "Cô Sáu 210 hóa đơn" thành **209** trong kho vì GĐ2 gộp 1 hóa đơn trùng → test dùng 209 + 201 = 410.
+  - **26 loại dữ liệu** thay vì "29": kho thật có 26 bảng nghiệp vụ. `schedule_tasks` / `schedule_notes` có sẵn `project_id` nên lọc thẳng (đặc tả ghi "qua schedule_phases"). `payable_closures` có `project_id` → nhóm A, không ghép với HĐ thầu phụ. `payment_allocations` lọc theo công trình CỦA PHẦN CHIA (đúng nghĩa "trả cho hóa đơn công trình nào", như tab Lợi Nhuận), ngày theo phiếu chi.
+  - **Lọc ở trình duyệt** thay vì đếm bằng hàng chục câu SQL mỗi lần đổi bộ lọc: tải các bảng 1 lần qua RLS (≈ 12.000 dòng), đếm / lọc bằng hàm thuần → đổi bộ lọc là số đổi ngay, và test Vitest chạy được trên snapshot thật.
+  - Khách hàng "của công trình" = `projects.customer_id` (phiếu thu / HĐ chính không có mã khách hàng, chỉ có tên chữ).
+  - **Không cộng trừ tiền ngoài src/lib/calc**: cột "Ứng − Trừ" tách thành "Ứng (sổ cũ)" / "Trừ nợ (sổ cũ)"; tạm ứng lương tách 2 cột Ứng / Trả; TONG HOP lấy số bằng **công thức Excel** trỏ tới dòng TỔNG CỘNG của từng sheet.
+  - Chấm công tính **riêng từng công trình** (như tab Tổng lương lọc theo công trình) để 3 kiểu gom cho cùng số. Kiểu chi tiết thêm dòng "Ứng / Trả tính vào thực lãnh" để tổng Thực lãnh = kiểu gộp. Công nhân làm 2 công trình cùng lúc: phiếu ứng tính vào TL hiện ở cả 2 công trình (giống tab Tổng lương khi lọc từng công trình).
+  - Khối "Hóa đơn + dòng vật tư": hóa đơn nhập nhanh (không có dòng) vẫn có 1 dòng với thành tiền = số tiền hóa đơn, để tổng không bị thiếu.
+  - Mặc định bộ lọc công trình = **Tất cả** (đặc tả ghi "Đang chọn" — màn sẽ ra 0 dòng khi chưa tick gì). Gộp 1 sheet xếp các khối **dọc** (có cột CÔNG TRÌNH). Bỏ nút "Lưu bộ lọc" riêng — "Đã xuất gần đây → Xuất lại" làm việc đó. Gộp 3 ô tùy chọn còn 1 ô "Đầu trang + ghi chú bộ lọc"; dòng TỔNG CỘNG luôn có (TONG HOP cần).
+  - Dữ liệu cá nhân: không có quyền thì cột SĐT / CCCD **không có trong file** (thay vì bản che) và loại "SĐT / CCCD / STK" khóa 🔒. Có quyền + tích ô → gọi `export_contact_private` (ghi nhật ký), dòng đỏ cảnh báo ở sheet đầu.
+  - Bảng **đối chiếu công nợ NCC** (Công Nợ Phải Trả) vẫn là CSV → đổi thành **tải Excel có trình bày** (dùng lại khối của TN02) thay vì bỏ hẳn (Xuất Dữ Liệu không lọc theo 1 NCC được).
+  - Chụp: "AI tự nhận" dùng key trả tiền nếu có (ảnh có thể là CCCD). AI nhận ra loại mà tài khoản không có quyền → hàm trả 403, không trả dữ liệu. CCCD cần quyền Nhập Danh Bạ **và** "Xem SĐT, số CCCD". Ảnh CCCD bỏ khỏi bộ nhớ ngay khi có kết quả, không bao giờ lên kho. Hợp đồng: lưu Khách hàng (nếu mới) + Hợp đồng chính; chưa tự gắn `projects.customer_id`.
+  - Model mặc định `gemini-2.5-flash` (đổi bằng secret `GEMINI_MODEL`, không cần sửa code).
 - GD01: **Kế toán không thấy "Danh Mục & Sao Lưu"**. Giao diện mẫu mâu thuẫn: `ACCOUNTS.ketoan.hide` không ẩn Danh mục, nhưng bảng quyền mẫu (`PERM_ROWS`) ghi Danh mục = Ẩn. Chọn theo bảng quyền (an toàn hơn); Admin bật lại 1 ô là xong.
 - GD01: **Thùng Rác** không có dòng riêng trong bảng quyền mẫu → hiện khi tài khoản được **Nhập** ở ít nhất 1 mục (Kế toán thấy, Chỉ xem không thấy — khớp mẫu). Quyền khôi phục / xóa hẳn làm ở GĐ8 (`purge_trash`).
 - GD01: Phạm vi công trình trong bảng quyền là **mặc định của vai trò** khi tạo tài khoản; phạm vi thật nằm ở từng tài khoản (`profiles.project_scope`). Chọn công trình cụ thể để giao làm sau khi có bảng `projects` (GĐ2–GĐ4).
@@ -156,6 +181,11 @@ Nhịp tim: 12/11/2026 — GD08: Thiết bị + Tỉ trọng + Thùng rác xong;
 - GD08: Thùng rác thêm thẻ **KHÁC** (thiết bị, công trình, định mức, danh bạ, danh mục) và gộp ứng lương + phiếu chi + tất toán vào thẻ TIỀN ỨNG. Phiếu thu tự động, phiếu chi tất toán, dòng "Trả" của tuần không hiện riêng (đi theo bản ghi mẹ). Dòng vật tư / dòng chấm công bị bỏ khi SỬA không hiện trong Thùng rác.
 - GD08: Xóa hẳn chạy bằng hàm `trash_purge` (tự kiểm tra quyền) vì dòng con (dòng chia tiền NCC) không qua được RLS xóa; bản ghi còn dữ liệu khác tham chiếu thì báo lỗi, không xóa.
 ## Lỗi còn biết
+- GD09: **chưa thử Gemini thật** (chưa có key) — mọi luồng chụp mới chạy bằng giả lập; `fixtures/` chỉ có JSON (chưa có ảnh hóa đơn mẫu để thử khi có key). Kết quả giả lập không phụ thuộc ảnh chụp.
+- GD09: giới hạn 50.000 dòng (mục 9.9) **chưa chạm được** — toàn bộ dữ liệu thật chỉ ≈ 12.000 dòng; chặn bằng số đếm trước khi dựng file + kiểm lại số dòng thật lúc dựng.
+- GD09: ảnh hóa đơn đã lưu chưa hiện ở bảng trượt sửa / Thống Kê CP/HĐ (đã có `useReceiptUrl` để gắn vào).
+- GD09: trên điện thoại, danh sách gợi ý của ô Công trình có thể che nút Lưu khi đang gõ — chạm ra ngoài để đóng.
+- GD01: test "Admin đổi ô quyền" thỉnh thoảng chập chờn khi bấm nhanh 3 lần (để ô Quản lý × Thiết bị ở mức Nhập); chạy lại xanh. Đã trả ô về Toàn quyền.
 - GD08: màn Tỉ trọng trên điện thoại chỉ xem (gán nhóm, cấu hình làm trên máy tính). Bảng định mức 12 cột phải cuộn ngang trong khung. Chưa xuất Excel (GĐ9).
 - GD08: Thùng rác tải mọi bản ghi đã xóa một lần (hiện ~vài trăm dòng); "Xóa hẳn N mục đang hiện" xóa lần lượt từng mục nên chậm nếu rất nhiều.
 - GD07: phiếu thu tự động / phiếu chi tất toán mới chặn sửa ở giao diện và ở câu lệnh sửa của app; kho chưa có trigger chặn nếu ai đó gọi thẳng API. "Chốt" đóng công trình cần quyền sửa Công trình — tài khoản chỉ có quyền Quyết toán thì quyết toán vẫn lưu nhưng trạng thái công trình không đổi (không báo).
@@ -179,6 +209,8 @@ Nhịp tim: 12/11/2026 — GD08: Thiết bị + Tỉ trọng + Thùng rác xong;
 - Font Be Vietnam Pro + icon tải từ Google Fonts (cần mạng). GĐ10 (PWA) nên tự chứa font.
 
 ## Việc anh cần làm
+- **GD09 — để chụp bằng AI thật:** dán `GEMINI_API_KEY` (gói miễn phí, cho hóa đơn) và nếu muốn `GEMINI_API_KEY_PAID` (gói trả tiền, cho CCCD) vào Supabase → Edge Functions → Secrets. Trên máy: tạo file `ban-moi/supabase/functions/.env` (không commit) chứa 2 dòng đó rồi `npx supabase stop && npx supabase start`. Chưa dán thì app tự chạy giả lập.
+- **GD09 — mở thử file Excel mẫu:** `ban-moi/du-lieu/xuat-thu/` (5 file: 1 CT, 2 CT × 3 kiểu gom, cảnh báo dữ liệu cá nhân) để duyệt cách trình bày.
 0. **So bằng mắt (5 phút, mục "Anh kiểm tra" của GĐ3):** mở app cũ (đăng nhập ADMIN, chọn "Tất cả năm") và app mới cạnh nhau, tab Lợi Nhuận, so 5 công trình bất kỳ: Tổng đã thu, A, B, Tổng đã chi, Lợi nhuận. App mới đang là dữ liệu lúc 03/11 14:25 nên công trình anh có nhập thêm sau đó sẽ lệch; cột C lệch nhẹ theo ngày xem là bình thường.
 0b. **Trước khi chuyển hẳn:** xuất JSON sao lưu mới từ app cũ → chép thành `ban-moi/du-lieu/snapshot.json` → chạy `npm run migrate:legacy`, `npm run so-chuan`, `npm test`.
 1. **Thử trên máy:** mở Docker Desktop → trong `ban-moi` chạy `npx supabase start` → `npm run dev` → mở http://localhost:5173. Mật khẩu tạm của `tinh`, `chay`, `lam` ở `ban-moi/du-lieu/tai-khoan-tam.txt`.

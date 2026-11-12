@@ -27,5 +27,5 @@ export const MOCK_HIDE: Record<string, string[]> = {
 
 export const ALL_NAV_KEYS = [
   'congtrinh', 'nhap', 'thongkecphd', 'chamcong', 'nhapung', 'congno', 'tytrong', 'thietbi', 'tiendo', 'danhba',
-  'doanhthu', 'loinhuan', 'quyettoan', 'dashboard', 'danhmuc', 'taikhoan', 'thungrac',
+  'doanhthu', 'loinhuan', 'quyettoan', 'dashboard', 'xuatdulieu', 'danhmuc', 'taikhoan', 'thungrac',
 ];
