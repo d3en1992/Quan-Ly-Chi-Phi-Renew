@@ -1,6 +1,6 @@
-TRẠNG THÁI: ĐANG CHẠY
+TRẠNG THÁI: TẠM DỪNG — anh Tình yêu cầu dừng sau GD06; GD07 mới bắt đầu (chưa làm)
 Nhịp tim: 12/11/2026 07:15 — GD06 đã kiểm lại xanh; bắt đầu GD07
-Đang làm: GD07
+Đang làm: (không) — chờ anh tự chạy GD07
 
 # Tiến độ làm lại app
 
