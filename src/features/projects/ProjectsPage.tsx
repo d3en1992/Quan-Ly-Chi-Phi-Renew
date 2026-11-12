@@ -1,6 +1,6 @@
 // Tab CÔNG TRÌNH: thẻ công trình theo loại (CT / SC / SN-Khác) hoặc theo khách hàng, CÔNG TY ở cuối.
 // Số trên thẻ = số tab Lợi Nhuận (cùng hàm profitReport, xem numbers.ts).
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -31,6 +31,41 @@ const k2s = (k: number | null) => String(k ?? 1).replace('.', ',');
 export function ProjectsRoute() {
   const { projectId } = useParams();
   return projectId ? <ProjectDetailPage projectId={projectId} /> : <ProjectsPage />;
+}
+
+/** Thẻ gọn trên điện thoại: tên (+ trạng thái nếu khác "Đang thi công"), khách · ngày, thanh Đã thu, 4 số trên một hàng */
+function PhoneProjectCard({ p, money, onOpen, customer, nums }: Parameters<typeof ProjectCard>[0]) {
+  const pct = percentOf(nums.received, nums.contractValue);
+  const cell = (label: string, value: ReactNode, cls = '', testId?: string, note?: string) => (
+    <div className="min-w-0">
+      <dt className="truncate text-[10.5px] text-muted">{label}</dt>
+      <dd data-testid={testId} className={cn('num m-0 truncate text-[13px] font-bold', cls)}>{value}</dd>
+      {note ? <dd className="m-0 truncate text-[10px] text-faint">{note}</dd> : null}
+    </div>
+  );
+  return (
+    <button type="button" data-testid="project-card" data-project-id={p.id} onClick={onOpen}
+      className="grid min-w-0 gap-1.5 rounded-[var(--r)] border border-line bg-surface px-3 py-2.5 text-left active:bg-surface-2">
+      <div className="flex min-w-0 items-start gap-2">
+        <b className="min-w-0 flex-1 truncate text-[14px]" data-testid="project-name">{p.name}</b>
+        {p.status !== 'active' ? <Pill tone={STATUS_TONE[p.status] ?? 'neutral'}>{STATUS_LABEL[p.status] ?? p.status}</Pill> : null}
+      </div>
+      <div className="flex min-w-0 items-center gap-2 text-[11.5px] text-muted">
+        <span className="min-w-0 truncate">{customer || p.owner_name || 'Chưa gắn khách'} · {formatDate(p.start_date)}</span>
+        {money ? <><span className="min-w-[40px] flex-1"><HBar percent={pct ?? 0} tone="good" /></span><span className="num shrink-0">thu {pct ?? 0}%</span></> : null}
+      </div>
+      <dl className={cn('m-0 grid gap-2', money ? 'grid-cols-4' : 'grid-cols-2')}>
+        {cell('Đã chi', formatShortMoney(nums.spent), '', 'card-spent', nums.supplierDebt >= 500_000 ? `nợ NCC ${formatShortMoney(nums.supplierDebt)}` : undefined)}
+        {money ? (
+          <>
+            {cell('Đã thu', formatShortMoney(nums.received), '', 'card-received')}
+            {cell('Còn thu', nums.receivable > 0 ? formatShortMoney(nums.receivable) : '0')}
+            {cell('Lãi / lỗ', formatShortMoney(nums.profit), Math.round(nums.profit) >= 0 ? 'text-good' : 'text-bad', 'card-profit')}
+          </>
+        ) : cell('Thầu phụ đã ứng', formatShortMoney(nums.B))}
+      </dl>
+    </button>
+  );
 }
 
 function ProjectCard({ p, money, onOpen, customer, nums }: {
@@ -126,8 +161,9 @@ function ProjectsPage() {
     ? KIND_GROUPS.map((g) => [g.label, rows.filter((r) => (r.p.kind ?? 'small_repair') === g.key)] as [string, typeof rows])
     : [...new Set(rows.map((r) => r.customer || 'Chưa gắn khách'))].sort((a, b) => a.localeCompare(b, 'vi')).map((c) => [c, rows.filter((r) => (r.customer || 'Chưa gắn khách') === c)] as [string, typeof rows]);
 
+  const Card_ = mode === 'phone' ? PhoneProjectCard : ProjectCard;
   const cardOf = (r: (typeof rows)[number]) => (
-    <ProjectCard key={r.p.id} p={r.p} money={money} customer={r.customer} onOpen={() => navigate(`/cong-trinh/${r.p.id}`)}
+    <Card_ key={r.p.id} p={r.p} money={money} customer={r.customer} onOpen={() => navigate(`/cong-trinh/${r.p.id}`)}
       nums={{ spent: r.n.spent, supplierDebt: r.n.supplierDebt, received: r.n.received, receivable: r.n.revenue.receivable, profit: r.n.profit, contractValue: r.n.revenue.contractValue, B: r.n.B }} />
   );
 
@@ -153,6 +189,14 @@ function ProjectsPage() {
     </FilterBar>
   );
 
+  const phoneFilters = (
+    <div className="grid gap-2">
+      <SearchBox value={search} onChange={setSearch} placeholder="Tìm công trình, khách…" className="w-full" />
+      <FilterSelect label="Trạng thái" value={status} onChange={setStatus} allLabel="Tất cả" className="w-full" selectClassName="max-w-none flex-1"
+        options={[{ value: 'live', label: 'Đang chạy + Hoàn thành' }, ...PROJECT_STATUS_OPTIONS.map((o) => ({ value: o.value, label: o.label }))]} />
+    </div>
+  );
+
   const body = rows.length === 0 ? (
     <Card>
       <EmptyState icon="construction" title={view.totalAll === 0 ? 'Chưa có công trình nào' : 'Không có công trình nào khớp'}>
@@ -163,7 +207,7 @@ function ProjectsPage() {
     groups.filter(([, list]) => list.length > 0).map(([label, list]) => (
       <section key={label} className="grid gap-2.5">
         <div className="flex items-baseline gap-2"><h3 className="m-0 text-sm font-bold">{label}</h3><span className="text-[12px] text-muted">{list.length} công trình</span></div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">{list.map(cardOf)}</div>
+        <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2 xl:grid-cols-3">{list.map(cardOf)}</div>
       </section>
     ))
   );
@@ -181,7 +225,6 @@ function ProjectsPage() {
     <>
       {mode === 'phone' ? (
         <>
-          <div className="flex items-center gap-2"><span className="flex-1 text-[12.5px] text-muted">{yearLabel} · {rows.length} công trình</span>{addButton}</div>
           <PhoneKpis items={[
             { label: 'Đang thi công', value: String(active) },
             { label: 'Tổng đã chi', value: formatShortMoney(totalSpent) },
@@ -201,7 +244,16 @@ function ProjectsPage() {
           ]} />
         </>
       )}
-      {mode === 'phone' ? filters : null}
+      {mode === 'phone' ? (
+        <>
+          {phoneFilters}
+          <div className="flex items-center gap-2">
+            <span className="flex-1 text-[12px] whitespace-nowrap text-muted">{rows.length} CT</span>
+            <Segmented<Group> value={group} onChange={setGroup} options={[{ value: 'kind', label: 'Theo loại' }, { value: 'customer', label: 'Theo khách' }]} />
+            {canAdd ? <Button size="sm" variant="primary" aria-label="Thêm công trình" onClick={() => setAdding(true)}><Icon name="add" />Thêm</Button> : null}
+          </div>
+        </>
+      ) : null}
       {body}
       {tail}
       <ProjectFormSheet open={adding} onClose={() => setAdding(false)} project={null} onSaved={(id) => navigate(`/cong-trinh/${id}`)} />

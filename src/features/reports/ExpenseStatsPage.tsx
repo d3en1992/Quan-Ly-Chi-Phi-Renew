@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
 import { Button, Icon } from '@/components/ui/button';
-import { FilterBar, FilterSelect, KpiStrip, MobileCard, MobileRow, Money, Pager, PhoneKpis, SearchBox, usePaged, type Option } from '@/components/ui/data';
+import { FilterBar, FilterSelect, PhoneFilters, KpiStrip, MobileCard, MobileRow, Money, Pager, PhoneKpis, SearchBox, usePaged, type Option } from '@/components/ui/data';
 import { Card, EmptyState, ErrorState, LoadingState, PageHeader, Pill } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
 import { buildCostEntries, inYear, summarizeExpenses, type CostEntry } from '@/lib/calc';
@@ -164,15 +164,23 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
   if (mode === 'phone') {
     return (
       <>
-        <div className="text-[12.5px] text-muted">{yearLabel}{month ? ` · tháng ${Number(month)}` : ''} · {summary.count.toLocaleString('vi-VN')} khoản chi</div>
-        {filters}
-        <PhoneKpis items={[{ label: 'Tổng tiền', value: formatShortMoney(summary.total) }, { label: 'Mua nợ', value: formatShortMoney(summary.creditTotal), tone: summary.creditTotal > 0 ? 'neg' : '' }]} />
+        <PhoneFilters active={[month, project, type, supplier, buyer, paid, source].filter(Boolean).length}
+          search={<SearchBox value={search} onChange={setSearch} placeholder="Tìm nội dung…" className="min-w-0" />}>
+          <FilterSelect label="Tháng" value={month} onChange={setMonth} options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1).padStart(2, '0'), label: String(i + 1) }))} />
+          <FilterSelect label="Thanh toán" value={paid} onChange={setPaid} options={PAID_OPTIONS} />
+          <FilterSelect label="Công trình" value={project} onChange={setProject} options={options.projects} className="col-span-2" />
+          <FilterSelect label="Loại" value={type} onChange={setType} options={options.types} />
+          <FilterSelect label="Nguồn" value={source} onChange={setSource} options={SOURCE_OPTIONS} />
+          <FilterSelect label="NCC" value={supplier} onChange={setSupplier} options={options.suppliers} className="col-span-2" />
+          <FilterSelect label="Người mua" value={buyer} onChange={setBuyer} options={options.buyers} className="col-span-2" />
+        </PhoneFilters>
+        <PhoneKpis items={[{ label: `Tổng tiền · ${summary.count.toLocaleString('vi-VN')} khoản${month ? ` · T${Number(month)}` : ''}`, value: formatShortMoney(summary.total) }, { label: 'Mua nợ', value: formatShortMoney(summary.creditTotal), tone: summary.creditTotal > 0 ? 'neg' : '' }]} />
         {empty}
         {paged.slice.map((r) => (
           <MobileCard key={r.id} onClick={() => setOpen(r)}>
             <MobileRow><b className="min-w-0 truncate">{r.type}</b><b className="num">{formatMoney(r.amount)}</b></MobileRow>
-            <MobileRow meta><span className="min-w-0 truncate">{formatDate(r.date)} · {r.project}</span></MobileRow>
-            <MobileRow meta><span className="min-w-0 truncate">{[r.supplier, r.buyer ? `mua: ${r.buyer}` : ''].filter(Boolean).join(' · ') || r.description}</span><PaidPill paid={r.paid} /></MobileRow>
+            <MobileRow meta><span className="min-w-0 truncate">{years.length === 1 ? formatDate(r.date).slice(0, 5) : formatDate(r.date)} · {r.project}</span></MobileRow>
+            <MobileRow meta><span className="min-w-0 truncate">{[r.supplier, r.buyer ? `mua: ${r.buyer}` : ''].filter(Boolean).join(' · ') || r.description}</span>{r.paid ? null : <PaidPill paid={false} />}</MobileRow>
           </MobileCard>
         ))}
         {rows.length > PAGE_SIZE ? <Pager {...paged} /> : null}

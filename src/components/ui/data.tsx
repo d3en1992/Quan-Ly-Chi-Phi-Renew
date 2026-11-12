@@ -144,7 +144,7 @@ export function Pager({ from, to, total, page, pages, setPage }: { from: number;
 export function MobileCard({ children, onClick }: { children: ReactNode; onClick?: () => void }) {
   return (
     <div
-      className={cn('grid gap-1 rounded-[var(--r)] border border-line bg-surface px-3.5 py-3 text-[13px]', onClick && 'cursor-pointer active:bg-surface-2')}
+      className={cn('grid gap-0.5 rounded-[var(--r)] border border-line bg-surface px-3 py-2.5 text-[13px]', onClick && 'cursor-pointer active:bg-surface-2')}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
@@ -158,16 +158,34 @@ export function MobileRow({ children, meta = false }: { children: ReactNode; met
   return <div className={cn('flex min-w-0 items-center justify-between gap-3', meta && 'text-[12px] text-muted')}>{children}</div>;
 }
 
-/** Cặp số lớn đầu màn điện thoại (.pk của mẫu); `wide` = chiếm cả hàng */
+/** Số lớn đầu màn điện thoại (.pk của mẫu): một dải liền, 2 cột, gọn để còn chỗ cho danh sách; `wide` = chiếm cả hàng */
 export function PhoneKpis({ items }: { items: { label: string; value: ReactNode; tone?: KpiTone; wide?: boolean }[] }) {
   return (
-    <div className="grid grid-cols-2 gap-2">
-      {items.map((k) => (
-        <div key={k.label} className={cn('min-w-0 rounded-[var(--r)] border border-line bg-surface px-3.5 py-2.5', k.wide && 'col-span-2')}>
-          <small className="block text-[11.5px] text-muted">{k.label}</small>
-          <b className={cn('num block truncate text-[18px] font-bold', toneText(k.tone))}>{k.value}</b>
+    <div className="grid shrink-0 grid-cols-2 gap-px overflow-hidden rounded-[var(--r)] border border-line bg-line">
+      {items.map((k, i) => (
+        <div key={k.label} className={cn('min-w-0 bg-surface px-3 py-2', (k.wide || (i === items.length - 1 && items.length % 2 === 1)) && 'col-span-2')}>
+          <small className="block truncate text-[11px] leading-tight text-muted">{k.label}</small>
+          <b className={cn('num block truncate text-[16px] leading-snug font-bold', toneText(k.tone))}>{k.value}</b>
         </div>
       ))}
+    </div>
+  );
+}
+
+/** Thanh lọc gấp gọn trên điện thoại: ô tìm + nút "Lọc (n)"; bấm nút mới hiện các ô lọc (2 cột). */
+export function PhoneFilters({ search, active, children, extra }: { search?: ReactNode; active: number; children: ReactNode; extra?: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="grid shrink-0 gap-2">
+      <div className="flex min-w-0 items-center gap-2">
+        {search ?? <span className="flex-1" />}
+        <Button size="sm" aria-expanded={open} aria-label="Bộ lọc" onClick={() => setOpen((o) => !o)}
+          className={cn('h-9 shrink-0', active > 0 && 'border-accent text-accent')}>
+          <Icon name="filter_list" />Lọc{active > 0 ? ` (${active})` : ''}
+        </Button>
+        {extra}
+      </div>
+      {open ? <div className="grid grid-cols-2 gap-2 [&>label]:w-full [&>label]:max-w-none [&_select]:max-w-none [&_select]:flex-1">{children}</div> : null}
     </div>
   );
 }

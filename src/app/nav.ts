@@ -94,6 +94,10 @@ export const PHONE_SHORT_LABEL: Record<string, string> = {
   quyettoan: 'Quyết toán', dashboard: 'Dashboard', xuatdulieu: 'Xuất dữ liệu', danhmuc: 'Danh mục', thungrac: 'Thùng rác', taikhoan: 'Tài khoản',
 };
 
+/** Điện thoại: lối tắt đầu trang Tổng quan (việc hay xem nhất, không có ở thanh dưới) + nhãn thật ngắn cho ô 4 cột */
+export const PHONE_HOME_SHORTCUTS = ['thongkecphd', 'nhapung', 'congno', 'doanhthu'];
+export const PHONE_HOME_LABEL: Record<string, string> = { thongkecphd: 'Thống kê', nhapung: 'Chi trả', congno: 'Công nợ', doanhthu: 'Doanh thu' };
+
 export function findItemByPath(pathname: string): NavItem | undefined {
   if (pathname.startsWith('/cong-trinh/')) return ALL_ITEMS.find((i) => i.key === 'congtrinh');
   return [...ALL_ITEMS, PHONE_HOME, PHONE_CAPTURE].find((i) => i.path === pathname);

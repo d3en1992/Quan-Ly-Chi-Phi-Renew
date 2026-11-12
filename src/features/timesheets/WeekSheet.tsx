@@ -199,14 +199,16 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
     return (
       <>
         <div className="grid gap-2">
-          <div className="flex items-center justify-between gap-2">{weekNav}</div>
+          <div className="flex min-w-0 items-center gap-2 [&>span:first-child]:shrink-0">{weekNav}
+            {rows.length ? (
+              <span className="min-w-0 flex-1 text-right text-[12px] leading-tight text-muted">
+                {cDay(totals.dayUnits)} công · <b className="num text-[14px] text-fg" data-testid="cc-net-total">{formatMoney(totals.netPay)}</b>
+              </span>
+            ) : <span hidden data-testid="cc-net-total">{formatMoney(totals.netPay)}</span>}
+          </div>
           {projectSel}
           {status}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-[var(--r)] border border-line bg-surface px-3 py-2"><small className="block text-[11.5px] text-muted">Tổng công</small><b className="num text-[17px]">{cDay(totals.dayUnits)}</b></div>
-            <div className="rounded-[var(--r)] border border-line bg-surface px-3 py-2"><small className="block text-[11.5px] text-muted">Thực lãnh</small><b className="num text-[17px]" data-testid="cc-net-total">{formatMoney(totals.netPay)}</b></div>
-          </div>
-          {rows.length === 0 ? <div className="rounded-[var(--r)] border border-dashed border-line px-3.5 py-4 text-center text-[12.5px] text-muted">Chưa có công nhân. Bấm “Thêm công nhân” hoặc “Dán tuần”.</div> : null}
+          {rows.length === 0 ? <div className="rounded-[var(--r)] border border-dashed border-line px-3.5 py-3 text-center text-[12.5px] text-muted">Tuần này chưa có công nhân.</div> : null}
           {rows.map((r) => {
             const c = calcSheetRow(toCalcRow(r));
             const open = openRow === r.key;
@@ -258,16 +260,16 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
               </div>
             );
           })}
-          {!readOnly ? (
-            <div className="grid grid-cols-2 gap-2">
-              <Button onClick={addRow}><Icon name="person_add" />Thêm công nhân</Button>
-              <Button onClick={clip?.length ? doPaste : doCopy}><Icon name={clip?.length ? 'content_paste' : 'content_copy'} />{clip?.length ? 'Dán tuần' : 'Copy tuần'}</Button>
-            </div>
-          ) : null}
-          <Button onClick={doSlip}><Icon name="chat" />Phiếu lương Zalo</Button>
-          {!readOnly ? (
+          {/* Nút gọn một hàng; chưa có thợ thì chỉ còn Thêm / Dán tuần */}
+          <div className="flex min-w-0 gap-2 [&>button]:min-w-0 [&>button]:flex-1">
+            {!readOnly ? <Button onClick={addRow} aria-label="Thêm công nhân"><Icon name="person_add" />Thêm thợ</Button> : null}
+            {!readOnly && clip?.length ? <Button onClick={doPaste}><Icon name="content_paste" />Dán tuần</Button> : null}
+            {rows.length && !clip?.length ? <Button onClick={doCopy}><Icon name="content_copy" />Copy tuần</Button> : null}
+            {rows.length || week ? <Button onClick={doSlip} aria-label="Phiếu lương Zalo"><Icon name="chat" />Zalo</Button> : null}
+          </div>
+          {!readOnly && (rows.length || week) ? (
             <button type="button" data-testid="cc-save-phone" disabled={save.isPending} onClick={doSave}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--r)] bg-accent text-[15px] font-bold text-white disabled:opacity-60">
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-[var(--r)] bg-accent text-[15px] font-bold text-accent-fg disabled:opacity-60">
               <Icon name="save" />{save.isPending ? 'Đang lưu…' : 'Lưu tuần'}
             </button>
           ) : null}

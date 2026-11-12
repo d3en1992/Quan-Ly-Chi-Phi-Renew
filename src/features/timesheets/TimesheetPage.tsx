@@ -15,7 +15,7 @@ import { PayrollTab } from './PayrollTab';
 import { WeekSheet } from './WeekSheet';
 
 type Tab = 'sheet' | 'payroll' | 'advances';
-const TABS: { key: Tab; label: string }[] = [{ key: 'sheet', label: 'SỔ CHẤM CÔNG' }, { key: 'payroll', label: 'TỔNG LƯƠNG & LỊCH SỬ' }, { key: 'advances', label: 'TẠM ỨNG LƯƠNG' }];
+const TABS: { key: Tab; label: string; short: string }[] = [{ key: 'sheet', label: 'SỔ CHẤM CÔNG', short: 'SỔ CHẤM CÔNG' }, { key: 'payroll', label: 'TỔNG LƯƠNG & LỊCH SỬ', short: 'TỔNG LƯƠNG' }, { key: 'advances', label: 'TẠM ỨNG LƯƠNG', short: 'TẠM ỨNG' }];
 const PROJECT_KEY = 'qlcp-cc-project';
 
 export function TimesheetPage() {

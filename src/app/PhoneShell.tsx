@@ -1,4 +1,4 @@
-// Bố cục điện thoại (<640px): đầu trang, nội dung dạng thẻ, nút nổi "Chụp", thanh dưới 5 nút
+// Bố cục điện thoại (<640px): đầu trang (tên + chọn năm), nội dung dạng thẻ, nút tròn "Chụp", thanh dưới 5 nút
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Icon } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { useAccess } from './auth';
 import { CommandPalette } from './CommandPalette';
 import { findItemByPath, PHONE_CAPTURE, PHONE_HOME, PHONE_MORE_PATH } from './nav';
 import { ReadOnlyBanner } from './ReadOnlyBanner';
-import { useYears } from './year';
+import { YearPicker } from './TopBarParts';
 
 const BOTTOM = [
   { key: 'home', path: PHONE_HOME.path, icon: 'home', label: 'Tổng quan' },
@@ -28,41 +28,40 @@ function activeBottomKey(pathname: string): string {
 
 export function PhoneShell() {
   const access = useAccess();
-  const { label: yearText } = useYears();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
 
   const item = findItemByPath(pathname);
   const title = pathname === PHONE_MORE_PATH ? 'Thêm' : pathname === '/doi-mat-khau' ? 'Đổi mật khẩu' : (item?.label ?? '');
-  const sub =
-    pathname === PHONE_MORE_PATH
-      ? `${access.profile.display_name} · ${access.role.name}`
-      : `Năm ${yearText} · ${access.profile.display_name}`;
+  // Trang Thêm: tên + vai trò; trang khác: ô chọn năm ngay trên đầu (điện thoại trước đây không đổi được năm)
+  const isMore = pathname === PHONE_MORE_PATH;
   const isMain = MAIN_PATHS.includes(pathname);
   const backTo = pathname.startsWith('/cong-trinh/') ? '/cong-trinh' : pathname === PHONE_CAPTURE.path ? PHONE_HOME.path : PHONE_MORE_PATH;
   const canCapture = hasLevel(access.permissions, 'expenses', 'add');
-  const showFab = canCapture && !['/nhap-chi-phi', PHONE_CAPTURE.path].includes(pathname);
+  // Nút Chụp chỉ hiện ở màn xem số (che ít nhất); màn nhập / chấm công / danh bạ có nút riêng
+  const showFab = canCapture && (pathname === PHONE_HOME.path || pathname === '/cong-trinh' || pathname === '/thong-ke-cp-hd');
   const current = activeBottomKey(pathname);
 
   return (
     <div data-layout="phone" className="flex h-dvh flex-col">
-      <header className="flex items-center gap-2.5 border-b border-line bg-surface px-4 pt-[max(10px,env(safe-area-inset-top))] pb-3">
+      <header className="flex items-center gap-2 border-b border-line bg-surface px-3.5 pt-[max(8px,env(safe-area-inset-top))] pb-2">
         {isMain ? null : (
           <Button size="icon" aria-label="Quay lại" onClick={() => navigate(backTo)}>
             <Icon name="arrow_back" />
           </Button>
         )}
         <div className="min-w-0 flex-1">
-          <h1 className="m-0 truncate text-lg font-bold">{title}</h1>
-          <small className="block truncate text-xs font-medium text-muted">{sub}</small>
+          <h1 className="m-0 truncate text-[17px] leading-tight font-bold">{title}</h1>
+          {isMore ? <small className="block truncate text-xs font-medium text-muted">{access.profile.display_name} · {access.role.name}</small> : null}
         </div>
+        {isMore ? null : <YearPicker compact tiny />}
         <Button size="icon" aria-label="Tìm" onClick={() => setSearchOpen(true)}>
           <Icon name="search" />
         </Button>
       </header>
 
-      <main className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto px-3.5 pt-3.5 pb-28">
+      <main className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto px-3.5 pt-3 pb-24">
         <ReadOnlyBanner />
         <Outlet />
       </main>
@@ -72,16 +71,15 @@ export function PhoneShell() {
           type="button"
           onClick={() => navigate(PHONE_CAPTURE.path)}
           aria-label="Chụp hóa đơn, CCCD"
-          className="fixed right-4 bottom-[calc(86px+env(safe-area-inset-bottom))] z-30 flex h-[52px] items-center gap-1.5 rounded-2xl bg-accent pr-[18px] pl-3.5 text-sm font-bold text-accent-fg shadow-card"
+          className="fixed right-3.5 bottom-[calc(76px+env(safe-area-inset-bottom))] z-30 grid size-[50px] place-items-center rounded-full bg-accent text-accent-fg shadow-card"
         >
           <Icon name="photo_camera" className="text-[24px]" />
-          Chụp
         </button>
       ) : null}
 
       <nav
         aria-label="Thanh dưới"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-surface px-1 pt-1.5 pb-[calc(10px+env(safe-area-inset-bottom))]"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-surface px-1 pt-1 pb-[calc(6px+env(safe-area-inset-bottom))]"
       >
         {BOTTOM.map((b) => (
           <NavLink

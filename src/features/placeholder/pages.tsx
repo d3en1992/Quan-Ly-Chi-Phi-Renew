@@ -4,7 +4,9 @@ import { Icon } from '@/components/ui/button';
 import { Card, EmptyState, PageHeader } from '@/components/ui/misc';
 import { useAccess, useAuth } from '@/app/auth';
 import { ScanWorkspace } from '@/features/scan/ScanWorkspace';
-import { ALL_ITEMS, canSeeItem, PHONE_MORE_KEYS, PHONE_SHORT_LABEL, type NavItem } from '@/app/nav';
+import { ALL_ITEMS, canSeeItem, PHONE_HOME_LABEL, PHONE_HOME_SHORTCUTS, PHONE_MORE_KEYS, PHONE_SHORT_LABEL, type NavItem } from '@/app/nav';
+import { hasLevel } from '@/lib/permissions';
+import { DashboardPage } from '@/features/reports/DashboardPage';
 
 /** Tab chưa làm: tên đúng, trạng thái "Đang làm", ghi giai đoạn sẽ làm */
 export function ComingSoonPage({ item, stage }: { item: NavItem; stage: string }) {
@@ -70,24 +72,36 @@ export function PhoneMorePage() {
   );
 }
 
-/** Điện thoại: Tổng quan (số liệu làm ở GĐ3) */
+/** Điện thoại: Tổng quan = số liệu Dashboard (nếu có quyền xem) + lối tắt các việc hay làm */
 export function PhoneHomePage() {
   const access = useAccess();
+  const navigate = useNavigate();
+  const canDashboard = hasLevel(access.permissions, 'dashboard', 'view');
+  const shortcuts = PHONE_HOME_SHORTCUTS.map((k) => ALL_ITEMS.find((i) => i.key === k)).filter(
+    (i): i is NavItem => !!i && canSeeItem(access.permissions, i),
+  );
   return (
     <>
-      <div className="grid grid-cols-2 gap-2">
-        {['Tổng đã chi', 'Tổng đã thu', 'Lãi tạm tính', 'Còn phải thu'].map((l) => (
-          <div key={l} className="min-w-0 rounded-xl border border-line bg-surface px-3 py-2.5">
-            <small className="block text-[11.5px] text-muted">{l}</small>
-            <b className="text-base text-faint">—</b>
-          </div>
-        ))}
-      </div>
-      <Card>
-        <EmptyState icon="home" title={`Chào ${access.profile.display_name}`}>
-          Số liệu tổng quan sẽ có ở GĐ3 (sau khi chuyển dữ liệu cũ sang).
-        </EmptyState>
-      </Card>
+      {shortcuts.length ? (
+        <div className="grid shrink-0 grid-cols-4 gap-1.5" data-testid="home-shortcuts">
+          {shortcuts.map((i) => (
+            <button key={i.key} type="button" onClick={() => navigate(i.path)}
+              className="flex min-w-0 flex-col items-center gap-1 rounded-xl border border-line bg-surface px-1 py-2 text-[11px] leading-tight font-medium active:bg-surface-2">
+              <Icon name={i.icon} className="text-[21px] text-accent" />
+              <span className="w-full truncate text-center">{PHONE_HOME_LABEL[i.key] ?? i.label}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {canDashboard ? (
+        <DashboardPage />
+      ) : (
+        <Card>
+          <EmptyState icon="home" title={`Chào ${access.profile.display_name}`}>
+            Chọn việc cần làm ở thanh dưới hoặc mục Thêm.
+          </EmptyState>
+        </Card>
+      )}
     </>
   );
 }

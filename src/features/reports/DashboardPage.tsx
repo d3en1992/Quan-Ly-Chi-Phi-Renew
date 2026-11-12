@@ -1,8 +1,10 @@
 // Tab DASHBOARD (chỉ xem): số tổng, chi theo tuần, cơ cấu chi, còn phải thu, chi nhiều nhất — trên một màn.
 // Dải số tổng cộng từ CHÍNH các dòng của tab Lợi Nhuận → hai tab luôn cùng số.
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLayoutMode } from '@/app/useLayoutMode';
 import { HBar, HBarList, KpiStrip, Money, PhoneKpis, ProfitPill, Segmented } from '@/components/ui/data';
+import { Icon } from '@/components/ui/button';
 import { Card, CardHeader, EmptyState, PageHeader } from '@/components/ui/misc';
 import { buildCostEntries, costBreakdown, dashboardTotals, lastCostDate, profitReport, subcontractDebtTotal, weeklyCosts, type WeekCost } from '@/lib/calc';
 import { formatMoney, formatShortMoney } from '@/lib/format';
@@ -56,6 +58,7 @@ function WeekChart({ weeks }: { weeks: WeekCost[] }) {
 
 function Content({ data, years, yearLabel }: { data: ReportData; years: readonly number[]; yearLabel: string }) {
   const mode = useLayoutMode();
+  const navigate = useNavigate();
   const [span, setSpan] = useState<'12' | '52'>('12');
 
   const calc = useMemo(() => {
@@ -86,29 +89,44 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
   }
 
   if (mode === 'phone') {
+    // Điện thoại: năm chọn ở đầu trang; số tổng gọn → chi 6 tuần → còn phải thu (chạm mở công trình) → cơ cấu chi
     const max = Math.max(...weeks.map((w) => w.amount), 1);
     return (
       <>
-        <div className="text-[12.5px] text-muted">{yearLabel}</div>
         <PhoneKpis
           items={[
             { label: 'Tổng đã chi', value: formatShortMoney(t.spent) },
             { label: 'Tổng đã thu', value: formatShortMoney(t.received) },
             { label: 'Còn phải thu', value: formatShortMoney(t.receivable), tone: t.receivable > 0 ? 'neg' : '' },
             { label: 'Còn phải trả TP', value: formatShortMoney(calc.subDebt) },
-            { label: 'Lãi tạm tính', value: formatShortMoney(t.profit), tone: t.profit >= 0 ? 'pos' : 'neg', wide: true },
+            { label: `Lãi tạm tính · ${t.profitable} lãi, ${t.losing} lỗ`, value: formatShortMoney(t.profit), tone: t.profit >= 0 ? 'pos' : 'neg', wide: true },
           ]}
         />
-        <Card className="grid gap-2 px-3.5 py-3">
-          <div className="text-[12px] font-semibold text-muted">Chi 6 tuần gần nhất (tr)</div>
+        <Card className="grid gap-1.5 px-3 py-2.5">
+          <div className="text-[12px] font-semibold text-muted">Chi 6 tuần gần nhất (triệu)</div>
           {weeks.map((w) => (
-            <div key={w.weekStart} className="flex items-center gap-2.5 text-[13px]">
-              <span className="w-[58px] shrink-0">Tuần {w.week}</span>
+            <div key={w.weekStart} className="flex items-center gap-2.5 text-[12.5px]">
+              <span className="w-[54px] shrink-0 text-muted">Tuần {w.week}</span>
               <span className="min-w-0 flex-1"><HBar percent={(w.amount / max) * 100} /></span>
-              <b className="num w-[52px] shrink-0 text-right">{Math.round(w.amount / MILLION).toLocaleString('vi-VN')}</b>
+              <b className="num w-[48px] shrink-0 text-right">{Math.round(w.amount / MILLION).toLocaleString('vi-VN')}</b>
             </div>
           ))}
         </Card>
+        {topReceivable.length ? (
+          <Card>
+            <CardHeader title="Còn phải thu nhiều nhất" />
+            <div className="grid">
+              {topReceivable.map((r) => (
+                <button key={r.projectId} type="button" onClick={() => navigate(`/cong-trinh/${r.projectId}`)}
+                  className="flex min-w-0 items-center gap-2 border-b border-line-soft px-3 py-2 text-left text-[13px] last:border-b-0 active:bg-surface-2">
+                  <span className="min-w-0 flex-1 truncate">{r.name}</span>
+                  <b className="num text-bad">{formatShortMoney(r.revenue.receivable)}</b>
+                  <Icon name="chevron_right" className="text-[18px] text-faint" />
+                </button>
+              ))}
+            </div>
+          </Card>
+        ) : null}
         <Card>
           <CardHeader title="Cơ cấu chi theo loại" sub="triệu đồng" />
           <HBarList items={calc.breakdown.map((b) => ({ key: b.label, label: b.label, value: b.amount, display: Math.round(b.amount / MILLION).toLocaleString('vi-VN') }))} />

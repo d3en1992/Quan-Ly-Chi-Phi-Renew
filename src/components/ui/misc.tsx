@@ -53,27 +53,36 @@ export function PageHeader({ title, sub, actions }: { title: string; sub?: React
   );
 }
 
+/** Tab con. Điện thoại: không xuống dòng (cuộn ngang trong dải tab), hiện nhãn ngắn `short` nếu có — tên đầy đủ vẫn ở aria-label. */
 export function SubTabs<T extends string>({
   tabs,
   value,
   onChange,
 }: {
-  tabs: { key: T; label: string }[];
+  tabs: { key: T; label: string; short?: string }[];
   value: T;
   onChange: (v: T) => void;
 }) {
   return (
-    <div role="tablist" className="flex flex-wrap gap-1 border-b border-line">
+    <div role="tablist" className="no-scrollbar flex shrink-0 gap-0.5 overflow-x-auto border-b border-line sm:flex-wrap sm:gap-1 sm:overflow-visible">
       {tabs.map((t) => (
         <button
           key={t.key}
           role="tab"
           type="button"
           aria-selected={value === t.key}
+          aria-label={t.short ? t.label : undefined}
           onClick={() => onChange(t.key)}
-          className="-mb-px border-b-2 border-transparent px-3 py-2 text-[13px] font-semibold tracking-[.02em] text-muted aria-selected:border-accent aria-selected:text-accent"
+          className="-mb-px shrink-0 border-b-2 border-transparent px-2 py-2 text-[12.5px] font-semibold whitespace-nowrap text-muted aria-selected:border-accent aria-selected:text-accent sm:px-3 sm:text-[13px] sm:tracking-[.02em]"
         >
-          {t.label}
+          {t.short ? (
+            <>
+              <span className="sm:hidden">{t.short}</span>
+              <span className="hidden sm:inline">{t.label}</span>
+            </>
+          ) : (
+            t.label
+          )}
         </button>
       ))}
     </div>

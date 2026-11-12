@@ -20,15 +20,15 @@ import { ContactForm, KIND_TITLE } from './ContactForm';
 import { Sheet } from '@/components/ui/sheet';
 import { ScanWorkspace } from '@/features/scan/ScanWorkspace';
 
-const TABS: { key: ContactKind; label: string }[] = [
-  { key: 'customer', label: 'KHÁCH HÀNG' }, { key: 'worker', label: 'CÔNG NHÂN' }, { key: 'employee', label: 'NHÂN VIÊN' },
-  { key: 'supplier', label: 'NHÀ CUNG CẤP' }, { key: 'subcontractor', label: 'THẦU PHỤ' },
+const TABS: { key: ContactKind; label: string; short?: string }[] = [
+  { key: 'customer', label: 'KHÁCH HÀNG', short: 'KHÁCH' }, { key: 'worker', label: 'CÔNG NHÂN', short: 'THỢ' }, { key: 'employee', label: 'NHÂN VIÊN', short: 'NHÂN VIÊN' },
+  { key: 'supplier', label: 'NHÀ CUNG CẤP', short: 'NCC' }, { key: 'subcontractor', label: 'THẦU PHỤ' },
 ];
 const ROLE_LABEL: Record<string, string> = { C: 'Chính', T: 'Thợ', P: 'Phụ' };
 const dim = (t: string) => <span className="text-faint">{t}</span>;
 
 type Col = { head: string; right?: boolean; cell: ReactNode };
-type RowDef = { id: string; kind: ContactKind; name: string; haystack: (string | null | undefined)[]; cols: Col[]; mobileTitle: ReactNode; mobileMeta: ReactNode[]; extra?: Record<string, string> };
+type RowDef = { id: string; kind: ContactKind; name: string; tel?: string; haystack: (string | null | undefined)[]; cols: Col[]; mobileTitle: ReactNode; mobileMeta: ReactNode[]; extra?: Record<string, string> };
 
 export function ContactsPage() {
   const access = useAccess();
@@ -84,20 +84,35 @@ export function ContactsPage() {
 
   return (
     <>
-      {mode === 'phone' ? <div className="flex flex-wrap items-center justify-end gap-2">{actions}</div>
-        : <PageHeader title="Danh Bạ" sub="Thông tin khách hàng, công nhân, nhân viên, nhà cung cấp, thầu phụ" actions={actions} />}
+      {mode === 'phone' ? null : <PageHeader title="Danh Bạ" sub="Thông tin khách hàng, công nhân, nhân viên, nhà cung cấp, thầu phụ" actions={actions} />}
       <SubTabs tabs={TABS} value={tab} onChange={(t) => { setTab(t); setSearch(''); setFilter(''); }} />
-      <FilterBar>
-        <SearchBox value={search} onChange={setSearch} placeholder="Tìm tên, SĐT, địa chỉ…" />
-        {filterOptions.length ? <FilterSelect label={filterLabel} value={filter} onChange={setFilter} options={filterOptions} /> : null}
-      </FilterBar>
+      {mode === 'phone' ? (
+        // Điện thoại: tìm + lọc + nút nhỏ trên một hàng; Xuất dữ liệu nằm ở mục Thêm → Xuất dữ liệu; Chụp CCCD chỉ ở nhóm Công nhân
+        <div className="flex min-w-0 items-center gap-2">
+          <SearchBox value={search} onChange={setSearch} placeholder="Tìm tên, SĐT…" className="min-w-0" />
+          {filterOptions.length ? <FilterSelect label={filterLabel === 'Có công trình' ? 'CT' : filterLabel} value={filter} onChange={setFilter} options={filterOptions} className="shrink-0" selectClassName="max-w-[96px]" /> : null}
+          {canScanId && tab === 'worker' ? <Button size="icon" aria-label="Chụp CCCD / giấy tờ" onClick={() => setScanOpen(true)}><Icon name="badge" /></Button> : null}
+          {canEdit ? <Button size="icon" variant="primary" className="text-accent-fg" aria-label={`Thêm ${KIND_TITLE[tab]}`} onClick={() => setForm({ kind: tab, id: null })}><Icon name="person_add" /></Button> : null}
+        </div>
+      ) : (
+        <FilterBar>
+          <SearchBox value={search} onChange={setSearch} placeholder="Tìm tên, SĐT, địa chỉ…" />
+          {filterOptions.length ? <FilterSelect label={filterLabel} value={filter} onChange={setFilter} options={filterOptions} /> : null}
+        </FilterBar>
+      )}
       {filtered.length === 0 ? (
         <Card><EmptyState icon="contacts" title={rows.length === 0 ? `Chưa có ${KIND_TITLE[tab]} nào` : 'Không có ai khớp'}>{rows.length === 0 && canEdit ? 'Bấm "Thêm" để tạo mới.' : null}</EmptyState></Card>
       ) : mode === 'phone' ? (
         filtered.map((r) => (
           <MobileCard key={r.id} onClick={canEdit ? () => openRow(r) : undefined}>
-            <MobileRow><b className="min-w-0 break-words">{r.mobileTitle}</b></MobileRow>
-            {r.mobileMeta.map((m, i) => <MobileRow key={i} meta>{m}</MobileRow>)}
+            <MobileRow>
+              <b className="min-w-0 break-words">{r.mobileTitle}</b>
+              {r.tel ? (
+                <a href={`tel:${r.tel}`} aria-label={`Gọi ${r.name}`} onClick={(e) => e.stopPropagation()}
+                  className="grid size-8 shrink-0 place-items-center rounded-full bg-good-soft text-good"><Icon name="call" className="text-[18px]" /></a>
+              ) : null}
+            </MobileRow>
+            <MobileRow meta>{r.mobileMeta}</MobileRow>
           </MobileCard>
         ))
       ) : (
@@ -122,8 +137,8 @@ export function ContactsPage() {
           </div>
         </Card>
       )}
-      {tab === 'worker' ? <Note icon="badge">Bấm <b>Chụp CCCD</b>: AI đọc họ tên, ngày sinh, số CCCD, quê quán. <b>Chỉ lưu chữ, không lưu ảnh.</b> Số CCCD che bớt, chỉ vai trò có quyền "Xem SĐT, số CCCD" mới thấy đủ.</Note> : null}
-      {tab === 'supplier' ? <Note><b>Mua nợ</b> bật sẵn cho nhà cung cấp từng có tiền ứng trong dữ liệu cũ. Địa chỉ, SĐT sẽ tự điền dần khi chụp hóa đơn.</Note> : null}
+      {tab === 'worker' && mode !== 'phone' ? <Note icon="badge">Bấm <b>Chụp CCCD</b>: AI đọc họ tên, ngày sinh, số CCCD, quê quán. <b>Chỉ lưu chữ, không lưu ảnh.</b> Số CCCD che bớt, chỉ vai trò có quyền "Xem SĐT, số CCCD" mới thấy đủ.</Note> : null}
+      {tab === 'supplier' && mode !== 'phone' ? <Note><b>Mua nợ</b> bật sẵn cho nhà cung cấp từng có tiền ứng trong dữ liệu cũ. Địa chỉ, SĐT sẽ tự điền dần khi chụp hóa đơn.</Note> : null}
       <Sheet open={scanOpen} onOpenChange={setScanOpen} title="Chụp CCCD" wide>
         {scanOpen ? <ScanWorkspace defaultKind="id_card" lockKind compact onSaved={() => setScanOpen(false)} /> : null}
       </Sheet>
@@ -151,6 +166,8 @@ function buildRows(tab: ContactKind, d: ContactsData, report: ReturnType<typeof 
   const phoneOf = (id: string) => { const p = d.masked.get(id)?.phone; return p ? <span className="num">{p}</span> : dim('chưa có'); };
   const idOf = (id: string) => { const m = d.masked.get(id); return m?.id_number ? <span className="num">{m.id_number}</span> : <Pill tone="warn">Chưa có</Pill>; };
   const phoneText = (id: string) => d.masked.get(id)?.phone ?? '';
+  /** Số gọi được (đủ số, không bị che) cho nút Gọi trên điện thoại */
+  const telOf = (raw: string | null | undefined) => { const t = String(raw ?? '').replace(/[\s.-]/g, ''); return /^\+?\d{8,12}$/.test(t) ? t : undefined; };
   const text = (v: string | null | undefined) => (v ? v : dim('chưa có'));
 
   if (tab === 'customer') {
@@ -174,8 +191,8 @@ function buildRows(tab: ContactKind, d: ContactsData, report: ReturnType<typeof 
           { head: 'CCCD', cell: d.masked.get(c.id)?.id_number ? <Pill tone="good">Đã có</Pill> : dim('—') }, { head: 'Số CT', right: true, cell: <span className="num">{s.n}</span> },
           ...(ctx.money ? [{ head: 'Tổng giá trị HĐ', right: true, cell: <Money value={s.value} /> }] : []),
         ],
-        mobileTitle: c.name,
-        mobileMeta: [<span key="a" className="min-w-0 truncate">{c.address || 'chưa có địa chỉ'}</span>, <span key="b">{s.n} CT · {phoneText(c.id) || 'chưa có SĐT'}</span>],
+        mobileTitle: c.name, tel: telOf(phoneText(c.id)),
+        mobileMeta: [<span key="a" className="min-w-0 truncate">{c.address || 'chưa có địa chỉ'}</span>, <span key="b" className="shrink-0">{s.n} CT</span>],
       };
     });
   }
@@ -193,7 +210,8 @@ function buildRows(tab: ContactKind, d: ContactsData, report: ReturnType<typeof 
           { head: 'CCCD', cell: idOf(w.id) }, { head: 'Tài khoản nhận lương', cell: hasBank ? (ctx.canSeeIds && pv?.bank_account ? <span className="num text-muted">{[pv.bank_name, '•••' + pv.bank_account.slice(-4)].filter(Boolean).join(' · ')}</span> : <span className="text-muted">Đã có</span>) : dim('—') },
         ],
         mobileTitle: <>{w.name} {w.role ? <Pill>{ROLE_LABEL[w.role] ?? w.role}</Pill> : null}</>,
-        mobileMeta: [<span key="a">{w.full_name || 'chưa có họ tên'}</span>, <span key="b">{phoneText(w.id) || 'chưa có SĐT'}</span>],
+        tel: telOf(phoneText(w.id)),
+        mobileMeta: [<span key="a" className="min-w-0 truncate">{[w.full_name, phoneText(w.id)].filter(Boolean).join(' · ') || 'chưa có họ tên, SĐT'}</span>],
       };
     });
   }
@@ -205,7 +223,7 @@ function buildRows(tab: ContactKind, d: ContactsData, report: ReturnType<typeof 
         { head: 'Tài khoản app', cell: e.profile_id ? <Pill tone="accent">Có tài khoản</Pill> : dim('—') }, { head: 'Số điện thoại', cell: phoneOf(e.id) },
         { head: 'Ngày vào làm', cell: e.started_on ? <span className="num">{formatDate(e.started_on)}</span> : dim('—') }, { head: 'Ghi chú', cell: e.note ?? dim('—') },
       ],
-      mobileTitle: e.full_name, mobileMeta: [<span key="a">{e.title || '—'}</span>, <span key="b">{phoneText(e.id) || 'chưa có SĐT'}</span>],
+      mobileTitle: e.full_name, tel: telOf(phoneText(e.id)), mobileMeta: [<span key="a" className="min-w-0 truncate">{[e.title, phoneText(e.id)].filter(Boolean).join(' · ') || '—'}</span>],
     }));
   }
   if (tab === 'supplier') {
@@ -227,7 +245,8 @@ function buildRows(tab: ContactKind, d: ContactsData, report: ReturnType<typeof 
         { head: 'Hóa đơn', right: true, cell: <span className="num">{invoices.get(s.id) ?? 0}</span> },
       ],
       mobileTitle: <>{s.name} {s.buys_on_credit ? <Pill tone="warn">Mua nợ</Pill> : null}</>,
-      mobileMeta: [<span key="a" className="min-w-0 truncate">{s.address || 'chưa có địa chỉ'}</span>, <span key="b">{s.phone || 'chưa có SĐT'} · {invoices.get(s.id) ?? 0} HĐ</span>],
+      tel: telOf(s.phone),
+      mobileMeta: [<span key="a" className="min-w-0 truncate">{s.address || 'chưa có địa chỉ'}</span>, <span key="b" className="shrink-0">{invoices.get(s.id) ?? 0} HĐ</span>],
     }));
   }
   const standing = report ? subcontractorStandings(report.subcontracts, report.payments) : new Map();
@@ -240,7 +259,7 @@ function buildRows(tab: ContactKind, d: ContactsData, report: ReturnType<typeof 
         { head: 'Người liên hệ', cell: text(t.contact_person) }, { head: 'Số điện thoại', cell: phoneOf(t.id) },
         { head: 'Số HĐ', right: true, cell: <span className="num">{s.contracts}</span> }, { head: 'Còn phải trả', right: true, cell: <Money value={s.debt} className="text-bad" /> },
       ],
-      mobileTitle: t.name, mobileMeta: [<span key="a">{t.field || '—'} · {s.contracts} HĐ</span>, <span key="b" className="num">{s.debt ? `còn ${Math.round(s.debt).toLocaleString('vi-VN')}` : ''}</span>],
+      mobileTitle: t.name, tel: telOf(phoneText(t.id)), mobileMeta: [<span key="a">{t.field || '—'} · {s.contracts} HĐ</span>, <span key="b" className="num">{s.debt ? `còn ${Math.round(s.debt).toLocaleString('vi-VN')}` : ''}</span>],
     };
   });
 }

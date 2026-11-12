@@ -104,3 +104,7 @@
 .gmile.done { background: var(--good); } .gmile.late { background: var(--bad); }
 .today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--bad); z-index: 2; pointer-events: none; }
 .today::after { content: 'Hôm nay'; position: absolute; top: -1px; left: 4px; font-size: 10px; color: var(--bad); font-weight: 600; white-space: nowrap; }
+
+/* Dải cuộn ngang không hiện thanh cuộn (tab con trên điện thoại) */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

@@ -21,7 +21,8 @@ import { ACCESS_QUERY_KEY, useAccess, useAuth } from './auth';
 import { toggleTheme } from './theme';
 import { useYears } from './year';
 
-export function YearPicker({ compact = false }: { compact?: boolean }) {
+/** `tiny` = đầu trang điện thoại: bỏ biểu tượng lịch, chừa chỗ cho tên trang */
+export function YearPicker({ compact = false, tiny = false }: { compact?: boolean; tiny?: boolean }) {
   const { years, setYears, options, label } = useYears();
   const toggle = (y: number) => {
     if (years === 'all') return setYears([y]);
@@ -34,9 +35,9 @@ export function YearPicker({ compact = false }: { compact?: boolean }) {
         <button
           type="button"
           aria-label="Chọn năm"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[13px] whitespace-nowrap"
+          className={tiny ? 'inline-flex h-[34px] shrink-0 items-center gap-0.5 rounded-lg border border-line bg-surface pr-1 pl-2 text-[13px] font-semibold whitespace-nowrap' : 'inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[13px] whitespace-nowrap'}
         >
-          <Icon name="event" className="text-[17px] text-faint" />
+          {tiny ? null : <Icon name="event" className="text-[17px] text-faint" />}
           <span data-testid="year-label">{compact && years !== 'all' && years.length > 1 ? `${years.length} năm` : label}</span>
           <Icon name="expand_more" className="text-[17px] text-faint" />
         </button>
