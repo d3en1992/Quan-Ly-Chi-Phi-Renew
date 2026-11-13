@@ -6,6 +6,7 @@ import { ToastProvider } from '@/components/ui/toast';
 import { ErrorState, LoadingState, PageHeader } from '@/components/ui/misc';
 import { Button } from '@/components/ui/button';
 import { LoginPage } from '@/features/auth/LoginPage';
+import { AssistantPage } from '@/features/scan/AssistantPage';
 import { ChangePasswordPage } from '@/features/auth/ChangePasswordPage';
 import { AccountsTab } from '@/features/accounts/AccountsTab';
 import { RolesTab } from '@/features/accounts/RolesTab';
@@ -29,7 +30,6 @@ import { SettlementsPage } from '@/features/revenue/SettlementsPage';
 import {
   BlockedPage,
   NotFoundPage,
-  PhoneCapturePage,
   PhoneHomePage,
   PhoneMorePage,
 } from '@/features/placeholder/pages';
@@ -45,7 +45,6 @@ import {
   firstVisiblePath,
   LEGACY_REDIRECTS,
   NAV_TABS,
-  PHONE_CAPTURE,
   PHONE_HOME,
   PHONE_MORE_PATH,
   PROJECT_DETAIL_PATH,
@@ -62,6 +61,7 @@ const PAGES: Record<string, () => ReactNode> = {
   chamcong: () => <TimesheetPage />,
   thietbi: () => <EquipmentPage />,
   dashboard: () => <DashboardPage />,
+  trolyai: () => <AssistantPage />,
 };
 
 const ALLOC_SUB: Record<AllocTab, string> = { alloc: 'titrong', benchmark: 'dinhmuc', config: 'cauhinh' };
@@ -170,7 +170,6 @@ function AppRoutes() {
         ))}
         <Route path={PHONE_HOME.path} element={<Guard item={PHONE_HOME}><PhoneHomePage /></Guard>} />
         <Route path={PHONE_MORE_PATH} element={<PhoneMorePage />} />
-        <Route path={PHONE_CAPTURE.path} element={<Guard item={PHONE_CAPTURE}><PhoneCapturePage /></Guard>} />
         <Route path="/doi-mat-khau" element={<ChangePasswordPage forced={false} />} />
         <Route path="/khong-co-quyen" element={<BlockedPage />} />
         <Route path="*" element={<NotFoundPage />} />

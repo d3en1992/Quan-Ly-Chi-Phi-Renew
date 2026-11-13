@@ -20,7 +20,7 @@ const EXPECT: Record<string, Record<string, string[]>> = {
   quanly: { ...ALL_SUBS, caidat: ['danhba', 'danhmuc', 'xuat', 'thungrac'] },
   ketoan: {
     congtrinh: [], chiphi: ['nhap', 'tracuu'], chamcong: [], thauphu: ['hdtp', 'ncc', 'tattoan', 'phieuchi'],
-    kehoach: ['tiendo'], caidat: ['danhba', 'xuat', 'thungrac'],
+    kehoach: ['tiendo'], trolyai: [], caidat: ['danhba', 'xuat', 'thungrac'],
   },
   chixem: { congtrinh: [], chiphi: ['tracuu'], kehoach: ['tiendo'], caidat: ['xuat'] },
 };
@@ -35,9 +35,9 @@ describe('menu theo vai trò', () => {
     });
   });
 
-  it('menu 9 tab, đúng thứ tự', () => {
+  it('menu 10 tab, đúng thứ tự (Trợ lý AI ngay dưới Dashboard)', () => {
     expect(NAV_TABS.map((t) => t.label)).toEqual([
-      'Công Trình', 'Chi Phí', 'Chấm Công', 'Thầu Phụ & NCC', 'Thu & Lãi', 'Kế Hoạch', 'Thiết Bị', 'Dashboard', 'Cài Đặt',
+      'Công Trình', 'Chi Phí', 'Chấm Công', 'Thầu Phụ & NCC', 'Thu & Lãi', 'Kế Hoạch', 'Thiết Bị', 'Dashboard', 'Trợ lý AI', 'Cài Đặt',
     ]);
   });
 
@@ -76,7 +76,7 @@ describe('đường dẫn', () => {
 
   it('mọi đường dẫn cũ đều chuyển tới một tab con có thật', () => {
     const paths = new Set(allEntries().map((e) => e.path));
-    expect(Object.keys(LEGACY_REDIRECTS).length).toBe(14);
+    expect(Object.keys(LEGACY_REDIRECTS).length).toBe(15); // + /chup → Trợ lý AI
     for (const to of Object.values(LEGACY_REDIRECTS)) expect(paths.has(to)).toBe(true);
   });
 });

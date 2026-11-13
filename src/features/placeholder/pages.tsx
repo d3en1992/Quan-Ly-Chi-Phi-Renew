@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/ui/button';
 import { Card, EmptyState } from '@/components/ui/misc';
 import { useAccess, useAuth } from '@/app/auth';
-import { ScanWorkspace } from '@/features/scan/ScanWorkspace';
 import { canSeeItem, canSeeModule, findSub, NAV_TABS, PHONE_HOME_SHORTCUTS, PHONE_MORE_KEYS, subPath, type NavItem } from '@/app/nav';
 import { hasLevel } from '@/lib/permissions';
 import { DashboardPage } from '@/features/reports/DashboardPage';
@@ -91,7 +90,3 @@ export function PhoneHomePage() {
   );
 }
 
-/** Điện thoại: màn Chụp đa năng (MP.chupmenu → MP.chup / MP.cccd) */
-export function PhoneCapturePage() {
-  return <ScanWorkspace compact />;
-}

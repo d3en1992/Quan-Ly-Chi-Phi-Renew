@@ -19,11 +19,47 @@ import { ScanInvoice } from './ScanInvoice';
 import { ScanMaterials } from './ScanMaterials';
 import { ScanReceipt } from './ScanReceipt';
 
-type Props = { defaultKind?: ScanRequestKind; lockKind?: boolean; compact?: boolean; onSaved?: () => void };
+type Props = {
+  defaultKind?: ScanRequestKind; lockKind?: boolean; compact?: boolean; onSaved?: () => void;
+  /** Tab Trợ lý AI trên máy tính / máy tính bảng: hiện bảng "AI làm được gì" (máy tính: cột phải, máy tính bảng: dưới khung nhập) */
+  guide?: boolean;
+};
 
 const STEPS = ['1. Chụp / nói', '2. AI đọc', '3. Anh kiểm tra, sửa', '4. Lưu'];
 
-export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact = false, onSaved }: Props) {
+/** Việc AI làm được + câu mẫu (bấm câu mẫu → điền vào lời nhắn, chọn sẵn loại) */
+const GUIDE: { kind: Exclude<ScanRequestKind, 'auto' | 'id_card'>; icon: string; title: string; text: string; examples: string[] }[] = [
+  { kind: 'invoice', icon: 'receipt_long', title: 'Hóa đơn', text: 'Chụp phiếu giao hàng, biên nhận, sổ cộng tiền → hóa đơn chi tiết (hoặc chuyển sang nhanh), lưu cả nhà cung cấp mới.', examples: ['hóa đơn copha công trình A Huynh', 'mua 10 bao xi măng 95 nghìn một bao công trình A Huynh'] },
+  { kind: 'advance', icon: 'payments', title: 'Tiền ứng thầu phụ / trả NCC', text: 'Nói hoặc gửi ảnh chuyển khoản → phiếu chi tạm ứng thầu phụ, hoặc trả nợ nhà cung cấp.', examples: ['hôm nay ứng Hà điện nước 5 triệu công trình anh Huynh, chuyển khoản', 'trả sắt thép An Phú 50 triệu công trình anh Huynh'] },
+  { kind: 'receipt', icon: 'savings', title: 'Thu tiền khách', text: 'Khách chuyển / đưa tiền → phiếu thu, ghi rõ chuyển khoản hay tiền mặt.', examples: ['hôm nay anh Huynh chuyển khoản 100 triệu'] },
+  { kind: 'contract', icon: 'description', title: 'Hợp đồng / dự toán', text: 'Gửi PDF, ảnh hoặc Excel .xlsx → khách hàng mới, giá trị hợp đồng, diện tích móng / trệt / lầu.', examples: [] },
+  { kind: 'material_list', icon: 'checklist', title: 'Vật tư cần mua', text: 'Ảnh tin nhắn Zalo của thợ, chữ cai ghi trên ván → bảng tên vật tư + số lượng để copy gửi cửa hàng.', examples: ['cốp pha anh Long đưa'] },
+];
+
+function AiGuide({ allowed, onPick }: { allowed: Record<ScanRequestKind, boolean>; onPick: (k: ScanRequestKind, text: string) => void }) {
+  const items = GUIDE.filter((g) => allowed[g.kind]);
+  return (
+    <Card className="p-4" data-testid="ai-guide">
+      <h3 className="m-0 mb-3 text-sm font-bold">AI làm được gì</h3>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+        {items.map((g) => (
+          <div key={g.kind} className="grid content-start gap-1.5 rounded-lg border border-line-soft bg-surface-2/60 p-3">
+            <div className="flex items-center gap-2 text-[13.5px] font-semibold"><Icon name={g.icon} className="text-[19px] text-accent" />{g.title}</div>
+            <p className="m-0 text-[12.5px] leading-snug text-muted">{g.text}</p>
+            {g.examples.map((ex) => (
+              <button key={ex} type="button" onClick={() => onPick(g.kind, ex)} title="Bấm để điền vào lời nhắn"
+                className="w-fit rounded-md border border-dashed border-line px-2 py-1 text-left text-[12px] text-fg hover:border-accent hover:text-accent">
+                “{ex}”
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact = false, onSaved, guide = false }: Props) {
   const access = useAccess();
   const toast = useToast();
   const { query, lists } = useLists();
@@ -103,13 +139,16 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
       {r?.question ? <Note icon="help"><b data-testid="ai-question">{r.question}</b></Note> : null}
 
       {!result ? (
-        <Card className={cn('p-4', !compact && 'max-w-[560px]')}>
-          <CaptureForm
-            kind={kind} setKind={setKind} allowed={allowedKinds} note={note} setNote={setNote}
-            input={input} onPickFile={(f) => void pickFile(f)} onClearFile={() => setInput(null)} onAudio={(b, s) => void onAudio(b, s)}
-            busy={busy || preparing} onRead={() => void read()} lockKind={lockKind}
-          />
-        </Card>
+        <div className={cn('grid gap-3', guide && 'lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)] lg:items-start')}>
+          <Card className={cn('p-4', !compact && !guide && 'max-w-[560px]')}>
+            <CaptureForm
+              kind={kind} setKind={setKind} allowed={allowedKinds} note={note} setNote={setNote}
+              input={input} onPickFile={(f) => void pickFile(f)} onClearFile={() => setInput(null)} onAudio={(b, s) => void onAudio(b, s)}
+              busy={busy || preparing} onRead={() => void read()} lockKind={lockKind}
+            />
+          </Card>
+          {guide ? <AiGuide allowed={allowedKinds} onPick={(k, t) => { setKind(k); setNote(t); }} /> : null}
+        </div>
       ) : r!.kind === 'invoice' ? (
         allowedKinds.invoice ? needLists(<ScanInvoice scan={r!.invoice} image={result.image} lists={lists!} compact={compact} onDone={done} onRetake={reset} />) : noAccess('hóa đơn')
       ) : r!.kind === 'advance' ? (

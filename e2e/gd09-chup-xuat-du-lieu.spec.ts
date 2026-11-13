@@ -156,7 +156,7 @@ test('Điện thoại 390: nút Chụp → hợp đồng (giả lập) → khác
   const errors = watchConsole(page);
   await login(page, 'e2e.admin');
   await page.goto('/tong-quan');
-  await page.getByRole('button', { name: 'Trợ lý AI' }).click();
+  await page.locator('[data-bottom="ai"]').click();
   await expect(page.getByTestId('capture-form')).toBeVisible();
   await page.getByTestId('scan-file').setInputFiles({ name: 'anh.png', mimeType: 'image/png', buffer: PNG });
   await page.screenshot({ path: `${SHOTS}/390-chup-menu.png`, fullPage: true });

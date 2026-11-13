@@ -116,11 +116,11 @@ test('Bảng Phân quyền xếp theo tab, có nút cả nhóm', async ({ page }
   await page.screenshot({ path: `${SHOTS}/phan-quyen-1440.png`, fullPage: true });
 });
 
-test('Điện thoại: mục Thêm 5 tab, dải tab con cuộn trong khung', async ({ page }) => {
+test('Điện thoại: mục Thêm 6 tab, dải tab con cuộn trong khung', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page, 'e2e.admin');
   await page.locator('[data-bottom="more"]').click();
-  await expect(page.getByTestId('phone-more').locator('[data-more]')).toHaveCount(5);
+  await expect(page.getByTestId('phone-more').locator('[data-more]')).toHaveCount(6);
   await page.screenshot({ path: `${SHOTS}/them-390.png` });
   await page.locator('[data-more="thulai"]').click();
   await expect(page).toHaveURL(/\/thu-lai\/thu-tien$/); // điện thoại mở Thu tiền trước
@@ -128,6 +128,7 @@ test('Điện thoại: mục Thêm 5 tab, dải tab con cuộn trong khung', asy
   await page.waitForLoadState('networkidle').catch(() => {});
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   await page.screenshot({ path: `${SHOTS}/thu-lai-390.png` });
-  await page.locator('[data-bottom="nhap"]').click();
+  await page.locator('[data-bottom="ai"]').click();
+  await page.getByRole('link', { name: 'Nhập tay' }).click();
   await expect(page).toHaveURL(/\/chi-phi\/nhap$/);
 });

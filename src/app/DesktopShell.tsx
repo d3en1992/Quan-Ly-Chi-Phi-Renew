@@ -1,6 +1,7 @@
 // Bố cục máy tính (≥1024: menu trái đầy đủ chữ) và máy tính bảng / Z Fold mở (640–1023: menu cột biểu tượng)
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { AI_GRADIENT, AiBadge } from '@/components/ui/ai-badge';
 import { Icon } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAccess } from './auth';
@@ -12,6 +13,28 @@ import { ReadOnlyBanner } from './ReadOnlyBanner';
 function SideLink({ item, compact }: { item: NavItem; compact: boolean }) {
   const { pathname } = useLocation();
   const active = pathname === item.path || pathname.startsWith(item.path + '/');
+  if (item.featured) {
+    // Trợ lý AI: ô biểu tượng chuyển sắc + chữ chuyển sắc, nổi hơn các tab khác
+    return (
+      <NavLink
+        to={item.path}
+        title={item.label}
+        aria-label={compact ? item.label : undefined}
+        aria-current={active ? 'page' : undefined}
+        data-nav={item.key}
+        className={cn(
+          'my-1 flex min-w-0 items-center gap-2 rounded-[10px] font-semibold transition hover:bg-surface-2',
+          compact ? 'justify-center p-1' : 'w-full px-1.5 py-1.5 text-[13.5px]',
+          active && 'bg-accent-soft ring-2 ring-[#7c3aed]/60',
+        )}
+      >
+        <AiBadge size={compact ? 38 : 30} />
+        {compact ? null : (
+          <span className="truncate bg-clip-text text-transparent" style={{ backgroundImage: AI_GRADIENT }}>{item.label}</span>
+        )}
+      </NavLink>
+    );
+  }
   return (
     <NavLink
       to={item.path}

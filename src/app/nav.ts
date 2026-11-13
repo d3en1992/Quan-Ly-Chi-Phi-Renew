@@ -5,7 +5,8 @@
 import type { ModuleKey, PermissionMap } from '@/lib/permissions';
 import { canSeeExport, canSeeTrash, hasLevel } from '@/lib/permissions';
 
-export type NavModule = ModuleKey | 'trash' | 'export';
+/** 'ai' = Trợ lý AI: thấy khi nhập được ít nhất 1 trong Chi phí / Phiếu chi / Doanh thu */
+export type NavModule = ModuleKey | 'trash' | 'export' | 'ai';
 
 export type SubItem = {
   key: string;        // khóa tab con (duy nhất toàn app)
@@ -26,7 +27,11 @@ export type NavItem = {
   module?: NavModule; // tab không có tab con
   subs?: SubItem[];   // tab có tab con
   phoneFirst?: string; // điện thoại: tab con mở mặc định (khóa)
+  featured?: boolean;  // tab nổi bật (Trợ lý AI): biểu tượng nền chuyển sắc trên menu
 };
+
+/** Trợ lý AI (nút AI; trước là Chụp, đường dẫn cũ /chup): ảnh hóa đơn, chuyển khoản, giọng nói, PDF / Excel hợp đồng, vật tư cần mua */
+export const AI_TAB: NavItem = { key: 'trolyai', path: '/tro-ly-ai', icon: 'auto_awesome', label: 'Trợ lý AI', module: 'ai', featured: true };
 
 export const NAV_TABS: NavItem[] = [
   { key: 'congtrinh', path: '/cong-trinh', icon: 'construction', label: 'Công Trình', module: 'projects' },
@@ -67,6 +72,7 @@ export const NAV_TABS: NavItem[] = [
   },
   { key: 'thietbi', path: '/thiet-bi', icon: 'build', label: 'Thiết Bị', module: 'equipment' },
   { key: 'dashboard', path: '/dashboard', icon: 'monitoring', label: 'Dashboard', module: 'dashboard' },
+  AI_TAB,
   {
     key: 'caidat', path: '/cai-dat', icon: 'settings', label: 'Cài Đặt',
     subs: [
@@ -85,13 +91,14 @@ export const PROJECT_DETAIL_PATH = '/cong-trinh/:projectId';
 
 /** Trang chỉ có trên điện thoại */
 export const PHONE_HOME: NavItem = { key: 'home', path: '/tong-quan', icon: 'home', label: 'Tổng quan', module: 'projects' };
-/** Nút AI (trước là Chụp): ảnh hóa đơn, ảnh chuyển khoản, giọng nói, PDF / Excel hợp đồng, danh sách vật tư — đường dẫn giữ /chup */
-export const PHONE_CAPTURE: NavItem = { key: 'chupmenu', path: '/chup', icon: 'auto_awesome', label: 'Trợ lý AI', module: 'expenses' };
+/** Điện thoại: nút AI giữa thanh dưới = tab Trợ lý AI */
+export const PHONE_CAPTURE: NavItem = AI_TAB;
 export const PHONE_MORE_PATH = '/them';
 
 export function canSeeModule(perms: PermissionMap, module: NavModule): boolean {
   if (module === 'trash') return canSeeTrash(perms);
   if (module === 'export') return canSeeExport(perms);
+  if (module === 'ai') return (['expenses', 'payments', 'revenue'] as const).some((m) => hasLevel(perms, m, 'add'));
   return hasLevel(perms, module, 'view');
 }
 
@@ -132,7 +139,7 @@ export function firstVisiblePath(perms: PermissionMap): string {
 }
 
 /** Mục "Thêm" trên điện thoại: các tab không nằm ở thanh dưới */
-export const PHONE_MORE_KEYS = ['thauphu', 'thulai', 'kehoach', 'thietbi', 'caidat'];
+export const PHONE_MORE_KEYS = ['chiphi', 'thauphu', 'thulai', 'kehoach', 'thietbi', 'caidat'];
 
 /** Điện thoại: lối tắt đầu trang Tổng quan (việc hay xem nhất, không có ở thanh dưới) — trỏ thẳng tab con */
 export const PHONE_HOME_SHORTCUTS: { tab: string; sub: string; label: string; icon: string }[] = [
@@ -159,7 +166,7 @@ export function canSeeEntry(perms: PermissionMap, e: NavEntry): boolean {
 /** Tìm tab (và tab con) theo đường dẫn, kể cả chi tiết công trình */
 export function findByPath(pathname: string): { item: NavItem; sub?: SubItem } | undefined {
   const p = pathname.replace(/\/+$/, '') || '/';
-  for (const item of [...NAV_TABS, PHONE_HOME, PHONE_CAPTURE]) {
+  for (const item of [...NAV_TABS, PHONE_HOME]) {
     if (p === item.path) return { item };
     if (p.startsWith(item.path + '/')) {
       const slug = p.slice(item.path.length + 1).split('/')[0];
@@ -202,6 +209,7 @@ export const LEGACY_REDIRECTS: Record<string, string> = {
   '/tai-khoan': pathOfSub('taikhoan'),
   '/xuat-du-lieu': pathOfSub('xuat'),
   '/thung-rac': pathOfSub('thungrac'),
+  '/chup': AI_TAB.path,
 };
 
 /** Bảng Phân quyền: nhóm các mục quyền theo tab (thứ tự như menu). Mục chưa nằm trong tab nào → nhóm "Khác". */
@@ -209,7 +217,7 @@ export function moduleGroups(): { title: string; modules: ModuleKey[] }[] {
   const out: { title: string; modules: ModuleKey[] }[] = [];
   for (const item of NAV_TABS) {
     const mods = (item.subs ? item.subs.map((s) => s.module) : [item.module]).filter(
-      (m): m is ModuleKey => !!m && m !== 'trash' && m !== 'export',
+      (m): m is ModuleKey => !!m && m !== 'trash' && m !== 'export' && m !== 'ai',
     );
     const uniq = [...new Set(mods)];
     if (uniq.length) out.push({ title: item.label, modules: uniq });

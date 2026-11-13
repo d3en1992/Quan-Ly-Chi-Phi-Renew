@@ -1,18 +1,19 @@
-// Bố cục điện thoại (<640px): đầu trang (tên + chọn năm), nội dung dạng thẻ, nút tròn "Chụp", thanh dưới 5 nút
+// Bố cục điện thoại (<640px): đầu trang (tên + chọn năm), nội dung dạng thẻ, thanh dưới 5 nút — giữa là nút Trợ lý AI to, nhô lên
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Icon } from '@/components/ui/button';
-import { hasLevel } from '@/lib/permissions';
+import { AiBadge } from '@/components/ui/ai-badge';
 import { useAccess } from './auth';
 import { CommandPalette } from './CommandPalette';
-import { findByPath, pathOfSub, PHONE_CAPTURE, PHONE_HOME, PHONE_MORE_PATH } from './nav';
+import { canSeeItem, findByPath, pathOfSub, PHONE_CAPTURE, PHONE_HOME, PHONE_MORE_PATH } from './nav';
 import { ReadOnlyBanner } from './ReadOnlyBanner';
 import { YearPicker } from './TopBarParts';
 
+// Nhập tay nằm trong mục Thêm (Chi Phí) + nút "Nhập tay" trên màn Trợ lý AI
 const BOTTOM = [
   { key: 'home', path: PHONE_HOME.path, icon: 'home', label: 'Tổng quan' },
   { key: 'ct', path: '/cong-trinh', icon: 'construction', label: 'Công trình' },
-  { key: 'nhap', path: pathOfSub('nhap'), icon: 'add_card', label: 'Nhập' },
+  { key: 'ai', path: PHONE_CAPTURE.path, icon: 'auto_awesome', label: 'Trợ lý AI' },
   { key: 'cc', path: '/cham-cong', icon: 'calendar_month', label: 'Chấm công' },
   { key: 'more', path: PHONE_MORE_PATH, icon: 'apps', label: 'Thêm' },
 ];
@@ -21,7 +22,7 @@ const MAIN_PATHS = BOTTOM.map((b) => b.path);
 function activeBottomKey(pathname: string): string {
   if (pathname === PHONE_HOME.path) return 'home';
   if (pathname.startsWith('/cong-trinh')) return 'ct';
-  if (pathname === pathOfSub('nhap') || pathname === PHONE_CAPTURE.path) return 'nhap';
+  if (pathname === PHONE_CAPTURE.path) return 'ai';
   if (pathname === '/cham-cong') return 'cc';
   return 'more';
 }
@@ -39,10 +40,9 @@ export function PhoneShell() {
   // Trang Thêm: tên + vai trò; trang khác: ô chọn năm ngay trên đầu (điện thoại trước đây không đổi được năm)
   const isMore = pathname === PHONE_MORE_PATH;
   const isMain = MAIN_PATHS.includes(pathname);
-  const backTo = pathname.startsWith('/cong-trinh/') ? '/cong-trinh' : pathname === PHONE_CAPTURE.path ? PHONE_HOME.path : PHONE_MORE_PATH;
-  const canCapture = (['expenses', 'payments', 'revenue'] as const).some((m) => hasLevel(access.permissions, m, 'add'));
-  // Nút AI chỉ hiện ở màn xem số (che ít nhất); màn nhập / chấm công / danh bạ có nút riêng
-  const showFab = canCapture && (pathname === PHONE_HOME.path || pathname === '/cong-trinh' || pathname === pathOfSub('tracuu'));
+  // Nhập tay mở từ màn AI → quay lại màn AI
+  const backTo = pathname.startsWith('/cong-trinh/') ? '/cong-trinh' : pathname === pathOfSub('nhap') ? PHONE_CAPTURE.path : PHONE_MORE_PATH;
+  const canAi = canSeeItem(access.permissions, PHONE_CAPTURE);
   const current = activeBottomKey(pathname);
 
   return (
@@ -70,22 +70,26 @@ export function PhoneShell() {
         <Outlet />
       </main>
 
-      {showFab ? (
-        <button
-          type="button"
-          onClick={() => navigate(PHONE_CAPTURE.path)}
-          aria-label="Trợ lý AI"
-          className="fixed right-3.5 bottom-[calc(76px+env(safe-area-inset-bottom))] z-30 grid size-[54px] place-items-center rounded-full bg-accent text-accent-fg shadow-card"
-        >
-          <span className="grid place-items-center leading-none"><Icon name="auto_awesome" className="text-[22px]" /><span className="text-[10px] font-bold">AI</span></span>
-        </button>
-      ) : null}
 
       <nav
         aria-label="Thanh dưới"
         className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-surface px-1 pt-1 pb-[calc(6px+env(safe-area-inset-bottom))]"
       >
-        {BOTTOM.map((b) => (
+        {BOTTOM.map((b) => b.key === 'ai' ? (
+          canAi ? (
+            <NavLink
+              key={b.key}
+              to={b.path}
+              data-bottom={b.key}
+              aria-label="Trợ lý AI"
+              aria-current={current === b.key ? 'page' : undefined}
+              className="-mt-5 flex flex-col items-center gap-0.5 text-[10.5px] font-bold text-[#7c3aed] dark:text-[#a78bfa]"
+            >
+              <AiBadge size={52} className="rounded-full ring-4 ring-surface" />
+              {b.label}
+            </NavLink>
+          ) : <span key={b.key} />
+        ) : (
           <NavLink
             key={b.key}
             to={b.path}
