@@ -238,14 +238,14 @@ test('Dữ liệu cá nhân: Kế toán không thấy ô tick, gọi thẳng hà
   await admin.from('audit_log').delete().eq('action', 'export_private').contains('detail', { test: 'e2e' });
 });
 
-test('Nút nhanh "Xuất dữ liệu" ở Thống Kê CP/HĐ chọn sẵn hóa đơn', async ({ page }) => {
+test('Các tab con không còn nút "Xuất dữ liệu" (13/11/2026: chỉ xuất ở tab Xuất Dữ Liệu)', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await login(page, 'e2e.admin');
-  await page.goto('/thong-ke-cp-hd');
-  await page.getByTestId('quick-export').click();
-  await expect(page).toHaveURL(/\/xuat-du-lieu\?ds=expenses%2Cexpense_lines/);
-  await expect(page.getByLabel('Hóa đơn chi phí', { exact: true })).toBeChecked({ timeout: 30_000 });
-  await expect(page.getByLabel('Dòng vật tư', { exact: true })).toBeChecked();
+  for (const path of ['/thong-ke-cp-hd', '/cong-no', '/danh-ba', '/chi-tra']) {
+    await page.goto(path);
+    await page.waitForLoadState('networkidle').catch(() => {});
+    await expect(page.getByRole('button', { name: 'Xuất dữ liệu' })).toHaveCount(0);
+  }
 });
 
 for (const size of [{ name: '1440', width: 1440, height: 900 }, { name: '820', width: 820, height: 1000 }, { name: '390', width: 390, height: 844 }]) {

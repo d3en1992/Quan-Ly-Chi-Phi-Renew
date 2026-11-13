@@ -1,6 +1,5 @@
 // Tab CÔNG NỢ PHẢI TRẢ (PAGES.congno / MP.congno — công ty nợ thầu phụ, nhà cung cấp; mục 4L):
 // HỢP ĐỒNG THẦU PHỤ (master–detail, trả nhanh) · NHÀ CUNG CẤP (sổ nợ theo NCC + Đối chiếu, mục 4J) · TẤT TOÁN.
-import { ExportButton } from '@/features/export/ExportButton';
 import { Fragment, useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -19,7 +18,8 @@ import {
 } from '@/lib/calc';
 import { formatDate, formatMoney } from '@/lib/format';
 import { hasLevel } from '@/lib/permissions';
-import { exportVoucherImage } from '@/lib/voucher';
+import { copyText } from '@/lib/clipboard';
+import { subcontractZaloText, supplierZaloText } from './zalo';
 import { findByName } from '@/features/expenses/logic';
 import { matchesSearch, todayIso } from '@/features/reports/shared';
 import { downloadKhoi } from '@/lib/export/bang-don';
@@ -106,14 +106,13 @@ function ContractDetail({ ctx, h, debt, onEdit }: { ctx: Ctx; h: Subcontract; de
   const [confirm, setConfirm] = useState(false);
   const list = paymentsOf(data, h);
   const editable = canEditRow(access, 'payables', h.created_by);
-  const image = () => {
+  const zalo = async () => {
     const c = calc.contract.get(h.id);
-    void exportVoucherImage({
-      title: 'HỢP ĐỒNG THẦU PHỤ', company: ctx.company, date: h.date, amountLabel: 'CÒN PHẢI TRẢ', amount: Math.max(0, c?.debt ?? 0), signRight: 'Thầu phụ',
-      rows: [['Thầu phụ', data.subcontractorName(h.subcontractor_id)], ['Công trình', data.projectName(h.project_id)], ['Nội dung', h.description ?? '—'],
-        ['Giá trị hợp đồng', `${formatMoney(c?.total ?? 0)} đ`], ['Đã trả', `${formatMoney(c?.paid ?? 0)} đ (${list.length} lần)`]],
-      filename: `hd-thau-phu_${data.subcontractorName(h.subcontractor_id)}_${h.date ?? ''}.png`,
-    }).then(() => toast('Đã tải ảnh hợp đồng'), (e: Error) => toast(e.message, 'error'));
+    const text = subcontractZaloText({
+      subcontractor: data.subcontractorName(h.subcontractor_id), project: data.projectName(h.project_id), description: h.description, date: h.date,
+      total: c?.total ?? subcontractTotal(h), paid: c?.paid ?? 0, debt: c?.debt ?? subcontractTotal(h), payments: list,
+    });
+    { const ok = await copyText(text); toast(ok ? 'Đã chép — dán vào Zalo' : 'Trình duyệt chặn chép, thử lại', ok ? 'ok' : 'error'); }
   };
   const submit = () => {
     if (amount <= 0) { toast('Nhập số tiền > 0!', 'error'); return; }
@@ -138,7 +137,7 @@ function ContractDetail({ ctx, h, debt, onEdit }: { ctx: Ctx; h: Subcontract; de
         {h.items.length ? <div className="mt-2 text-xs text-muted">Hạng mục: {h.items.map((i) => `${i.name} (${String(i.sl).replace('.', ',')} ${i.donVi})`).join(' · ')}</div> : null}
         <div className="mt-2 flex flex-wrap gap-2">
           {editable ? <Button size="sm" onClick={onEdit}><Icon name="edit" />Sửa HĐ</Button> : null}
-          <Button size="sm" onClick={image}><Icon name="image" />Xuất ảnh HĐ</Button>
+          <Button size="sm" data-testid="hdtp-zalo" onClick={() => void zalo()}><Icon name="chat" />Copy Zalo</Button>
           {editable ? <Button size="sm" variant="ghost-danger" onClick={() => setConfirm(true)}><Icon name="delete" />Xóa HĐ</Button> : null}
         </div>
       </div>
@@ -261,6 +260,13 @@ function StatementSheet({ ctx, supplierId, onClose, onPay }: { ctx: Ctx; supplie
   const s = calc.supplier.get(supplierId);
   const toast = useToast();
   const access = useAccess();
+  const zalo = async () => {
+    const text = supplierZaloText({
+      supplier: name, today: todayIso(), creditInvoices: s?.creditInvoices ?? 0, paid: s?.paid ?? 0, debt: s?.debt ?? 0,
+      open: lines.filter((l) => l.remaining > 0).map((l) => ({ date: l.date, project: data.projectName(l.project_id), description: byId.get(l.id)?.description, remaining: l.remaining })),
+    });
+    { const ok = await copyText(text); toast(ok ? 'Đã chép — dán vào Zalo' : 'Trình duyệt chặn chép, thử lại', ok ? 'ok' : 'error'); }
+  };
   const xlsx = () => void downloadKhoi({
     title: `ĐỐI CHIẾU CÔNG NỢ · ${name}`, caption: 'Hóa đơn mua nợ, tiền đã trả chia vào hóa đơn cũ nhất trước',
     columns: [
@@ -276,7 +282,7 @@ function StatementSheet({ ctx, supplierId, onClose, onPay }: { ctx: Ctx; supplie
   }).catch((e: Error) => toast(e.message, 'error'));
   return (
     <Sheet wide open onOpenChange={(o) => { if (!o) onClose(); }} title={`Đối chiếu · ${name}`}
-      footer={<><Button onClick={xlsx}><Icon name="download" />Tải Excel đối chiếu</Button><div className="flex-1" />{ctx.canPay ? <Button variant="primary" onClick={onPay}><Icon name="payments" />Trả tiền</Button> : null}</>}>
+      footer={<><Button onClick={xlsx}><Icon name="download" />Tải Excel đối chiếu</Button><Button data-testid="ncc-zalo" onClick={() => void zalo()}><Icon name="chat" />Copy Zalo</Button><div className="flex-1" />{ctx.canPay ? <Button variant="primary" onClick={onPay}><Icon name="payments" />Trả tiền</Button> : null}</>}>
       <div className="grid grid-cols-3 gap-2 text-[13px]">
         <div><div className="text-xs text-muted">Tổng mua nợ</div><b className="num" data-testid="dc-total">{formatMoney(s?.creditInvoices ?? 0)}</b></div>
         <div><div className="text-xs text-muted">Đã trả</div><b className="num" data-testid="dc-paid">{formatMoney(s?.paid ?? 0)}</b></div>
@@ -543,7 +549,7 @@ export function PayablesPage() {
   const calc = usePayCalc(data);
   const [tab, setTab] = useState<Tab>('contracts');
   const [pay, setPay] = useState<PayDraft | null>(null);
-  const header = <PageHeader title={phone ? 'Công nợ phải trả' : 'Công Nợ Phải Trả'} sub="Công ty còn nợ thầu phụ, nhà cung cấp bao nhiêu" actions={<ExportButton datasets={['subcontracts', 'payments', 'payment_allocations', 'payable_closures']} />} />;
+  const header = <PageHeader title={phone ? 'Công nợ phải trả' : 'Công Nợ Phải Trả'} sub="Công ty còn nợ thầu phụ, nhà cung cấp bao nhiêu" />;
   if (query.isPending) return <>{header}<Card><LoadingState label="Đang tải công nợ…" /></Card></>;
   if (query.isError || !data || !calc) return <>{header}<Card><ErrorState error={query.error} onRetry={() => void query.refetch()} /></Card></>;
   const ctx: Ctx = {

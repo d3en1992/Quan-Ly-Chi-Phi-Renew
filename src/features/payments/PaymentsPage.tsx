@@ -1,6 +1,5 @@
 // Tab CHI TRẢ TP/NCC (PAGES.nhapung / MP.ung, đổi tên từ "Ứng TP/NCC" — mục 4L): nhập nhiều phiếu chi một lần
 // (Tạm ứng TP · Thanh toán đợt TP · Trả nợ NCC), hiện "còn nợ" ngay khi chọn đối tác, lịch sử phiếu chi, xuất ảnh phiếu, CSV.
-import { ExportButton } from '@/features/export/ExportButton';
 import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -14,11 +13,11 @@ import { useToast } from '@/components/ui/toast';
 import { allocatedByPayment, inYearLoose, sumOf, toYearFilter } from '@/lib/calc';
 import { formatDate, formatMoney, formatShortMoney } from '@/lib/format';
 import { hasLevel } from '@/lib/permissions';
-import { exportVoucherImage } from '@/lib/voucher';
+import { copyText } from '@/lib/clipboard';
 import { findByName } from '@/features/expenses/logic';
 import { matchesSearch, todayIso } from '@/features/reports/shared';
 import { KIND_LABEL, MODE_LABEL, useCreateParty, useCreatePayments, usePayData, type PayData, type Payment, type PaymentInput, type PaymentKind } from './api';
-import { autoSubcontractId, blankPayDraft, canEditRow, draftOfPayment, PaymentSheet, paymentVoucher, usePayCalc, type PayCalc, type PayDraft } from './shared';
+import { autoSubcontractId, blankPayDraft, canEditRow, draftOfPayment, PaymentSheet, paymentZalo, usePayCalc, type PayCalc, type PayDraft } from './shared';
 
 type Row = { date: string; party: string; project: string; amount: number; note: string };
 const blankRow = (): Row => ({ date: '', party: '', project: '', amount: 0, note: '' });
@@ -144,13 +143,12 @@ export function PaymentsPage() {
   const allocated = useMemo(() => allocatedByPayment(data?.allocations ?? []), [data]);
   const paged = usePaged(rows, 50, `${kind}|${project}|${q}|${yearSel}`);
   const total = sumOf(rows, (r) => r.amount);
-  const company = access.company.short_name || access.company.name;
 
   if (query.isPending) return <><PageHeader title="Chi Trả TP/NCC" /><Card><LoadingState label="Đang tải phiếu chi…" /></Card></>;
   if (query.isError || !data || !calc) return <><PageHeader title="Chi Trả TP/NCC" /><Card><ErrorState error={query.error} onRetry={() => void query.refetch()} /></Card></>;
 
   const projOpts = data.projects.map((p) => ({ value: p.id, label: p.name }));
-  const image = (p: Payment) => void exportVoucherImage(paymentVoucher(p, data, company)).then(() => toast('Đã tải ảnh phiếu chi'), (e: Error) => toast(e.message, 'error'));
+  const zalo = async (p: Payment) => { const ok = await copyText(paymentZalo(p, data)); toast(ok ? 'Đã chép — dán vào Zalo' : 'Trình duyệt chặn chép, thử lại', ok ? 'ok' : 'error'); };
   const open = (p: Payment) => setDraft(draftOfPayment(p, data));
   const where = (p: Payment) => {
     if (p.project_id) return data.projectName(p.project_id);
@@ -198,7 +196,6 @@ export function PaymentsPage() {
       <PageHeader title="Chi Trả TP/NCC" sub="Phiếu chi cho thầu phụ (tạm ứng, thanh toán đợt) và trả nợ nhà cung cấp"
         actions={<>
           {canAdd ? <Button data-testid="pay-add" onClick={() => setDraft(blankPayDraft({ kind: 'supplier_payment', mode: 'manual' }))}><Icon name="checklist" />Trả NCC theo hóa đơn…</Button> : null}
-          <ExportButton datasets={['payments']} />
         </>} />
       {canAdd ? <EntryGrid data={data} calc={calc} /> : null}
       {filters}
@@ -221,7 +218,7 @@ export function PaymentsPage() {
                         <td className="max-w-[260px] truncate" title={ncc ? MODE_LABEL[p.allocation_mode] : undefined}>{where(p)}{rest > 0 ? <small className="ml-1 text-warn">chưa chia {formatMoney(rest)}</small> : null}</td>
                         <td className="max-w-[260px] truncate text-muted" title={p.note ?? ''}>{p.note}</td>
                         <td className="num text-right whitespace-nowrap">{formatMoney(p.amount)}</td>
-                        <td><Button size="icon" variant="ghost" aria-label="Xuất ảnh phiếu chi" onClick={(e) => { e.stopPropagation(); image(p); }}><Icon name="image" /></Button></td>
+                        <td><Button size="icon" variant="ghost" aria-label="Copy Zalo phiếu chi" title="Copy tin nhắn Zalo" onClick={(e) => { e.stopPropagation(); void zalo(p); }}><Icon name="chat" /></Button></td>
                       </tr>
                     );
                   })}

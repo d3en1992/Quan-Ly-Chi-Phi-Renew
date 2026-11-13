@@ -1,6 +1,5 @@
 // TỔNG LƯƠNG & LỊCH SỬ (PAGES.chamcong sub 1): tổng lương tuần theo công nhân (mọi công trình), tick để cộng nhanh,
 // tìm tên, xuất CSV, phiếu lương Zalo cho người đã tick; lịch sử tuần, bấm để mở lại tuần trong Sổ chấm công.
-import { ExportButton } from '@/features/export/ExportButton';
 import { useMemo, useState } from 'react';
 import { Button, Icon } from '@/components/ui/button';
 import { FilterBar, FilterSelect, MobileCard, MobileRow, Money, Pager, SearchBox, usePaged } from '@/components/ui/data';
@@ -74,7 +73,6 @@ export function PayrollTab({ data, ix, years, yearLabel, phone, onOpenWeek }: Pr
       <SearchBox value={q} onChange={setQ} placeholder="Tìm tên công nhân…" />
       <div className="flex-1" />
       <Button onClick={slipTicked}><Icon name="chat" />Phiếu lương Zalo</Button>
-      <ExportButton datasets={['timesheet_weeks', 'timesheet_lines']} projectId={project || null} timesheet="grouped" />
     </FilterBar>
   );
 

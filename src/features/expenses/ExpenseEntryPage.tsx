@@ -1,6 +1,5 @@
 // Tab NHẬP CHI PHÍ (PAGES.nhap của mẫu): NHẬP NHANH (lưới kiểu Excel + hóa đơn trong ngày) · HÓA ĐƠN CHI TIẾT · CHỤP HÓA ĐƠN (AI đọc ảnh, features/scan).
 // Điện thoại: màn Nhập tay (MP.nhap) ở PhoneEntry.tsx.
-import { ExportButton } from '@/features/export/ExportButton';
 import { useCallback, useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -145,7 +144,7 @@ export function ExpenseEntryPage() {
   const expenses = expensesQuery.data;
 
   const header = mode === 'phone' ? null : (
-    <PageHeader title="Nhập Chi Phí" sub="Hóa đơn, vật tư, chi phí công trình" actions={<><ExportButton datasets={['expenses', 'expense_lines']} /><Button onClick={() => setTab('scan')}><Icon name="photo_camera" />Chụp hóa đơn</Button></>} />
+    <PageHeader title="Nhập Chi Phí" sub="Hóa đơn, vật tư, chi phí công trình" actions={<><Button onClick={() => setTab('scan')}><Icon name="photo_camera" />Chụp hóa đơn</Button></>} />
   );
   if (query.isPending || expensesQuery.isPending) return <>{header}<Card><LoadingState label="Đang tải danh mục…" /></Card></>;
   if (query.isError || expensesQuery.isError || !lists || !expenses) {

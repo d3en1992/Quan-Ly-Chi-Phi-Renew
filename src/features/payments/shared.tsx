@@ -17,7 +17,7 @@ import {
 } from '@/lib/calc';
 import { formatDate, formatMoney } from '@/lib/format';
 import type { ModuleKey } from '@/lib/permissions';
-import type { Voucher } from '@/lib/voucher';
+import { paymentZaloText } from './zalo';
 import { findByName } from '@/features/expenses/logic';
 import { todayIso } from '@/features/reports/shared';
 import {
@@ -55,20 +55,13 @@ export function usePayCalc(data: PayData | undefined): PayCalc | null {
   }, [data]);
 }
 
-export function paymentVoucher(p: Payment, data: PayData, company: string): Voucher {
+/** Tin nhắn Zalo của 1 phiếu chi (thay ảnh phiếu chi, 13/11/2026) */
+export function paymentZalo(p: Payment, data: PayData): string {
   const ncc = p.kind === 'supplier_payment';
-  const party = data.partyName(p);
-  return {
-    title: 'PHIẾU CHI', company, date: p.date,
-    rows: [
-      [ncc ? 'Nhà cung cấp' : 'Thầu phụ', party],
-      ['Loại', KIND_LABEL[p.kind] ?? p.kind],
-      ['Công trình', p.project_id ? data.projectName(p.project_id) : 'Trả theo cục (chia vào hóa đơn cũ nhất trước)'],
-      ['Nội dung', p.note ?? '—'],
-    ],
-    amountLabel: 'SỐ TIỀN CHI', amount: p.amount, signRight: 'Người nhận tiền',
-    filename: `phieu-chi_${party}_${p.date}.png`,
-  };
+  return paymentZaloText({
+    kind: KIND_LABEL[p.kind] ?? p.kind, date: p.date, party: data.partyName(p), partyLabel: ncc ? 'Nhà cung cấp' : 'Thầu phụ',
+    project: p.project_id ? data.projectName(p.project_id) : 'Trả theo cục (chia vào hóa đơn cũ nhất trước)', note: p.note, amount: p.amount,
+  });
 }
 
 // ─── Bảng hạng mục hợp đồng (không bắt buộc) + Copy / Dán khối lượng (`copyKLCT` / `pasteKLCT`) ───

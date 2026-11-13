@@ -1,5 +1,4 @@
 // Tab CHẤM CÔNG (PAGES.chamcong / MP.cc của mẫu): SỔ CHẤM CÔNG · TỔNG LƯƠNG & LỊCH SỬ · TẠM ỨNG LƯƠNG.
-import { ExportButton } from '@/features/export/ExportButton';
 import { useMemo, useRef, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -39,7 +38,7 @@ export function TimesheetPage() {
   const setProject = (id: string) => { setProjectPick(id); try { localStorage.setItem(PROJECT_KEY, id); } catch { /* bỏ qua */ } };
   const changeTab = (t: Tab) => { if (tab === 'sheet' && t !== 'sheet' && dirtyRef.current) setPendingTab(t); else setTab(t); };
   const tabs = <SubTabs tabs={TABS} value={tab} onChange={changeTab} />;
-  const header = phone ? null : <PageHeader title="Chấm Công" sub="Sổ chấm công theo tuần, tổng lương, tạm ứng lương" actions={<ExportButton datasets={['timesheet_weeks', 'timesheet_lines', 'wage_advances']} />} />;
+  const header = phone ? null : <PageHeader title="Chấm Công" sub="Sổ chấm công theo tuần, tổng lương, tạm ứng lương" />;
 
   if (query.isPending) return <>{header}{tabs}<Card><LoadingState label="Đang tải chấm công…" /></Card></>;
   if (query.isError || !data || !ix) return <>{header}{tabs}<Card><ErrorState error={query.error ?? 'Không tải được chấm công'} onRetry={() => void query.refetch()} /></Card></>;

@@ -113,5 +113,12 @@ test('Điện thoại: nút Lưu chi phí đủ to, bảng con là danh sách g�
   expect(box.width).toBeGreaterThan(300);
   await hist.evaluate((el) => el.scrollIntoView({ block: 'center' }));
   await page.screenshot({ path: `${SHOTS}/cong-no-lich-su-tra-390.png` });
+  // Thay "Xuất ảnh HĐ" bằng Copy Zalo (13/11/2026)
+  await expect(page.getByRole('button', { name: 'Xuất ảnh HĐ' })).toHaveCount(0);
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.getByTestId('hdtp-zalo').click();
+  await expect(page.getByText('Đã chép — dán vào Zalo')).toBeVisible();
+  const clip = await page.evaluate(() => navigator.clipboard.readText());
+  expect(clip).toContain('CÔNG NỢ THẦU PHỤ');
   expect(errors).toEqual([]);
 });

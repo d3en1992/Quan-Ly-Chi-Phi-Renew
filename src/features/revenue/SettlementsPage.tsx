@@ -1,6 +1,5 @@
 // Tab QUYẾT TOÁN (PAGES.quyettoan / MP.quyettoan): tăng / giảm / thay thế tổng giá trị hợp đồng; mỗi công trình 01 bản (như app cũ).
 // Tick "Ghi nhận phiếu thu tiền còn lại" → tự tạo / cập nhật phiếu thu tự động; "Chốt quyết toán cuối" → công trình sang Đã quyết toán.
-import { ExportButton } from '@/features/export/ExportButton';
 import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -69,7 +68,7 @@ export function SettlementsPage() {
       .map((s) => ({ s, before: hist.get(s.id)?.before ?? 0, delta: hist.get(s.id)?.delta ?? 0, auto: autoReceiptOf(data, s.id) }));
   }, [data, years, q]);
 
-  const header = <PageHeader title={phone ? 'Quyết toán' : 'Quyết Toán'} sub={phone ? `${rows.length} lần quyết toán` : 'Điều chỉnh giá trị hợp đồng khi quyết toán'} actions={<ExportButton datasets={['settlements']} />} />;
+  const header = <PageHeader title={phone ? 'Quyết toán' : 'Quyết Toán'} sub={phone ? `${rows.length} lần quyết toán` : 'Điều chỉnh giá trị hợp đồng khi quyết toán'} />;
   if (query.isPending) return <>{header}<Card><LoadingState label="Đang tải quyết toán…" /></Card></>;
   if (query.isError || !data) return <>{header}<Card><ErrorState error={query.error} onRetry={() => void query.refetch()} /></Card></>;
 

@@ -1,5 +1,4 @@
 // Tab THÙNG RÁC (PAGES.thungrac / MP.thungrac): subtab theo loại dữ liệu; Khôi phục; Xóa hẳn theo quyền `purge_trash`.
-import { ExportButton } from '@/features/export/ExportButton';
 import { useMemo, useState } from 'react';
 import { useAccess, type MyAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -93,7 +92,7 @@ export function TrashPage() {
   return (
     <>
       <PageHeader title="Thùng Rác" sub="Dữ liệu đã xóa, khôi phục được"
-        actions={<><ExportButton datasets={['expenses', 'timesheet_weeks', 'payments', 'receipts']} year={null} deleted label="Xuất cả dòng đã xóa" />{purgeable.length > 0 ? <Button variant="danger" data-testid="trash-empty" onClick={() => setAsk({ rows: purgeable, all: true })}><Icon name="delete_forever" />Xóa hẳn {purgeable.length} mục đang hiện</Button> : null}</>} />
+        actions={<>{purgeable.length > 0 ? <Button variant="danger" data-testid="trash-empty" onClick={() => setAsk({ rows: purgeable, all: true })}><Icon name="delete_forever" />Xóa hẳn {purgeable.length} mục đang hiện</Button> : null}</>} />
       <SubTabs tabs={tabs} value={tab} onChange={setTab} />
       <FilterBar><SearchBox value={q} onChange={setQ} placeholder="Tìm nội dung, công trình, người xóa…" className="min-w-[240px] flex-1" /></FilterBar>
       {rows.length === 0 ? empty : (
@@ -105,7 +104,7 @@ export function TrashPage() {
                 {paged.slice.map((r) => (
                   <tr key={r.key} data-trash={r.key}>
                     <td className="whitespace-nowrap"><Pill tone="neutral">{r.type}</Pill></td>
-                    <td className="max-w-[420px]" title={r.content}><span className="line-clamp-2">{r.content}</span></td>
+                    <td className="wrap" style={{ maxWidth: 420 }} title={r.content}><span className="line-clamp-2">{r.content}</span></td>
                     <td className="max-w-[240px] truncate" title={r.project}>{r.project}</td>
                     <td className="num text-right">{r.amount !== null ? formatMoney(r.amount) : ''}</td>
                     <td className="whitespace-nowrap">{r.deletedBy}</td>

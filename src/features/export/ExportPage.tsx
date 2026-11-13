@@ -1,8 +1,7 @@
 // Tab XUẤT DỮ LIỆU (TN02) — thay 9 nút CSV của app cũ và bản "Xuất Excel 12 sheet". Màn 3 cột:
 // 1. Bộ lọc (công trình · thời gian · trạng thái · chấm công) · 2. Chọn dữ liệu (số bản ghi đếm thật) · 3. Kiểu file.
 // Chỉ đọc: dữ liệu tải về trình duyệt qua RLS của chính người dùng, dựng file Excel ngay ở trình duyệt (ExcelJS).
-import { useDeferredValue, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useDeferredValue, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAccess } from '@/app/auth';
 import { Button, Icon } from '@/components/ui/button';
@@ -31,34 +30,16 @@ export function useExportStore() {
 
 type State = { filter: ExportFilter; keys: DatasetKey[]; timesheetMode: TimesheetMode; groupMode: GroupMode; includePrivate: boolean; header: boolean };
 
-/** Đọc lựa chọn từ đường dẫn (nút nhanh "Xuất dữ liệu" ở các màn khác): ?ds=expenses,expense_lines&project=<id>&year=2025&deleted=1 */
-function stateFromParams(p: URLSearchParams): Partial<State> {
-  const ds = (p.get('ds') ?? '').split(',').filter((k): k is DatasetKey => k in DATASET);
-  const project = p.get('project');
-  const year = Number(p.get('year'));
-  const filter: ExportFilter = {
-    ...DEFAULT_FILTER,
-    ...(project ? { projectMode: 'selected' as const, projectIds: [project] } : {}),
-    ...(year > 2000 ? { time: { mode: 'year' as const, year } } : {}),
-    includeDeleted: p.get('deleted') === '1',
-  };
-  const ts = p.get('ts');
-  return { ...(ds.length ? { keys: ds } : {}), filter, ...(ts === 'grouped' || ts === 'detail' ? { timesheetMode: ts } : {}) };
-}
-
 export function ExportPage() {
   const access = useAccess();
   const toast = useToast();
-  const [params] = useSearchParams();
   const storeQ = useExportStore();
   const canSeeIds = access.special.see_contact_ids;
   const visible = useMemo(() => DATASETS.filter((d) => hasLevel(access.permissions, d.permModule, 'view') && (!d.privateOnly || canSeeIds)), [access.permissions, canSeeIds]);
 
   const [st, setSt] = useState<State>(() => ({
     filter: DEFAULT_FILTER, keys: ['expenses'], timesheetMode: 'detail', groupMode: 'per-project', includePrivate: false, header: true,
-    ...stateFromParams(params),
   }));
-  useEffect(() => { if (params.get('ds')) setSt((s) => ({ ...s, ...stateFromParams(params) })); }, [params]);
   const set = (patch: Partial<State>) => setSt((s) => ({ ...s, ...patch }));
   const setFilter = (patch: Partial<ExportFilter>) => setSt((s) => ({ ...s, filter: { ...s.filter, ...patch } }));
 

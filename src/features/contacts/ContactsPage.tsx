@@ -1,6 +1,5 @@
 // Tab DANH BẠ: Khách hàng · Công nhân · Nhân viên · Nhà cung cấp · Thầu phụ.
 // SĐT, CCCD che theo quyền "Xem SĐT, số CCCD" (`see_contact_ids`). Nút Chụp CCCD mở bảng trượt Chụp đa năng (features/scan) — chỉ lưu chữ, không lưu ảnh.
-import { ExportButton } from '@/features/export/ExportButton';
 import { useMemo, useState, type ReactNode } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -27,7 +26,7 @@ const TABS: { key: ContactKind; label: string; short?: string }[] = [
 const ROLE_LABEL: Record<string, string> = { C: 'Chính', T: 'Thợ', P: 'Phụ' };
 const dim = (t: string) => <span className="text-faint">{t}</span>;
 
-type Col = { head: string; right?: boolean; cell: ReactNode };
+type Col = { head: string; right?: boolean; wrap?: boolean; cell: ReactNode };
 type RowDef = { id: string; kind: ContactKind; name: string; tel?: string; haystack: (string | null | undefined)[]; cols: Col[]; mobileTitle: ReactNode; mobileMeta: ReactNode[]; extra?: Record<string, string> };
 
 export function ContactsPage() {
@@ -76,7 +75,6 @@ export function ContactsPage() {
 
   const actions = (
     <>
-      <ExportButton datasets={['customers', 'workers', 'suppliers', 'subcontractors', 'employees']} year={null} />
       {canScanId ? <Button onClick={() => setScanOpen(true)}><Icon name="badge" />Chụp CCCD / giấy tờ</Button> : null}
       {canEdit ? <Button variant="primary" onClick={() => setForm({ kind: tab, id: null })}><Icon name="person_add" />Thêm</Button> : null}
     </>
@@ -123,7 +121,7 @@ export function ContactsPage() {
               <tbody>
                 {filtered.map((r) => (
                   <tr key={r.id} className={canEdit ? 'cursor-pointer' : ''} onClick={() => openRow(r)}>
-                    {r.cols.map((c, i) => <td key={i} className={c.right ? 'text-right' : ''}>{c.cell}</td>)}
+                    {r.cols.map((c, i) => <td key={i} className={c.right ? 'text-right' : c.wrap ? 'wrap' : ''}>{c.cell}</td>)}
                     {canEdit ? (
                       <td className="text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <Button size="sm" variant="ghost" aria-label={`Sửa ${r.name}`} onClick={() => openRow(r)}><Icon name="edit" /></Button>
@@ -187,7 +185,7 @@ function buildRows(tab: ContactKind, d: ContactsData, report: ReturnType<typeof 
         id: c.id, kind: 'customer', name: c.name, haystack: [c.name, c.full_name, c.address, phoneText(c.id)], extra: { filter: s.n > 0 ? 'has' : 'none' },
         cols: [
           { head: 'Khách hàng', cell: <b className="font-semibold">{c.name}</b> }, { head: 'Họ tên đầy đủ', cell: <span className={c.full_name ? '' : 'text-faint'}>{c.full_name || 'chưa có'}</span> },
-          { head: 'Số điện thoại', cell: phoneOf(c.id) }, { head: 'Địa chỉ', cell: text(c.address) },
+          { head: 'Số điện thoại', cell: phoneOf(c.id) }, { head: 'Địa chỉ', wrap: true, cell: text(c.address) },
           { head: 'CCCD', cell: d.masked.get(c.id)?.id_number ? <Pill tone="good">Đã có</Pill> : dim('—') }, { head: 'Số CT', right: true, cell: <span className="num">{s.n}</span> },
           ...(ctx.money ? [{ head: 'Tổng giá trị HĐ', right: true, cell: <Money value={s.value} /> }] : []),
         ],
@@ -206,7 +204,7 @@ function buildRows(tab: ContactKind, d: ContactsData, report: ReturnType<typeof 
         cols: [
           { head: 'Tên gọi', cell: <b className="font-semibold">{w.name}</b> }, { head: 'T/P', cell: w.role ? <Pill tone={w.role === 'C' ? 'accent' : 'neutral'}>{ROLE_LABEL[w.role] ?? w.role}</Pill> : dim('—') },
           { head: 'Họ tên (theo CCCD)', cell: text(w.full_name) }, { head: 'Năm sinh', cell: year ? <span className="num">{year}</span> : dim(ctx.canSeeIds ? '—' : 'ẩn theo quyền') },
-          { head: 'Quê quán', cell: pv?.hometown ? pv.hometown : dim(ctx.canSeeIds ? '—' : 'ẩn theo quyền') }, { head: 'Số điện thoại', cell: phoneOf(w.id) },
+          { head: 'Quê quán', wrap: true, cell: pv?.hometown ? pv.hometown : dim(ctx.canSeeIds ? '—' : 'ẩn theo quyền') }, { head: 'Số điện thoại', cell: phoneOf(w.id) },
           { head: 'CCCD', cell: idOf(w.id) }, { head: 'Tài khoản nhận lương', cell: hasBank ? (ctx.canSeeIds && pv?.bank_account ? <span className="num text-muted">{[pv.bank_name, '•••' + pv.bank_account.slice(-4)].filter(Boolean).join(' · ')}</span> : <span className="text-muted">Đã có</span>) : dim('—') },
         ],
         mobileTitle: <>{w.name} {w.role ? <Pill>{ROLE_LABEL[w.role] ?? w.role}</Pill> : null}</>,
@@ -221,7 +219,7 @@ function buildRows(tab: ContactKind, d: ContactsData, report: ReturnType<typeof 
       cols: [
         { head: 'Nhân viên', cell: <b className="font-semibold">{e.full_name}</b> }, { head: 'Chức danh', cell: e.title ?? dim('—') },
         { head: 'Tài khoản app', cell: e.profile_id ? <Pill tone="accent">Có tài khoản</Pill> : dim('—') }, { head: 'Số điện thoại', cell: phoneOf(e.id) },
-        { head: 'Ngày vào làm', cell: e.started_on ? <span className="num">{formatDate(e.started_on)}</span> : dim('—') }, { head: 'Ghi chú', cell: e.note ?? dim('—') },
+        { head: 'Ngày vào làm', cell: e.started_on ? <span className="num">{formatDate(e.started_on)}</span> : dim('—') }, { head: 'Ghi chú', wrap: true, cell: e.note ?? dim('—') },
       ],
       mobileTitle: e.full_name, tel: telOf(phoneText(e.id)), mobileMeta: [<span key="a" className="min-w-0 truncate">{[e.title, phoneText(e.id)].filter(Boolean).join(' · ') || '—'}</span>],
     }));
@@ -232,7 +230,7 @@ function buildRows(tab: ContactKind, d: ContactsData, report: ReturnType<typeof 
     return d.suppliers.map((s) => ({
       id: s.id, kind: 'supplier', name: s.name, haystack: [s.name, s.address, s.phone], extra: { filter: s.buys_on_credit ? 'credit' : 'cash' },
       cols: [
-        { head: 'Nhà cung cấp', cell: <b className="font-semibold whitespace-nowrap">{s.name}</b> }, { head: 'Địa chỉ', cell: text(s.address) },
+        { head: 'Nhà cung cấp', cell: <b className="font-semibold whitespace-nowrap">{s.name}</b> }, { head: 'Địa chỉ', wrap: true, cell: text(s.address) },
         { head: 'Số điện thoại', cell: s.phone ? <span className="num">{s.phone}</span> : dim('chưa có') },
         {
           head: 'Mua nợ',
@@ -255,7 +253,7 @@ function buildRows(tab: ContactKind, d: ContactsData, report: ReturnType<typeof 
     return {
       id: t.id, kind: 'subcontractor', name: t.name, haystack: [t.name, t.field, t.contact_person, phoneText(t.id)],
       cols: [
-        { head: 'Thầu phụ', cell: <b className="font-semibold whitespace-nowrap">{t.name}</b> }, { head: 'Lĩnh vực', cell: t.field ?? dim('—') },
+        { head: 'Thầu phụ', cell: <b className="font-semibold whitespace-nowrap">{t.name}</b> }, { head: 'Lĩnh vực', wrap: true, cell: t.field ?? dim('—') },
         { head: 'Người liên hệ', cell: text(t.contact_person) }, { head: 'Số điện thoại', cell: phoneOf(t.id) },
         { head: 'Số HĐ', right: true, cell: <span className="num">{s.contracts}</span> }, { head: 'Còn phải trả', right: true, cell: <Money value={s.debt} className="text-bad" /> },
       ],

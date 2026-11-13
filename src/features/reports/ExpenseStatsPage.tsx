@@ -1,6 +1,5 @@
 // Tab THỐNG KÊ CP/HĐ (chỉ xem): tra cứu mọi khoản chi đã nhập — hóa đơn + dòng lương / HĐ mua lẻ từ chấm công
 // (như `buildInvoices` app cũ). Lọc theo năm (ô chọn năm phía trên), tháng, công trình, loại, NCC, người mua.
-import { ExportButton } from '@/features/export/ExportButton';
 import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -196,7 +195,7 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
 
   return (
     <>
-      <PageHeader title="Thống Kê CP/HĐ" sub="Tra cứu mọi khoản chi đã nhập (hóa đơn + lương chấm công)" actions={<ExportButton datasets={['expenses', 'expense_lines']} />} />
+      <PageHeader title="Thống Kê CP/HĐ" sub="Tra cứu mọi khoản chi đã nhập (hóa đơn + lương chấm công)" />
       {filters}
       <KpiStrip
         items={[
