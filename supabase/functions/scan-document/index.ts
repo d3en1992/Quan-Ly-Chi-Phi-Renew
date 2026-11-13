@@ -90,17 +90,24 @@ Deno.serve(async (req) => {
     const privacy = kind === 'id_card' || kind === 'auto';
     const key = privacy ? paidKey || freeKey : freeKey || paidKey;
     const warning = privacy && !paidKey ? 'Chưa có GEMINI_API_KEY_PAID — ảnh này được đọc bằng key miễn phí.' : undefined;
-    const model = env('GEMINI_MODEL') || 'gemini-2.5-flash';
+    const model = env('GEMINI_MODEL') || 'gemini-3.8-flash'; // 2.5-flash đã ngừng cho key mới (11/2026); đổi model bằng secret GEMINI_MODEL
 
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: buildPrompt(kind, note, ctx) }, { inline_data: { mime_type: mime, data: image } }] }],
-        generationConfig: { responseMimeType: 'application/json', responseSchema: GEMINI_RESPONSE_SCHEMA, temperature: 0 },
-      }),
+    const payload = JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: buildPrompt(kind, note, ctx) }, { inline_data: { mime_type: mime, data: image } }] }],
+      generationConfig: { responseMimeType: 'application/json', responseSchema: GEMINI_RESPONSE_SCHEMA, temperature: 0 },
     });
+    // Gemini hay báo 503 (quá tải) / 500 lúc đông → tự thử lại tối đa 2 lần
+    let res: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, 1500 * attempt));
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: payload,
+      });
+      if (res.status !== 503 && res.status !== 500) break;
+    }
+    if (!res) return json(502, { error: 'AI không phản hồi. Thử lại hoặc nhập tay.' });
     if (res.status === 429) return json(429, { error: 'Hết lượt AI miễn phí hôm nay. Anh nhập tay giúp em nhé.' });
+    if (res.status === 503) return json(503, { error: 'AI của Google đang quá tải. Đợi một lát rồi bấm lại.' });
     if (!res.ok) {
       console.error('Gemini lỗi', res.status, (await res.text()).slice(0, 500));
       return json(502, { error: `AI đọc ảnh lỗi (${res.status}). Thử lại hoặc nhập tay.` });

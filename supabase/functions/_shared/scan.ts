@@ -93,7 +93,7 @@ export const GEMINI_RESPONSE_SCHEMA = {
       properties: {
         full_name: S('IN HOA có dấu'), id_number: S('12 số'), date_of_birth: S('YYYY-MM-DD'), gender: S('Nam / Nữ'),
         hometown: S('Quê quán'), permanent_address: S('Nơi thường trú'), id_issued_on: S('YYYY-MM-DD'), id_issued_place: S(),
-        contact_kind: { type: 'STRING', enum: ['worker', 'customer', 'employee', ''] },
+        contact_kind: { type: 'STRING', enum: ['worker', 'customer', 'employee', 'unknown'] }, // Gemini không nhận giá trị rỗng trong enum; 'unknown' → '' ở normalizeScan
         contact_match: S('Tên gọi trong danh bạ nếu cùng người'), low_confidence: LOW,
       },
     },
