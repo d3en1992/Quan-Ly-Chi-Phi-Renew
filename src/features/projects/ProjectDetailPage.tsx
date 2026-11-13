@@ -215,7 +215,7 @@ function Detail({ data, project, customer }: { data: ReportData; project: Projec
       {tab === 'payroll' ? <PayrollTab data={data} projectId={project.id} years={scope} /> : null}
       {tab === 'subs' ? <SubsTab data={data} rows={subs} /> : null}
       {tab === 'suppliers' ? <SuppliersTab data={data} projectId={project.id} years={scope} /> : null}
-      {tab === 'receipts' && money ? <ReceiptsTab projectId={project.id} data={data} years={scope} /> : null}
+      {tab === 'receipts' && money ? <ReceiptsTab projectId={project.id} years={scope} /> : null}
 
       <ProjectFormSheet open={editing} onClose={() => setEditing(false)} project={project} />
       <DateSheet open={dateAction === 'complete'} title="Hoàn thành công trình" label="Ngày hoàn thành" busy={update.isPending} onClose={() => setDateAction(null)} onSubmit={(d) => void setStatus('complete', d)} />
@@ -363,7 +363,7 @@ function SuppliersTab({ data, projectId, years }: { data: ReportData; projectId:
   );
 }
 
-function ReceiptsTab({ projectId, data, years }: { projectId: string; data: ReportData; years: YearFilter }) {
+function ReceiptsTab({ projectId, years }: { projectId: string; years: YearFilter }) {
   const q0 = useReceipts(projectId, true);
   const phone = useLayoutMode() === 'phone';
   const q = { ...q0, data: q0.data?.filter((r) => inYearLoose(r.date, years)) ?? [] };
@@ -374,7 +374,7 @@ function ReceiptsTab({ projectId, data, years }: { projectId: string; data: Repo
   if (phone) return (
     <MiniList items={q.data.map((r) => ({
       key: r.id, title: <span className="flex flex-wrap items-center gap-1.5"><span className="num">{formatDate(r.date)}</span><Pill tone={r.kind === 'advance' ? 'warn' : r.kind === 'settlement' ? 'accent' : 'good'}>{RECEIPT_KIND[r.kind] ?? r.kind}</Pill></span>,
-      sub: [r.note, (r.created_by && data.profileName.get(r.created_by)) || ''].filter(Boolean).join(' · ') || undefined,
+      sub: r.note || undefined,
       value: formatMoney(r.amount),
     }))} footer={{ label: `Tổng ${q.data.length} lần thu`, value: formatMoney(total) }} />
   );
@@ -382,16 +382,16 @@ function ReceiptsTab({ projectId, data, years }: { projectId: string; data: Repo
     <Card>
       <div className="tbl">
         <table>
-          <thead><tr><th>Ngày</th><th>Loại thu</th><th>Nội dung</th><th>Người TH</th><th className="!text-right">Số tiền</th></tr></thead>
+          <thead><tr><th>Ngày</th><th>Loại thu</th><th>Nội dung</th><th className="!text-right">Số tiền</th></tr></thead>
           <tbody>
             {q.data.map((r) => (
               <tr key={r.id}>
                 <td className="num">{formatDate(r.date)}</td><td><Pill tone={r.kind === 'advance' ? 'warn' : r.kind === 'settlement' ? 'accent' : 'good'}>{RECEIPT_KIND[r.kind] ?? r.kind}</Pill></td>
-                <td className="text-muted">{r.note}</td><td>{(r.created_by && data.profileName.get(r.created_by)) || ''}</td><td className="text-right"><Money value={r.amount} /></td>
+                <td className="text-muted">{r.note}</td><td className="text-right"><Money value={r.amount} /></td>
               </tr>
             ))}
           </tbody>
-          <tfoot><tr className="font-bold [&>td]:border-t [&>td]:border-line [&>td]:bg-surface-2"><td colSpan={4}>Tổng {q.data.length} lần thu</td><td className="num text-right">{formatMoney(total)}</td></tr></tfoot>
+          <tfoot><tr className="font-bold [&>td]:border-t [&>td]:border-line [&>td]:bg-surface-2"><td colSpan={3}>Tổng {q.data.length} lần thu</td><td className="num text-right">{formatMoney(total)}</td></tr></tfoot>
         </table>
       </div>
     </Card>

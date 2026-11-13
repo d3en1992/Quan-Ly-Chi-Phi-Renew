@@ -132,7 +132,7 @@ test('Chưa đăng nhập không đọc được gì', async () => {
 test('Kế toán (Nhập) không chèn được dòng vật tư vào hóa đơn của người khác; vào hóa đơn của mình thì được', async () => {
   const { client: kt, userId } = await signIn('e2e.kt');
   const { data: other } = await admin.from('expenses').select('id, project_id, expense_type_id, created_by')
-    .is('deleted_at', null).neq('created_by', userId).limit(1).single();
+    .is('deleted_at', null).or(`created_by.is.null,created_by.neq.${userId}`).limit(1).single();
   expect(other).toBeTruthy();
 
   // Hóa đơn của người khác → kho chặn (migration 000013)

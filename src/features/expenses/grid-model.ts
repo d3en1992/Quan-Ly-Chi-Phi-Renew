@@ -2,7 +2,7 @@
 // Hành vi chép từ hoadon.quick-entry.js + hoadon.sheet-grid.js (_setCellValue, _canonicalizeAcValue, validateQuickEntryCategories).
 import { parseMoneyDigits, parsePastedMoney } from '@/lib/calc';
 import type { ExpenseInput } from './schema';
-import { findByName, isoToVn, parseDateInput, parsePaidCell } from './logic';
+import { buyerOf, findByName, isoToVn, parseDateInput, parsePaidCell } from './logic';
 
 export const COLS = ['date', 'type', 'project', 'amount', 'description', 'buyer', 'supplier', 'paid'] as const;
 export type Col = (typeof COLS)[number];
@@ -114,26 +114,24 @@ export function effectiveDates(rows: readonly GridRow[], todayIso: string): (str
 
 export type RowCheck = { state: 'blank' } | { state: 'valid'; input: ExpenseInput } | { state: 'invalid'; bad: Col[] };
 
-/** Kiểm tra một dòng: đủ Loại + Công trình (đúng danh mục) + Số tiền > 0; Người mua / NCC nếu có phải đúng danh mục */
+/** Kiểm tra một dòng: đủ Loại + Công trình (đúng danh mục) + Số tiền > 0; NCC nếu có phải đúng danh mục; Người mua tự do (xem buyerOf) */
 export function checkRow(row: GridRow, date: string | null, lists: GridLists): RowCheck {
   if (isBlank(row)) return { state: 'blank' };
   const bad: Col[] = [];
   const type = findByName(row.type, lists.types);
   const project = findByName(row.project, lists.projectOptions);
-  const buyer = row.buyer.trim() ? findByName(row.buyer, lists.buyers) : null;
   const supplier = row.supplier.trim() ? findByName(row.supplier, lists.suppliers) : null;
   const amount = parseMoneyDigits(row.amount);
   if (!date) bad.push('date');
   if (!type) bad.push('type');
   if (!project) bad.push('project');
   if (amount <= 0) bad.push('amount');
-  if (buyer === undefined) bad.push('buyer');
   if (supplier === undefined) bad.push('supplier');
   if (bad.length || !type || !project || !date) return { state: 'invalid', bad };
   return {
     state: 'valid',
     input: {
-      date, projectId: project.id, typeId: type.id, supplierId: supplier?.id ?? null, buyerId: buyer?.id ?? null,
+      date, projectId: project.id, typeId: type.id, supplierId: supplier?.id ?? null, ...buyerOf(row.buyer, lists.buyers),
       paid: row.paid, description: row.description.trim(), amount, invoiceNo: null, source: 'quick',
     },
   };

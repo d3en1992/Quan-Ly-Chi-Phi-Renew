@@ -27,9 +27,9 @@ export function topTypeIds(expenses: readonly EntryExpense[], limit = 5): string
   return [...n.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([id]) => id);
 }
 
-type Props = { lists: Lists; expenses: readonly EntryExpense[]; userName: string; canAdd: boolean; today: string; onOpen: (e: EntryExpense) => void };
+type Props = { lists: Lists; expenses: readonly EntryExpense[]; canAdd: boolean; today: string; onOpen: (e: EntryExpense) => void };
 
-export function PhoneEntry({ lists, expenses, userName, canAdd, today, onOpen }: Props) {
+export function PhoneEntry({ lists, expenses, canAdd, today, onOpen }: Props) {
   const toast = useToast();
   const create = useCreateExpenses();
   const [draft, setDraft] = useState<InvoiceDraft>(() => blankInvoice(today, false));
@@ -127,7 +127,6 @@ export function PhoneEntry({ lists, expenses, userName, canAdd, today, onOpen }:
             <Checkbox checked={draft.paid} onChange={(v) => set('paid', v)} label="Đã thanh toán lúc mua" />
             <span className="text-[12px] text-muted">Bỏ tích nếu mua nợ, hóa đơn sẽ vào Công nợ NCC</span>
           </div>
-          <div className="text-[12px] text-muted">Người TH: {userName} (tự điền theo tài khoản)</div>
           <button type="button" data-testid="phone-save" disabled={create.isPending} onClick={save}
             className="flex h-14 w-full shrink-0 items-center justify-center gap-2 rounded-[var(--r)] bg-accent text-[17px] font-bold text-white shadow-sm active:opacity-90 disabled:opacity-60 [&_.ms]:text-[22px]">
             <Icon name="save" />{create.isPending ? 'Đang lưu…' : 'Lưu chi phí'}

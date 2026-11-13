@@ -3,7 +3,7 @@
 // nội dung tự ghép từ tên vật tư (`generateDetailNd`), kiểm tra đầu phiếu (`validateDetailHeaderCategories`).
 import { lineAmount, sumAmounts } from '@/lib/calc';
 import type { ExpenseInput } from './schema';
-import { buildDescription, findByName } from './logic';
+import { buildDescription, buyerOf, findByName } from './logic';
 
 export type LineDraft = { key: number; name: string; unit: string; quantity: string; unitPrice: number; discount: string };
 
@@ -75,12 +75,10 @@ export function checkInvoice(d: InvoiceDraft, lists: InvoiceLists, source: Expen
   const project = findByName(d.project, lists.projects);
   const type = findByName(d.type, lists.types);
   const supplier = d.supplier.trim() ? findByName(d.supplier, lists.suppliers) : null;
-  const buyer = d.buyer.trim() ? findByName(d.buyer, lists.buyers) : null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date)) bad.push('date');
   if (!project) bad.push('project');
   if (!type) bad.push('type');
   if (supplier === undefined) bad.push('supplier');
-  if (buyer === undefined) bad.push('buyer');
   const used = d.lines?.filter((l) => !lineIsBlank(l)) ?? null;
   const amount = invoiceTotal(d);
   if (used && used.length === 0) bad.push('lines');
@@ -91,7 +89,7 @@ export function checkInvoice(d: InvoiceDraft, lists: InvoiceLists, source: Expen
   return {
     ok: true,
     input: {
-      date: d.date, projectId: project.id, typeId: type.id, supplierId: supplier?.id ?? null, buyerId: buyer?.id ?? null, paid: d.paid,
+      date: d.date, projectId: project.id, typeId: type.id, supplierId: supplier?.id ?? null, ...buyerOf(d.buyer, lists.buyers), paid: d.paid,
       description: invoiceDescription(d), amount, invoiceNo: d.invoiceNo.trim() || null, source,
       ...(used ? {
         lines: used.map((l) => ({

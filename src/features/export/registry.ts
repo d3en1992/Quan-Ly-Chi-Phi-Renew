@@ -193,7 +193,7 @@ export const DATASETS: Dataset[] = [
     key: 'payable_closures', label: 'Tất toán công nợ', sheet: 'Tat toan', group: 'tien', table: 'payable_closures', permModule: 'payables',
     link: { kind: 'direct', field: 'project_id' }, dateField: 'closed_on',
     columns: [date('closed_on'), txt('party', 'THẦU PHỤ / NCC', 26, (r, c) => (r.subcontractor_id ? c.name('subcontractors', r.subcontractor_id) : c.name('suppliers', r.supplier_id))),
-      txt('closed_by_name', 'NGƯỜI TH', 12), txt('undone', 'ĐÃ HOÀN TÁC', 10, (r) => (r.undone_at ? 'Có' : '')), note(), money('amount', 'SỐ TIỀN')],
+      txt('undone', 'ĐÃ HOÀN TÁC', 10, (r) => (r.undone_at ? 'Có' : '')), note(), money('amount', 'SỐ TIỀN')],
   },
 
   // ───── KHÁC ─────

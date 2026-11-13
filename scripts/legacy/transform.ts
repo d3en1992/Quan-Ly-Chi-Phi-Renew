@@ -20,7 +20,8 @@ export interface LegacyCount { total: number; alive: number; softDeleted: number
 export interface TransformOptions {
   companyId: string;
   /** Tên Người TH cũ → id tài khoản mới: 'TÌNH' → tinh, 'KS LAM' → lam, 'GIÁM ĐỐC' → chay */
-  userIdByLegacyName: Record<string, string | null | undefined>;
+  /** Không còn dùng (13/11/2026: dữ liệu cũ không chuyển người nhập) — giữ để các script cũ gọi không lỗi */
+  userIdByLegacyName?: Record<string, string | null | undefined>;
 }
 export interface TransformResult {
   tables: Record<TableName, Row[]>;
@@ -122,7 +123,8 @@ export function transformSnapshot(snapshot: L, opts: TransformOptions): Transfor
   const isDeleted = (r: L) => !!r?.deletedAt || r?.cancelled === true || !!r?.draftHide;
   const deletedAt = (r: L): string | null =>
     isDeleted(r) ? iso(typeof r.deletedAt === 'number' ? r.deletedAt : r.updatedAt, num(r.updatedAt) || exportedMs) : null;
-  const userOf = (name: unknown): string | null => opts.userIdByLegacyName[String(name ?? '').trim().toUpperCase()] ?? null;
+  // Chốt 13/11/2026: KHÔNG chuyển "Người TH" cũ thành người nhập (created_by) — dữ liệu cũ để trống người nhập.
+  // Riêng hóa đơn: tên Người TH cũ thành Người mua (buyer_id). App mới tự ghi người nhập theo tài khoản cho dữ liệu mới.
   const base = (id: string, r: L, createdBy: string | null = null): Row => ({
     id,
     company_id: companyId,
@@ -354,7 +356,7 @@ export function transformSnapshot(snapshot: L, opts: TransformOptions): Transfor
     const id = asId('inv_v3', inv.id);
     const amount = money(inv.thanhtien || inv.tien); // app cũ luôn đọc (thanhtien || tien)
     const row: Row = {
-      ...base(id, inv, userOf(inv.nguoi)),
+      ...base(id, inv),
       project_id: projectId, date: inv.ngay, expense_type_id: typeId, supplier_id: supplierId,
       buyer_id: catNguoi.ref(inv.nguoiId, inv.nguoi),             // hóa đơn cũ: Người mua = Người TH cũ
       // Mục 4F điểm 6: NCC từng có phiếu ứng NCC ở CÙNG công trình → chưa tích Đã TT; còn lại → đã tích
@@ -373,7 +375,7 @@ export function transformSnapshot(snapshot: L, opts: TransformOptions): Transfor
         id: uuid5(`line:${id}:${i}`), company_id: companyId, created_at: row.created_at, updated_at: row.updated_at,
         deleted_at: row.deleted_at, created_by: row.created_by, expense_id: id, position: i,
         name: String(it.ten ?? ''), unit: text(it.dv), quantity: num(it.sl), unit_price: money(it.dongia),
-        discount: text(it.ck), amount: money(it.thanhtien), note: text(it.nguoith) ? `Người TH: ${text(it.nguoith)}` : null,
+        discount: text(it.ck), amount: money(it.thanhtien), note: null,
       });
       route('inv_v3.items→expense_lines');
     });
@@ -472,7 +474,7 @@ export function transformSnapshot(snapshot: L, opts: TransformOptions): Transfor
     if (!u.partyId) { drop('ung_v1', r, label, 'Không có tên đối tác / công nhân'); continue; }
     const id = asId('ung_v1', r.id);
     const amount = money(r.tien);
-    const createdBy = userOf(r.nguoi);
+    const createdBy = null;
     if (u.loai === 'congnhan') {
       // chamcong.core.js `_ccKind`: thiếu cnKind → coi là ứng
       tables.wage_advances.push({
@@ -529,11 +531,11 @@ export function transformSnapshot(snapshot: L, opts: TransformOptions): Transfor
     const delAt = allDeleted ? c.recs.map((x) => deletedAt(x.r)!).sort().at(-1)! : null;
     tables.payable_closures.push({
       id: c.id, company_id: companyId, created_at: iso(r.createdAt ?? r.updatedAt), updated_at: iso(r.updatedAt ?? r.createdAt),
-      deleted_at: delAt, created_by: userOf(r.nguoi),
+      deleted_at: delAt, created_by: null,
       party_kind: first.loai === 'nhacungcap' ? 'supplier' : 'subcontractor',
       subcontractor_id: first.loai === 'thauphu' ? first.partyId : null, supplier_id: first.loai === 'nhacungcap' ? first.partyId : null,
       project_id: first.projectId, closed_on: r.ngay, amount: c.recs.reduce((s, x) => s + money(x.r.tien), 0),
-      closed_by_name: text(r.nguoi) ?? text(r.settledBy), note: text(r.nd), undone_at: delAt,
+      closed_by_name: null, note: text(r.nd), undone_at: delAt,
     });
     route('ung_v1(autoSettle)→payable_closures');
   }
@@ -587,7 +589,7 @@ export function transformSnapshot(snapshot: L, opts: TransformOptions): Transfor
     const id = asId('quyettoan_v1', q.id);
     // quyettoan.core.js `qtLoaiOf`: thiếu loai → suy theo dấu giaTri
     const kind = q.loai === 'thaythe' ? 'replace' : q.loai === 'giam' ? 'decrease' : q.loai === 'tang' ? 'increase' : num(q.giaTri) < 0 ? 'decrease' : 'increase';
-    tables.settlements.push({ ...base(id, q, userOf(q.nguoi)), project_id: projectId, date: q.ngay, kind, amount: Math.abs(money(q.giaTri)), is_final: q.chot === true, note: text(q.nd) });
+    tables.settlements.push({ ...base(id, q), project_id: projectId, date: q.ngay, kind, amount: Math.abs(money(q.giaTri)), is_final: q.chot === true, note: text(q.nd) });
     settlementIds.add(id);
     route('quyettoan_v1→settlements');
   }
@@ -601,7 +603,7 @@ export function transformSnapshot(snapshot: L, opts: TransformOptions): Transfor
     const kind = t.loaiThu === 'tamung' ? 'advance' : t.loaiThu === 'giaidoan' ? 'stage' : t.loaiThu === 'quyettoan' ? 'settlement' : 'other';
     const sid = t.qtId ? asId('quyettoan_v1', t.qtId) : null;
     tables.receipts.push({
-      ...base(asId('thu_v1', t.id), t, userOf(t.nguoi)), project_id: projectId, date: t.ngay, amount: money(t.tien), kind,
+      ...base(asId('thu_v1', t.id), t), project_id: projectId, date: t.ngay, amount: money(t.tien), kind,
       is_auto: t.auto === true, settlement_id: sid && settlementIds.has(sid) ? sid : null, note: text(t.nd),
     });
     route('thu_v1→receipts');
@@ -634,7 +636,7 @@ export function transformSnapshot(snapshot: L, opts: TransformOptions): Transfor
         continue;
       }
       const row: Row = {
-        ...base(uuid5(`main-contract:${key}`), h, userOf(h.nguoi)), project_id: projectId, date: isDate(h.ngay) ? h.ngay : null,
+        ...base(uuid5(`main-contract:${key}`), h), project_id: projectId, date: isDate(h.ngay) ? h.ngay : null,
         value: money(h.giaTri), extra_value: money(h.giaTriphu), legacy_variation: money(h.phatSinh),
         quantity: h.sl == null ? null : num(h.sl), unit_price: h.donGia == null ? null : money(h.donGia),
         items: Array.isArray(h.items) ? h.items : [], customer_name: text(h.khachHang), description: text(h.nd),

@@ -25,7 +25,7 @@ import {
 
 type Tab = 'contracts' | 'receipts';
 const TABS: { key: Tab; label: string }[] = [{ key: 'contracts', label: 'HỢP ĐỒNG CHÍNH' }, { key: 'receipts', label: 'THU TIỀN' }];
-type Ctx = { data: RevData; years: YearFilter; phone: boolean; canAdd: boolean; company: string; userName: string };
+type Ctx = { data: RevData; years: YearFilter; phone: boolean; canAdd: boolean; company: string };
 const Dash = () => <span className="text-faint">—</span>;
 const pct = (a: number, b: number) => percentOf(a, b) ?? 0;
 const SPLIT = 'grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)]';
@@ -44,7 +44,6 @@ function ContractsTab({ ctx }: { ctx: Ctx }) {
   const save = useSaveContract(), del = useDeleteContract();
   const [draft, setDraft] = useState<ContractDraft>(blankContract);
   const [formOpen, setFormOpen] = useState(false);
-  const [who, setWho] = useState('');
   const [confirm, setConfirm] = useState(false);
   const set = <K extends keyof ContractDraft>(k: K, v: ContractDraft[K]) => setDraft((d) => ({ ...d, [k]: v }));
   const existing = draft.id ? data.contracts.find((c) => c.id === draft.id) : undefined;
@@ -54,9 +53,8 @@ function ContractsTab({ ctx }: { ctx: Ctx }) {
   const reset = () => { setDraft(blankContract()); setFormOpen(false); };
   const total = mainContractTotal({ value: draft.value, extra_value: draft.extra, legacy_variation: draft.variation });
 
-  const rows = useMemo(() => data.contracts.filter((c) => inYearLoose(c.date, years) && (!who || c.created_by === who))
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')), [data, years, who]);
-  const whoOpts = [...new Set(data.contracts.map((c) => c.created_by).filter((x): x is string => !!x))].map((id) => ({ value: id, label: data.userName(id) || '?' }));
+  const rows = useMemo(() => data.contracts.filter((c) => inYearLoose(c.date, years))
+    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')), [data, years]);
 
   const submit = () => {
     if (!draft.project) { toast('Chọn công trình!', 'error'); return; }
@@ -80,7 +78,6 @@ function ContractsTab({ ctx }: { ctx: Ctx }) {
         <Field label="Giá trị HĐ chính"><MoneyInput aria-label="Giá trị HĐ chính" value={draft.value} onChange={(v) => set('value', v)} /></Field>
         <Field label="Giá trị HĐ phụ"><MoneyInput aria-label="Giá trị HĐ phụ" value={draft.extra} onChange={(v) => set('extra', v)} /></Field>
         <Field label="Phát sinh"><MoneyInput aria-label="Phát sinh" value={draft.variation} onChange={(v) => set('variation', v)} /></Field>
-        <Field label="Người TH"><Input aria-label="Người TH" readOnly disabled value={existing ? data.userName(existing.created_by) || '—' : ctx.userName} /></Field>
         <Field label="Nội dung" className="col-span-2"><Input aria-label="Nội dung hợp đồng" value={draft.description} onChange={(e) => set('description', e.target.value)} placeholder="Thi công trọn gói phần thô + hoàn thiện" /></Field>
         <div className="col-span-2">
           <ItemsEditor items={draft.items} onChange={(v) => set('items', v)} disabled={!editable} />
@@ -105,20 +102,20 @@ function ContractsTab({ ctx }: { ctx: Ctx }) {
 
   const list = (
     <Card>
-      <CardHeader title="Danh sách hợp đồng" sub={`${rows.length} hợp đồng`} actions={<FilterSelect label="Người TH" value={who} onChange={setWho} options={whoOpts} />} />
+      <CardHeader title="Danh sách hợp đồng" sub={`${rows.length} hợp đồng`} />
       {rows.length === 0 ? <EmptyState icon="description" title="Chưa có hợp đồng chính trong kỳ này" /> : phone ? (
         <div className="grid gap-2 p-2">
           {rows.map((c) => (
             <MobileCard key={c.id} onClick={() => open(c)}>
               <MobileRow><b className="truncate">{data.projectName(c.project_id)}</b><b className="num">{formatShortMoney(mainContractTotal(c))}</b></MobileRow>
-              <MobileRow meta><span className="truncate">{formatDate(c.date)} · {data.ownerOf(c.project_id) || '—'}</span><span>{data.userName(c.created_by)}</span></MobileRow>
+              <MobileRow meta><span className="truncate">{formatDate(c.date)} · {data.ownerOf(c.project_id) || '—'}</span></MobileRow>
             </MobileCard>
           ))}
         </div>
       ) : (
         <div className="tbl">
           <table data-testid="hdc-table">
-            <thead><tr><th>Ngày</th><th>Công trình</th><th className="!text-right">HĐ chính</th><th className="!text-right">HĐ phụ</th><th className="!text-right">Tổng HĐ</th><th>Người TH</th></tr></thead>
+            <thead><tr><th>Ngày</th><th>Công trình</th><th className="!text-right">HĐ chính</th><th className="!text-right">HĐ phụ</th><th className="!text-right">Tổng HĐ</th></tr></thead>
             <tbody>
               {rows.map((c) => (
                 <tr key={c.id} className="cursor-pointer" tabIndex={0} onClick={() => open(c)} onKeyDown={(e) => { if (e.key === 'Enter') open(c); }}>
@@ -127,7 +124,6 @@ function ContractsTab({ ctx }: { ctx: Ctx }) {
                   <td className="num text-right">{formatMoney(c.value)}</td>
                   <td className="num text-right">{c.extra_value ? formatMoney(c.extra_value) : <Dash />}</td>
                   <td className="num text-right"><b>{formatMoney(mainContractTotal(c))}</b></td>
-                  <td>{data.userName(c.created_by)}</td>
                 </tr>
               ))}
             </tbody>
@@ -164,7 +160,7 @@ function receiptVoucher(r: Pick<Receipt, 'project_id' | 'date' | 'kind' | 'amoun
   return {
     title: 'PHIẾU THU', company, date: r.date, amountLabel: 'SỐ TIỀN THU', amount: r.amount, signRight: 'Người nộp tiền',
     rows: [['Công trình', data.projectName(r.project_id)], ['Chủ đầu tư', data.ownerOf(r.project_id) || '—'], ['Loại thu', RECEIPT_KIND[r.kind]?.label ?? r.kind],
-      ['Nội dung', r.note ?? '—'], ['Người thực hiện', data.userName(r.created_by) || '—']] as [string, string][],
+      ['Nội dung', r.note ?? '—']] as [string, string][],
     filename: `phieu-thu_${data.projectName(r.project_id)}_${r.date}.png`,
   };
 }
@@ -197,7 +193,7 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
     return { p, rev, count: receipts.filter((r) => inYearLoose(r.date, years)).length };
   }).filter((r) => (r.rev.contractValue > 0 || r.rev.received > 0) && (!project || r.p.id === project))
     .sort((a, b) => b.rev.receivable - a.rev.receivable), [data, years, project]);
-  const ledger = useMemo(() => data.receipts.filter((r) => inYearLoose(r.date, years) && (!project || r.project_id === project) && matchesSearch(q, data.projectName(r.project_id), r.note, data.userName(r.created_by)))
+  const ledger = useMemo(() => data.receipts.filter((r) => inYearLoose(r.date, years) && (!project || r.project_id === project) && matchesSearch(q, data.projectName(r.project_id), r.note))
     .sort((a, b) => b.date.localeCompare(a.date) || (b.created_at ?? '').localeCompare(a.created_at ?? '')), [data, years, project, q]);
   const paged = usePaged(ledger, 30, `${project}|${q}|${years.join()}`);
 
@@ -231,7 +227,6 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
           </Select>
         </Field>
         <Field label="Ngày"><Input type="date" aria-label="Ngày thu" value={draft.date} onChange={(e) => set('date', e.target.value)} /></Field>
-        <Field label="Người TH"><Input aria-label="Người TH" readOnly disabled value={ctx.userName} /></Field>
         <div className="col-span-2 grid gap-1 text-xs font-medium text-muted"><span>Loại thu</span><div><Segmented value={draft.kind} onChange={(k) => set('kind', k)} options={KIND_OPTS} /></div></div>
         <Field label="Số tiền" className="col-span-2"><MoneyInput aria-label="Số tiền thu" value={draft.amount} onChange={(v) => set('amount', v)} /></Field>
         <Field label="Ghi chú" className="col-span-2"><Input aria-label="Ghi chú" value={draft.note} onChange={(e) => set('note', e.target.value)} placeholder="Đợt 3 — xong sàn tầng 2" /></Field>
@@ -313,14 +308,13 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
             <>
               <div className="tbl">
                 <table data-testid="thu-ledger">
-                  <thead><tr><th>Ngày</th><th>Công trình</th><th>Loại</th><th>Người TH</th><th>Ghi chú</th><th className="!text-right">Số tiền</th><th /></tr></thead>
+                  <thead><tr><th>Ngày</th><th>Công trình</th><th>Loại</th><th>Ghi chú</th><th className="!text-right">Số tiền</th><th /></tr></thead>
                   <tbody>
                     {paged.slice.map((r) => (
                       <tr key={r.id} className="cursor-pointer" tabIndex={0} onClick={() => open(r)} onKeyDown={(e) => { if (e.key === 'Enter') open(r); }}>
                         <td className="num whitespace-nowrap">{formatDate(r.date)}</td>
                         <td className="max-w-[220px] truncate">{data.projectName(r.project_id)}</td>
                         <td className="whitespace-nowrap">{kindPill(r)}</td>
-                        <td>{data.userName(r.created_by)}</td>
                         <td className="max-w-[200px] truncate text-muted" title={r.note ?? ''}>{r.note}</td>
                         <td className="num text-right whitespace-nowrap">{formatMoney(r.amount)}</td>
                         <td><Button size="icon" variant="ghost" aria-label="Xuất ảnh phiếu thu" onClick={(e) => { e.stopPropagation(); image(r); }}><Icon name="image" /></Button></td>
@@ -350,7 +344,7 @@ export function RevenuePage() {
   if (query.isError) return <>{header}<Card><ErrorState error={query.error} onRetry={() => void query.refetch()} /></Card></>;
   const ctx: Ctx = {
     data: query.data, years, phone, canAdd: hasLevel(access.permissions, 'revenue', 'add'),
-    company: access.company.short_name || access.company.name, userName: access.profile.display_name,
+    company: access.company.short_name || access.company.name,
   };
   return (
     <>

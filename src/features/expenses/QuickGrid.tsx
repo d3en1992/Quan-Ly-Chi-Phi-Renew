@@ -28,8 +28,8 @@ const CREATE_KIND: Partial<Record<Col, CreatableKind>> = { type: 'expense_type',
 /** Bộ nhớ tạm của nút Copy / Dán khi trình duyệt không cho đọc clipboard */
 let memoryClip = '';
 
-export function QuickGrid({ lists, expenses, userName, today, onActiveDate }: {
-  lists: Lists; expenses: readonly EntryExpense[]; userName: string; today: string; onActiveDate: (iso: string) => void;
+export function QuickGrid({ lists, expenses, today, onActiveDate }: {
+  lists: Lists; expenses: readonly EntryExpense[]; today: string; onActiveDate: (iso: string) => void;
 }) {
   const toast = useToast();
   const createExpenses = useCreateExpenses();
@@ -308,9 +308,6 @@ export function QuickGrid({ lists, expenses, userName, today, onActiveDate }: {
     <Card>
       <header className="flex flex-wrap items-center gap-2.5 border-b border-line-soft px-4 py-3">
         <h3 className="m-0 text-sm font-bold">Nhập nhanh</h3>
-        <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-2 px-2.5 py-[5px] text-[12.5px] text-muted">
-          <Icon name="badge" className="text-[16px]" />Người TH: <b className="text-fg">{userName}</b> (theo tài khoản)
-        </span>
         <div className="flex-1" />
         <Button variant="ghost" onClick={() => void copyAll()}><Icon name="content_copy" />Copy</Button>
         <Button variant="ghost" onClick={() => void pasteAll()}><Icon name="content_paste" />Dán</Button>

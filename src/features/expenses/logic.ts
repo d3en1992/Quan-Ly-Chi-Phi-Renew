@@ -218,3 +218,30 @@ export function isDifferentArea(a: string | null | undefined, b: string | null |
   const da = districtOf(a), db = districtOf(b);
   return !!da && !!db && da !== db;
 }
+
+/**
+ * Ô Người mua → dữ liệu lưu. Không bao giờ là lỗi (Người mua không bắt buộc):
+ * khớp mục danh mục thật → buyerId; tên khác (công nhân, tài khoản, tên mới) → buyerName (lúc lưu tự thêm vào danh mục);
+ * trống → cả hai trống (lúc lưu = chủ tài khoản).
+ */
+export function buyerOf(text: string, buyers: readonly { id: string; name: string }[]): { buyerId: string | null; buyerName?: string } {
+  const t = text.trim();
+  if (!t) return { buyerId: null };
+  const hit = findByName(t, buyers);
+  if (hit && /^[0-9a-f-]{36}$/i.test(hit.id)) return { buyerId: hit.id };
+  return { buyerId: null, buyerName: hit?.name ?? t };
+}
+
+/** Gợi ý Người mua = danh mục Người mua + tên công nhân / tài khoản chưa có (id giả 'ten:…', lúc lưu mới thêm vào danh mục) */
+export function mergeBuyerNames(catalog: readonly { id: string; name: string }[], names: readonly string[]): { id: string; name: string }[] {
+  const have = new Set(catalog.map((c) => normVi(c.name)));
+  const extra: { id: string; name: string }[] = [];
+  for (const raw of names) {
+    const name = String(raw ?? '').trim().replace(/\s+/g, ' ').toUpperCase(); // cùng cách chuẩn hóa tên Người mua của danh mục
+    const k = normVi(name);
+    if (!name || have.has(k)) continue;
+    have.add(k);
+    extra.push({ id: 'ten:' + name, name });
+  }
+  return [...catalog, ...extra].sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+}

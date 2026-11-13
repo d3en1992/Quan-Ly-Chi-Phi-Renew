@@ -418,14 +418,12 @@ function SuppliersTab({ ctx, onPay }: { ctx: Ctx; onPay: (supplierName: string) 
 function ClosuresTab({ ctx }: { ctx: Ctx }) {
   const { data, calc, years, phone, canAdd } = ctx;
   const toast = useToast();
-  const access = useAccess();
   const close = useClosePayable(), undo = useUndoClosure();
   const [showDebt, setShowDebt] = useState(false);
   const [party, setParty] = useState('');
   const [q, setQ] = useState('');
   const [pending, setPending] = useState<PairPayable | null>(null);
   const [date, setDate] = useState(todayIso());
-  const [by, setBy] = useState(access.profile.display_name);
   const [askUndo, setAskUndo] = useState<Closure | null>(null);
 
   const closedKeys = useMemo(() => new Set(data.closures.filter((c) => c.subcontractor_id).map((c) => `${c.subcontractor_id}|${c.project_id}`)), [data]);
@@ -435,7 +433,7 @@ function ClosuresTab({ ctx }: { ctx: Ctx }) {
       || data.payments.some((u) => u.subcontractor_id === p.subcontractorId && u.project_id === p.projectId && inYearLoose(u.date, years))))
     .sort((a, b) => a.debt - b.debt), [calc, closedKeys, showDebt, data, years]);
   const partyOf = (c: Closure) => (c.party_kind === 'supplier' ? data.supplierName(c.supplier_id) : data.subcontractorName(c.subcontractor_id));
-  const done = useMemo(() => data.closures.filter((c) => inYearLoose(c.closed_on, years) && (!party || partyOf(c) === party) && matchesSearch(q, partyOf(c), data.projectName(c.project_id), c.closed_by_name))
+  const done = useMemo(() => data.closures.filter((c) => inYearLoose(c.closed_on, years) && (!party || partyOf(c) === party) && matchesSearch(q, partyOf(c), data.projectName(c.project_id)))
     .sort((a, b) => b.closed_on.localeCompare(a.closed_on) || (b.created_at ?? '').localeCompare(a.created_at ?? '')), [data, years, party, q]); // eslint-disable-line react-hooks/exhaustive-deps
   const last = useMemo(() => [...data.closures].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0] ?? null, [data]);
   const partyOpts = [...new Set(data.closures.map(partyOf))].sort((a, b) => a.localeCompare(b, 'vi')).map((n) => ({ value: n, label: n }));
@@ -445,9 +443,8 @@ function ClosuresTab({ ctx }: { ctx: Ctx }) {
   const confirmClose = () => {
     if (!pending) return;
     if (!date) { toast('Chọn ngày phiếu chi!', 'error'); return; }
-    if (!by.trim()) { toast('Nhập Người TH!', 'error'); return; }
     const amount = Math.max(0, pending.debt);
-    close.mutate({ subcontractorId: pending.subcontractorId, projectId: pending.projectId, date, amount, by: by.trim() }, {
+    close.mutate({ subcontractorId: pending.subcontractorId, projectId: pending.projectId, date, amount, by: '' }, {
       onSuccess: () => { toast(`Đã tất toán ${data.subcontractorName(pending.subcontractorId)}${amount ? ` — ${formatMoney(amount)}` : ''}`); setPending(null); },
       onError: (e) => toast(`Chưa tất toán được: ${e.message}`, 'error'),
     });
@@ -498,7 +495,7 @@ function ClosuresTab({ ctx }: { ctx: Ctx }) {
         ) : (
           <div className="tbl">
             <table data-testid="tt-done">
-              <thead><tr><th>Ngày TT</th><th>Đối tác</th><th>Công trình</th><th>Chi tiết</th><th>Người thực hiện</th><th className="!text-right">Tổng tiền</th></tr></thead>
+              <thead><tr><th>Ngày TT</th><th>Đối tác</th><th>Công trình</th><th>Chi tiết</th><th className="!text-right">Tổng tiền</th></tr></thead>
               <tbody>
                 {done.map((c) => (
                   <tr key={c.id}>
@@ -506,7 +503,6 @@ function ClosuresTab({ ctx }: { ctx: Ctx }) {
                     <td className="whitespace-nowrap"><b className="font-semibold">{partyOf(c)}</b></td>
                     <td className="max-w-[260px] truncate">{data.projectName(c.project_id)}</td>
                     <td className="text-muted">{detail(c)}</td>
-                    <td>{c.closed_by_name || data.userName(c.created_by)}</td>
                     <td className="num text-right">{formatMoney(c.amount)}</td>
                   </tr>
                 ))}
@@ -526,7 +522,6 @@ function ClosuresTab({ ctx }: { ctx: Ctx }) {
               : <>Đóng sổ công nợ với <b>{data.subcontractorName(pending.subcontractorId)}</b> (đã trả đủ, không tạo phiếu chi)?</>}</p>
             <div className="text-xs text-muted">Công trình: <b>{data.projectName(pending.projectId)}</b><br />Giá trị {formatMoney(pending.value)} · Đã trả {formatMoney(pending.paid)}</div>
             <Field label="Ngày phiếu chi"><Input type="date" aria-label="Ngày phiếu chi" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
-            <Field label="Người TH *"><Input aria-label="Người TH" value={by} onChange={(e) => setBy(e.target.value)} /></Field>
             <Note>Phiếu chi tự sinh nằm ở tab Chi Trả TP/NCC (chỉ xem). Hoàn tác được bằng nút “Hoàn tác lần tất toán gần nhất”.</Note>
           </>
         ) : null}

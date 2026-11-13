@@ -89,7 +89,7 @@ export async function fetchReportData(): Promise<ReportData> {
   const subcontractors = await fetchLive('subcontractors', namedSchema);
   const [timesheetLines, paymentAllocations, profiles] = await Promise.all([
     fetchLive('timesheet_lines', lineSchema), fetchLive('payment_allocations', allocationSchema),
-    // Tên Người TH: tài khoản không được xem danh sách tài khoản thì bỏ trống cột này, không coi là lỗi
+    // Tên tài khoản: tài khoản không được xem danh sách tài khoản thì bỏ trống cột này, không coi là lỗi
     fetchLive('profiles', profileSchema, false).catch(() => [] as z.infer<typeof profileSchema>[]),
   ]);
   // Dòng con của tuần / phiếu đã vào Thùng rác thì không tính

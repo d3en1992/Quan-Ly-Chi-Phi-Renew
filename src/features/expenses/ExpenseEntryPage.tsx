@@ -77,7 +77,7 @@ function DayInvoices({ date, expenses, lists, onOpen }: { date: string; expenses
 }
 
 /** Tab HÓA ĐƠN CHI TIẾT: nhiều dòng vật tư trong một hóa đơn */
-function DetailInvoice({ lists, expenses, userName, onSavedDate }: { lists: Lists; expenses: readonly EntryExpense[]; userName: string; onSavedDate: (iso: string) => void }) {
+function DetailInvoice({ lists, expenses, onSavedDate }: { lists: Lists; expenses: readonly EntryExpense[]; onSavedDate: (iso: string) => void }) {
   const toast = useToast();
   const create = useCreateExpenses();
   const lineHistory = useLineHistory(true);
@@ -118,7 +118,6 @@ function DetailInvoice({ lists, expenses, userName, onSavedDate }: { lists: List
         <h3 className="m-0 text-sm font-bold">Hóa đơn chi tiết</h3>
         <small className="text-muted">Nhiều dòng vật tư trong một hóa đơn</small>
         <div className="flex-1" />
-        <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-2 px-2.5 py-[5px] text-[12.5px] text-muted">Người TH: <b className="text-fg">{userName}</b></span>
       </header>
       <div className="grid gap-3 p-4" onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save(); } }}>
         <InvoiceFields draft={draft} setDraft={setDraft} lists={lists} suggestions={suggestions} descriptions={descriptions} bad={bad} />
@@ -143,7 +142,6 @@ export function ExpenseEntryPage() {
   const [editing, setEditing] = useState<EntryExpense | null>(null);
   const onActiveDate = useCallback((iso: string) => setActiveDate(iso), []);
   const canAdd = hasLevel(access.permissions, 'expenses', 'add');
-  const userName = access.profile.display_name;
   const expenses = expensesQuery.data;
 
   const header = mode === 'phone' ? null : (
@@ -156,7 +154,7 @@ export function ExpenseEntryPage() {
   const sheet = <EditExpenseSheet expense={editing} expenses={expenses} lists={lists} onClose={() => setEditing(null)} />;
 
   if (mode === 'phone') {
-    return <><PhoneEntry lists={lists} expenses={expenses} userName={userName} canAdd={canAdd} today={todayIso} onOpen={setEditing} />{sheet}</>;
+    return <><PhoneEntry lists={lists} expenses={expenses} canAdd={canAdd} today={todayIso} onOpen={setEditing} />{sheet}</>;
   }
   return (
     <>
@@ -165,12 +163,12 @@ export function ExpenseEntryPage() {
       {!canAdd ? <Card><EmptyState icon="lock" title="Tài khoản chỉ được xem">Bạn xem được hóa đơn trong ngày bên dưới; muốn nhập cần quyền Nhập ở mục Nhập Chi Phí.</EmptyState></Card> : null}
       {tab === 'quick' ? (
         <>
-          {canAdd ? <QuickGrid lists={lists} expenses={expenses} userName={userName} today={todayIso} onActiveDate={onActiveDate} /> : null}
+          {canAdd ? <QuickGrid lists={lists} expenses={expenses} today={todayIso} onActiveDate={onActiveDate} /> : null}
           <DayInvoices date={activeDate} expenses={expenses} lists={lists} onOpen={setEditing} />
         </>
       ) : tab === 'detail' ? (
         <>
-          {canAdd ? <DetailInvoice lists={lists} expenses={expenses} userName={userName} onSavedDate={setActiveDate} /> : null}
+          {canAdd ? <DetailInvoice lists={lists} expenses={expenses} onSavedDate={setActiveDate} /> : null}
           <DayInvoices date={activeDate} expenses={expenses} lists={lists} onOpen={setEditing} />
         </>
       ) : (

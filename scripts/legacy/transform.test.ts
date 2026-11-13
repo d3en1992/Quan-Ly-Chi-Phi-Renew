@@ -139,7 +139,7 @@ describe('transformSnapshot', () => {
     expect(of(U(201))).toEqual(expect.arrayContaining([[U(101), 100, P1], [U(102), 150, P1]]));
     expect(of(U(201))).toHaveLength(2);
     expect(of(U(202))).toEqual(expect.arrayContaining([[U(102), 50, P1], [null, 50, P1]]));
-    expect(byId(t.payments, U(201))).toMatchObject({ kind: 'supplier_payment', project_id: P1, allocation_mode: 'project', created_by: U(902) });
+    expect(byId(t.payments, U(201))).toMatchObject({ kind: 'supplier_payment', project_id: P1, allocation_mode: 'project', created_by: null });
     // Tổng chia theo công trình = tổng tiền ứng NCC (A của app cũ)
     expect(t.payment_allocations.reduce((s, a) => s + (a.amount as number), 0)).toBe(350);
   });
@@ -147,7 +147,7 @@ describe('transformSnapshot', () => {
   it('ứng thầu phụ gắn HĐ thầu phụ khi cặp thầu phụ + công trình chỉ có 1 HĐ; tất toán thành payable_closures', () => {
     expect(byId(t.payments, U(203))).toMatchObject({ kind: 'advance', subcontract_id: U(301), project_id: P1 });
     expect(t.payable_closures).toHaveLength(1);
-    expect(t.payable_closures[0]).toMatchObject({ party_kind: 'supplier', amount: 100, closed_by_name: 'ADMIN' });
+    expect(t.payable_closures[0]).toMatchObject({ party_kind: 'supplier', amount: 100, closed_by_name: null });
     expect(byId(t.payments, U(202)).closure_id).toBe(t.payable_closures[0]!.id);
   });
 
@@ -156,13 +156,13 @@ describe('transformSnapshot', () => {
     expect(byId(t.wage_advances, U(205))).toMatchObject({ direction: 'advance', counts_in_net_pay: false });
   });
 
-  it('Người TH cũ → tài khoản; tên khác chỉ thành Người mua; nguồn excel → import', () => {
-    expect(byId(t.expenses, U(101)).created_by).toBe(U(901));
+  it('Người TH cũ → chỉ thành Người mua (không có người nhập); nguồn excel → import', () => {
+    expect(byId(t.expenses, U(101)).created_by).toBeNull();
     expect(byId(t.expenses, U(101)).buyer_id).toBe(G1);
-    expect(byId(t.expenses, U(102)).created_by).toBeNull(); // LONG không có tài khoản
+    expect(byId(t.expenses, U(102)).created_by).toBeNull();
     expect(byId(t.expenses, U(102)).buyer_id).toBe(G2);
     expect(byId(t.expenses, U(103)).source).toBe('import');
-    expect(byId(t.receipts, U(501))).toMatchObject({ created_by: U(903), kind: 'settlement', is_auto: true, settlement_id: U(601) });
+    expect(byId(t.receipts, U(501))).toMatchObject({ kind: 'settlement', is_auto: true, settlement_id: U(601) });
     expect(byId(t.receipts, U(502))).toMatchObject({ kind: 'other', is_auto: false, settlement_id: null });
   });
 
@@ -186,7 +186,7 @@ describe('transformSnapshot', () => {
   it('quyết toán: thiếu loại → suy theo dấu; số tiền luôn dương', () => {
     expect(byId(t.settlements, U(601))).toMatchObject({ kind: 'decrease', amount: 300, is_final: true });
     expect(byId(t.settlements, U(602))).toMatchObject({ kind: 'replace', amount: 2000, is_final: false });
-    expect(t.main_contracts[0]).toMatchObject({ project_id: P1, value: 3000, extra_value: 200, customer_name: 'Nguyễn Văn Huynh', created_by: U(901) });
+    expect(t.main_contracts[0]).toMatchObject({ project_id: P1, value: 3000, extra_value: 200, customer_name: 'Nguyễn Văn Huynh', created_by: null });
   });
 
   it('thiết bị: kho cũ → giàn giáo, gộp dòng trùng (cộng số lượng), đúng nơi', () => {

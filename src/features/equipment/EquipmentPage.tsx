@@ -1,5 +1,5 @@
 // Tab THEO DÕI TB (PAGES.thietbi / MP.thietbi): thiết bị Tại công trình (gom theo công trình) · Kho thiết bị · Kho giàn giáo.
-// Một ô tìm chung không dấu (tên thiết bị, công trình / kho, thông tin máy, Người TH). Thêm, luân chuyển, sửa, xóa (chỉ trong kho — như app cũ).
+// Một ô tìm chung không dấu (tên thiết bị, công trình / kho, thông tin máy). Thêm, luân chuyển, sửa, xóa (chỉ trong kho — như app cũ).
 import { ExportButton } from '@/features/export/ExportButton';
 import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
@@ -139,7 +139,6 @@ function RowSheet({ data, row, canEdit, onClose }: { data: EquipData; row: Equip
         <div className="rounded-lg bg-surface-2 px-3 py-2 text-[13px]">
           <span className="text-muted">Đang ở:</span> <b>{from}</b> · <span className="text-muted">SL:</span> <b className="num">{qty(row.quantity)}</b>
           {row.date ? <> · <span className="text-muted">ngày</span> {formatDate(row.date)}</> : null}
-          {data.userName(row.created_by) ? <> · <span className="text-muted">Người TH</span> {data.userName(row.created_by)}</> : null}
         </div>
         {!canEdit ? <Note icon="lock">Bạn chỉ được xem dòng này (dòng do người khác nhập hoặc chưa có quyền Nhập).</Note> : (
           <>
@@ -188,7 +187,7 @@ export function EquipmentPage() {
 
   const view = useMemo(() => {
     if (!data) return null;
-    const shown = data.rows.filter((r) => (!cond || r.condition === cond) && matchesSearch(q, data.nameOf(r.name_id), data.placeName(r), r.note, data.userName(r.created_by)));
+    const shown = data.rows.filter((r) => (!cond || r.condition === cond) && matchesSearch(q, data.nameOf(r.name_id), data.placeName(r), r.note));
     const byName = (a: Equipment, b: Equipment) => data.nameOf(a.name_id).localeCompare(data.nameOf(b.name_id), 'vi');
     const site = shown.filter((r) => r.location === 'project').sort((a, b) => data.projectName(a.project_id).localeCompare(data.projectName(b.project_id), 'vi') || byName(a, b));
     const stock = shown.filter((r) => r.location !== 'project').sort((a, b) => a.location.localeCompare(b.location) * -1 || byName(a, b));
@@ -282,7 +281,7 @@ export function EquipmentPage() {
           {view.site.length === 0 ? <EmptyState icon="build" title={filtered ? 'Không có thiết bị khớp' : 'Chưa có thiết bị ở công trình'} /> : (
             <div className="tbl" data-testid="tb-site">
               <table>
-                <thead><tr><th>Tên thiết bị</th><th className="!text-right">SL</th><th>Tình trạng</th><th>Thông tin máy</th><th>Người TH</th><th>Ngày</th></tr></thead>
+                <thead><tr><th>Tên thiết bị</th><th className="!text-right">SL</th><th>Tình trạng</th><th>Thông tin máy</th><th>Ngày</th></tr></thead>
                 <tbody>
                   {view.groups.map((g) => (
                     <FragmentGroup key={g.projectId} title={data.projectName(g.projectId)} total={sumQty(g.rows)}>
@@ -292,7 +291,6 @@ export function EquipmentPage() {
                           <td className="num text-right">{qty(r.quantity)}</td>
                           <td><CondPill c={r.condition} /></td>
                           <td className="text-muted">{r.note}</td>
-                          <td>{data.userName(r.created_by)}</td>
                           <td className="num">{formatDate(r.date)}</td>
                         </tr>
                       ))}
@@ -331,7 +329,7 @@ export function EquipmentPage() {
 function FragmentGroup({ title, total, children }: { title: string; total: number; children: React.ReactNode }) {
   return (
     <>
-      <tr className="[&>td]:bg-surface-2"><td colSpan={6} className="!py-1.5 text-[12px] font-semibold text-muted">{title} · <span className="num">{qty(total)}</span> món</td></tr>
+      <tr className="[&>td]:bg-surface-2"><td colSpan={5} className="!py-1.5 text-[12px] font-semibold text-muted">{title} · <span className="num">{qty(total)}</span> món</td></tr>
       {children}
     </>
   );

@@ -165,3 +165,22 @@ describe('khác khu vực', () => {
     expect(isDifferentArea(null, 'Tân Phú')).toBe(false);
   });
 });
+
+describe('Người mua (13/11/2026)', () => {
+  const U = '11111111-1111-4111-8111-111111111111';
+  const cat = [{ id: U, name: 'TÌNH' }];
+  it('gợi ý gộp danh mục + công nhân + tài khoản, không trùng', async () => {
+    const { mergeBuyerNames } = await import('./logic');
+    const m = mergeBuyerNames(cat, ['tình', 'Cai', 'PHẠM VĂN LAM', '  cai ']);
+    expect(m.map((x) => x.name)).toEqual(['CAI', 'PHẠM VĂN LAM', 'TÌNH']);
+    expect(m.find((x) => x.name === 'CAI')!.id).toBe('ten:CAI');
+  });
+  it('ô Người mua không bao giờ lỗi: danh mục → id, tên khác → tên, trống → trống', async () => {
+    const { buyerOf, mergeBuyerNames } = await import('./logic');
+    const list = mergeBuyerNames(cat, ['Cai']);
+    expect(buyerOf('tinh', list)).toEqual({ buyerId: U });
+    expect(buyerOf('cai', list)).toEqual({ buyerId: null, buyerName: 'CAI' });
+    expect(buyerOf('Toán', list)).toEqual({ buyerId: null, buyerName: 'Toán' });
+    expect(buyerOf('  ', list)).toEqual({ buyerId: null });
+  });
+});

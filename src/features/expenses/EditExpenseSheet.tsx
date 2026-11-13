@@ -112,7 +112,7 @@ export function EditExpenseSheet({ expense, expenses, lists, onClose }: Props) {
                 ) : null}
               </fieldset>
               <div className="text-[12px] text-muted">
-                Tổng: <b className="num text-fg">{formatMoney(invoiceTotal(draft))} đ</b> · Người TH: {expense.created_by === access.profile.id ? access.profile.display_name : 'người khác'} · nhập lúc {isoToVn(expense.created_at.slice(0, 10))}
+                Tổng: <b className="num text-fg">{formatMoney(invoiceTotal(draft))} đ</b> · nhập lúc {isoToVn(expense.created_at.slice(0, 10))}
               </div>
             </>
           )}

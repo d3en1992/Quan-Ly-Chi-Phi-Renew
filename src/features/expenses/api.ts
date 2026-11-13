@@ -10,6 +10,7 @@ import { CONTACTS_KEY } from '@/features/contacts/api';
 import { fetchLive, REPORT_DATA_KEY } from '@/features/reports/api';
 import { PAY_KEY, syncSupplierAllocations } from '@/features/payments/api';
 import { expenseInputSchema, type ExpenseInput } from './schema';
+import { mergeBuyerNames, normVi } from './logic';
 
 const sb = supabase as unknown as SupabaseClient;
 
@@ -52,13 +53,17 @@ export const ENTRY_EXPENSES_KEY = ['expense-entries'] as const;
 
 const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'vi');
 
+
 export function useLookups() {
   return useQuery({
     queryKey: LOOKUPS_KEY,
     staleTime: 30_000,
     queryFn: async (): Promise<Lookups> => {
-      const [projects, catalog, suppliers] = await Promise.all([
+      const [projects, catalog, suppliers, workers, profiles] = await Promise.all([
         fetchLive('projects', projectSchema), fetchLive('catalog_items', catalogSchema), fetchLive('suppliers', supplierSchema),
+        // Gợi ý Người mua lấy thêm tên công nhân + tài khoản; không đọc được (thiếu quyền) thì bỏ qua
+        fetchLive('workers', z.object({ id: z.string(), name: z.string() })).catch(() => [] as { id: string; name: string }[]),
+        Promise.resolve(sb.from('profiles').select('display_name')).then((r) => ((r.data ?? []) as { display_name: string | null }[]).map((p) => p.display_name ?? '')).catch(() => [] as string[]),
       ]);
       const live = catalog.filter((c) => !c.archived).sort(byName);
       const company = projects.filter((p) => p.is_company_overhead);
@@ -67,7 +72,7 @@ export function useLookups() {
         projects,
         projectOptions: [...company, ...open],
         types: live.filter((c) => c.kind === 'expense_type'),
-        buyers: live.filter((c) => c.kind === 'person'),
+        buyers: mergeBuyerNames(live.filter((c) => c.kind === 'person'), [...profiles, ...workers.map((w) => w.name)]),
         units: live.filter((c) => c.kind === 'unit'),
         suppliers: suppliers.filter((s) => !s.archived).sort(byName),
         nameOf: new Map([...projects, ...catalog, ...suppliers].map((r) => [r.id, r.name])),
@@ -126,6 +131,40 @@ async function resyncAllocations() {
   try { await syncSupplierAllocations(); } catch (e) { console.warn('Chưa chia lại được tiền trả NCC:', e); }
 }
 
+/**
+ * Người mua → id danh mục (kind 'person'). Đã có id thì giữ; có tên thì tìm / thêm vào danh mục;
+ * trống cả hai thì Người mua = tên hiển thị của tài khoản đang đăng nhập. Gom theo tên để mỗi tên chỉ thêm 1 lần.
+ */
+async function resolveBuyers(list: ExpenseInput[]): Promise<ExpenseInput[]> {
+  if (list.every((e) => e.buyerId)) return list;
+  let me = '';
+  if (list.some((e) => !e.buyerId && !e.buyerName)) {
+    const { data: u } = await sb.auth.getUser();
+    if (u.user) {
+      const { data: p } = await sb.from('profiles').select('display_name').eq('id', u.user.id).maybeSingle();
+      me = (p as { display_name?: string } | null)?.display_name ?? '';
+    }
+  }
+  const { data: persons, error } = await sb.from('catalog_items').select('id,name,archived').eq('kind', 'person').is('deleted_at', null);
+  if (error) throw friendly(error);
+  const byKey = new Map<string, string>();
+  for (const p of (persons ?? []) as { id: string; name: string; archived: boolean }[]) byKey.set(normVi(p.name), p.id);
+  const idFor = async (raw: string): Promise<string | null> => {
+    const name = normalizeCatalogName('person', raw);
+    if (!name) return null;
+    const k = normVi(name);
+    const hit = byKey.get(k);
+    if (hit) return hit;
+    const { data, error: ie } = await sb.from('catalog_items').insert({ kind: 'person', name }).select('id').single();
+    if (ie) throw friendly(ie);
+    byKey.set(k, (data as { id: string }).id);
+    return (data as { id: string }).id;
+  };
+  const out: ExpenseInput[] = [];
+  for (const e of list) out.push(e.buyerId ? e : { ...e, buyerId: await idFor(e.buyerName || me) });
+  return out;
+}
+
 const toRow = (e: ExpenseInput) => ({
   project_id: e.projectId, date: e.date, expense_type_id: e.typeId, supplier_id: e.supplierId, buyer_id: e.buyerId,
   paid_at_purchase: e.paid, description: e.description, amount: e.amount, invoice_no: e.invoiceNo || null, source: e.source,
@@ -141,7 +180,7 @@ export function useCreateExpenses() {
   const done = useRefresh();
   return useMutation({
     mutationFn: async (inputs: ExpenseInput[]) => {
-      const list = z.array(expenseInputSchema).parse(inputs);
+      const list = await resolveBuyers(z.array(expenseInputSchema).parse(inputs));
       // Tự đặt id để ghi dòng vật tư ngay sau đó; hỏng giữa chừng thì gỡ hóa đơn vừa ghi
       const rows = list.map((e) => ({ id: crypto.randomUUID(), ...toRow(e) }));
       const { error } = await sb.from('expenses').insert(rows);
@@ -169,7 +208,7 @@ export function useUpdateExpense() {
   const done = useRefresh();
   return useMutation({
     mutationFn: async ({ id, input, knownUpdatedAt }: { id: string; input: ExpenseInput; knownUpdatedAt?: string }) => {
-      const e = expenseInputSchema.parse(input);
+      const [e] = await resolveBuyers([expenseInputSchema.parse(input)]) as [ExpenseInput];
       let overwritten = false;
       if (knownUpdatedAt) {
         const { data } = await sb.from('expenses').select('updated_at').eq('id', id).maybeSingle();

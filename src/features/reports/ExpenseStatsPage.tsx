@@ -24,7 +24,7 @@ const RETAIL_TYPE = 'Hóa Đơn Lẻ';
 
 export type Row = {
   entry: CostEntry; id: string; date: string | null; month: string; projectId: string; project: string; type: string; supplier: string;
-  buyer: string; description: string; paid: boolean; source: string; enteredBy: string; amount: number;
+  buyer: string; description: string; paid: boolean; source: string; amount: number;
 };
 
 export function buildRows(data: ReportData): Row[] {
@@ -44,7 +44,6 @@ export function buildRows(data: ReportData): Row[] {
       description: c.source === 'wage' ? `Lương tuần ${range}` : c.source === 'retail' ? `HĐ mua lẻ – ${worker} (${range})` : [e?.description, e?.invoice_no ? `Số HĐ ${e.invoice_no}` : ''].filter(Boolean).join(' · '),
       paid: c.paid_at_purchase,
       source: e?.source ?? c.source,
-      enteredBy: (e?.created_by && data.profileName.get(e.created_by)) || '',
       amount: c.amount,
     };
   });
@@ -75,7 +74,6 @@ export function DetailSheet({ row, onClose, onEdit }: { row: Row | null; onClose
             <dt>Nội dung</dt><dd>{row.description || '—'}</dd>
             <dt>Thanh toán</dt><dd><PaidPill paid={row.paid} /></dd>
             <dt>Nguồn</dt><dd>{SOURCE_LABEL[row.source] ?? row.source}</dd>
-            <dt>Người TH</dt><dd>{row.enteredBy || '—'}</dd>
             <dt>Số tiền</dt><dd className="num text-[15px] font-bold">{formatMoney(row.amount)} đ</dd>
           </dl>
           {expenseId ? (
@@ -216,7 +214,7 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
               <thead>
                 <tr>
                   <th>Ngày</th><th>Loại chi phí</th><th>Công trình</th><th>Nội dung</th><th>Người mua</th><th>Nhà cung cấp</th>
-                  <th>Thanh toán</th><th>Người TH</th><th>Nguồn</th><th className="!text-right">Số tiền</th>
+                  <th>Thanh toán</th><th>Nguồn</th><th className="!text-right">Số tiền</th>
                 </tr>
               </thead>
               <tbody>
@@ -229,7 +227,6 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
                     <td className="whitespace-nowrap">{r.buyer}</td>
                     <td className="max-w-[150px] truncate" title={r.supplier}>{r.supplier}</td>
                     <td><PaidPill paid={r.paid} /></td>
-                    <td className="whitespace-nowrap">{r.enteredBy}</td>
                     <td className="whitespace-nowrap text-muted">{SOURCE_LABEL[r.source] ?? r.source}</td>
                     <td className="text-right"><Money value={r.amount} /></td>
                   </tr>
@@ -237,7 +234,7 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
               </tbody>
               <tfoot>
                 <tr className="font-bold [&>td]:border-t [&>td]:border-line [&>td]:bg-surface-2">
-                  <td colSpan={9}>Tổng {rows.length.toLocaleString('vi-VN')} khoản chi đang lọc</td>
+                  <td colSpan={8}>Tổng {rows.length.toLocaleString('vi-VN')} khoản chi đang lọc</td>
                   <td className="text-right" data-testid="expense-total"><Money value={summary.total} /></td>
                 </tr>
               </tfoot>

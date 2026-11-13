@@ -65,7 +65,6 @@ export function paymentVoucher(p: Payment, data: PayData, company: string): Vouc
       ['Loại', KIND_LABEL[p.kind] ?? p.kind],
       ['Công trình', p.project_id ? data.projectName(p.project_id) : 'Trả theo cục (chia vào hóa đơn cũ nhất trước)'],
       ['Nội dung', p.note ?? '—'],
-      ['Người thực hiện', data.userName(p.created_by) || '—'],
     ],
     amountLabel: 'SỐ TIỀN CHI', amount: p.amount, signRight: 'Người nhận tiền',
     filename: `phieu-chi_${party}_${p.date}.png`,

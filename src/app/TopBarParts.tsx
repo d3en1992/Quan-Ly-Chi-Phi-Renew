@@ -150,7 +150,7 @@ function RenameSheet({ open, onOpenChange, current }: { open: boolean; onOpenCha
         </>
       }
     >
-      <Field label="Tên hiển thị (dùng làm Người TH)">
+      <Field label="Tên hiển thị">
         <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
       </Field>
     </Sheet>

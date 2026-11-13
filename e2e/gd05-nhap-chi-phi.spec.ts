@@ -77,7 +77,7 @@ for (const size of [{ name: '1440', width: 1440, height: 900 }, { name: '800', w
       await expect(page.getByTestId('phone-save')).toBeVisible();
     } else {
       await expect(page.getByTestId('quick-grid')).toBeVisible();
-      await expect(page.getByText('Người TH:').first()).toBeVisible();
+      await expect(page.getByText('Người TH:')).toHaveCount(0); // 13/11: bỏ hẳn Người TH khỏi giao diện
       expect(await noSideScroll(page)).toBe(true);
       await page.screenshot({ path: `${SHOTS}/nhap-nhanh-${size.name}.png`, fullPage: true });
       await page.getByRole('tab', { name: 'HÓA ĐƠN CHI TIẾT' }).click();

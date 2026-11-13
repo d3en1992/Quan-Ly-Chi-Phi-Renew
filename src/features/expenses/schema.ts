@@ -18,6 +18,9 @@ export const expenseInputSchema = z.object({
   typeId: uuid,
   supplierId: uuid.nullable(),
   buyerId: uuid.nullable(),
+  /** Tên Người mua gõ tay / chọn từ công nhân, tài khoản (chưa có trong danh mục) → lúc lưu tự thêm vào danh mục.
+   *  Cả buyerId lẫn buyerName đều trống → Người mua = chủ tài khoản đang đăng nhập. */
+  buyerName: z.string().trim().max(120).optional(),
   paid: z.boolean(),
   description: z.string().trim().max(2000),
   amount: z.number().int('Số tiền phải là số nguyên (đồng)').min(0, 'Số tiền không được âm').max(999_999_999_999, 'Số tiền quá lớn'),

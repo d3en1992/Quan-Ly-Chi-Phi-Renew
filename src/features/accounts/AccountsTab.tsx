@@ -88,7 +88,7 @@ export function AccountsTab() {
           <table>
             <thead>
               <tr>
-                <th>Tên hiển thị (= Người TH)</th>
+                <th>Tên hiển thị</th>
                 <th>Tên đăng nhập</th>
                 <th>Vai trò</th>
                 <th>Công trình được xem</th>
@@ -327,7 +327,7 @@ function CreateAccountSheet({
         </>
       }
     >
-      <Field label="Tên hiển thị (dùng làm Người TH)">
+      <Field label="Tên hiển thị">
         <Input
           name="display_name"
           value={f.display_name}
@@ -433,7 +433,7 @@ function EditAccountSheet({ account, roles, isSelf, onClose }: { account: Accoun
         </>
       }
     >
-      <Field label="Tên hiển thị (dùng làm Người TH)">
+      <Field label="Tên hiển thị">
         <Input value={f.display_name} onChange={(e) => setF((x) => ({ ...x, display_name: e.target.value }))} />
       </Field>
       <Field label="Tên đăng nhập" hint="Không đổi được">

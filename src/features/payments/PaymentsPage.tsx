@@ -26,7 +26,7 @@ const isBlank = (r: Row) => !r.party.trim() && !r.project && !r.amount && !r.not
 const KINDS: { value: PaymentKind; label: string }[] = (['advance', 'progress', 'supplier_payment'] as const).map((k) => ({ value: k, label: KIND_LABEL[k]! }));
 
 /** Lưới nhập nhiều phiếu chi một lần (như bảng "Nhập tiền ứng" của app cũ) */
-function EntryGrid({ data, calc, userName }: { data: PayData; calc: PayCalc; userName: string }) {
+function EntryGrid({ data, calc }: { data: PayData; calc: PayCalc }) {
   const toast = useToast();
   const create = useCreatePayments(), createParty = useCreateParty();
   const [kind, setKind] = useState<PaymentKind>('advance');
@@ -81,7 +81,7 @@ function EntryGrid({ data, calc, userName }: { data: PayData; calc: PayCalc; use
   return (
     <Card>
       <CardHeader title="Nhập phiếu chi" sub="nhiều dòng một lần"
-        actions={<><Segmented value={kind} onChange={(k) => { setKind(k); setRows([blankRow(), blankRow(), blankRow()]); setFocus(0); }} options={KINDS} /><span className="text-xs text-muted">Người TH: <b className="text-fg">{userName}</b></span></>} />
+        actions={<><Segmented value={kind} onChange={(k) => { setKind(k); setRows([blankRow(), blankRow(), blankRow()]); setFocus(0); }} options={KINDS} /></>} />
       <div className="tbl">
         <table data-testid="pay-grid" style={{ tableLayout: 'fixed', minWidth: 960 }}>
           <colgroup><col style={{ width: 36 }} /><col style={{ width: 140 }} /><col style={{ width: 210 }} /><col style={{ width: 280 }} /><col style={{ width: 140 }} /><col /></colgroup>
@@ -200,7 +200,7 @@ export function PaymentsPage() {
           {canAdd ? <Button data-testid="pay-add" onClick={() => setDraft(blankPayDraft({ kind: 'supplier_payment', mode: 'manual' }))}><Icon name="checklist" />Trả NCC theo hóa đơn…</Button> : null}
           <ExportButton datasets={['payments']} />
         </>} />
-      {canAdd ? <EntryGrid data={data} calc={calc} userName={access.profile.display_name} /> : null}
+      {canAdd ? <EntryGrid data={data} calc={calc} /> : null}
       {filters}
       <Card>
         <CardHeader title="Lịch sử phiếu chi" sub={<span data-testid="pay-summary">{rows.length} phiếu · {formatShortMoney(total)}</span>} />
