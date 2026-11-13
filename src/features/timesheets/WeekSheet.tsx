@@ -1,5 +1,5 @@
 // SỔ CHẤM CÔNG (PAGES.chamcong sub 0 + MP.cc của mẫu): tuần CN → T7, chọn công trình, bảng công nhân,
-// Copy / Dán tuần, Phiếu lương Zalo, Lưu tuần (mỗi công trình mỗi tuần 1 bản ghi). Điện thoại: mỗi thợ một thẻ.
+// Copy / Dán tuần, Phiếu lương Zalo (chỉ máy tính), Lưu tuần (mỗi công trình mỗi tuần 1 bản ghi). Điện thoại: mỗi thợ một thẻ.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button, Icon } from '@/components/ui/button';
 import { Combo } from '@/components/ui/combo';
@@ -260,12 +260,12 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
               </div>
             );
           })}
-          {/* Nút gọn một hàng; chưa có thợ thì chỉ còn Thêm / Dán tuần */}
+          {/* Nút gọn một hàng: Thêm thợ · Dán tuần (khi đã copy) · Copy tuần (khi tuần có thợ).
+              Điện thoại bỏ nút Zalo (13/11/2026) — phiếu lương Zalo làm ở tab Tổng lương */}
           <div className="flex min-w-0 gap-2 [&>button]:min-w-0 [&>button]:flex-1">
             {!readOnly ? <Button onClick={addRow} aria-label="Thêm công nhân"><Icon name="person_add" />Thêm thợ</Button> : null}
             {!readOnly && clip?.length ? <Button onClick={doPaste}><Icon name="content_paste" />Dán tuần</Button> : null}
-            {rows.length && !clip?.length ? <Button onClick={doCopy}><Icon name="content_copy" />Copy tuần</Button> : null}
-            {rows.length || week ? <Button onClick={doSlip} aria-label="Phiếu lương Zalo"><Icon name="chat" />Zalo</Button> : null}
+            {rows.length ? <Button data-testid="cc-copy-phone" onClick={doCopy}><Icon name="content_copy" />Copy tuần</Button> : null}
           </div>
           {!readOnly && (rows.length || week) ? (
             <button type="button" data-testid="cc-save-phone" disabled={save.isPending} onClick={doSave}

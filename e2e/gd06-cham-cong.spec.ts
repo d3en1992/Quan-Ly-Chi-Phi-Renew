@@ -184,6 +184,11 @@ test('Điện thoại: chạm ô ngày đổi 1 → ½ → 0', async ({ page }) 
   await expect(cell).toContainText('·');
   await expect(page.getByTestId('cc-net-total')).toHaveText('2.500.000'); // 5,5 công × 500.000 + 50.000 − 300.000 (dòng Trả của tuần)
   await page.screenshot({ path: `${SHOTS}/dien-thoai-cham-cong.png`, fullPage: true });
+  // 13/11/2026: hàng nút điện thoại = Thêm thợ · Copy tuần (bỏ Zalo); copy xong thì hiện thêm Dán tuần
+  await expect(page.getByRole('button', { name: 'Phiếu lương Zalo' })).toHaveCount(0);
+  await page.getByTestId('cc-copy-phone').click();
+  await expect(page.getByRole('button', { name: 'Dán tuần' })).toBeVisible();
+  await expect(page.getByTestId('cc-copy-phone')).toBeVisible();
   expect(await noSideScroll(page)).toBe(true);
   expect(errors).toEqual([]);
   void projectName;
