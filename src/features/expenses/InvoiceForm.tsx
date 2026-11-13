@@ -1,6 +1,6 @@
 // FORM một hóa đơn: đầu phiếu (ngày, công trình, loại, NCC, người mua, Đã TT) + bảng dòng vật tư (nếu có, Copy / Dán bảng) + nội dung.
 // Dùng chung cho tab HÓA ĐƠN CHI TIẾT, bảng trượt sửa hóa đơn. Mọi phép tính tiền gọi từ invoice-model → src/lib/calc.
-import { useMemo, useState, type Dispatch, type KeyboardEvent, type SetStateAction } from 'react';
+import { useMemo, useState, type Dispatch, type KeyboardEvent, type ReactNode, type SetStateAction } from 'react';
 import { Button, Icon } from '@/components/ui/button';
 import { Combo, type SuggestItem } from '@/components/ui/combo';
 import { ConfirmDialog } from '@/components/ui/confirm';
@@ -53,6 +53,10 @@ type Props = {
   unsureHead?: readonly string[];
   /** Chụp hóa đơn: ô dòng vật tư AI không chắc, dạng `${key dòng}:${cột 0–3}` */
   unsureCells?: readonly string[];
+  /** Nút AI: ẩn Copy / Dán bảng (không cần khi AI đã đọc sẵn dòng vật tư) */
+  hideCopyPaste?: boolean;
+  /** Nút thêm, đặt ngay dưới bảng dòng vật tư cạnh "Thêm dòng" (nút AI: Chuyển thành hóa đơn nhanh) */
+  lineActions?: ReactNode;
 };
 
 const UNSURE = '!border-warn !bg-warn-soft';
@@ -63,7 +67,7 @@ type LineClip = Pick<LineDraft, 'name' | 'unit' | 'quantity' | 'unitPrice' | 'di
 
 const cellInput = '!h-[34px] !rounded-none !border-0 !bg-transparent focus:!outline-2 focus:!-outline-offset-2';
 
-export function InvoiceFields({ draft, setDraft, lists, suggestions, descriptions, bad = [], compact = false, projectItems, unsureHead = [], unsureCells = [] }: Props) {
+export function InvoiceFields({ draft, setDraft, lists, suggestions, descriptions, bad = [], compact = false, projectItems, unsureHead = [], unsureCells = [], hideCopyPaste = false, lineActions }: Props) {
   const toast = useToast();
   const u = (k: string) => (unsureHead.includes(k) ? UNSURE : undefined);
   const uc = (key: number, col: number) => (unsureCells.includes(`${key}:${col}`) ? '!bg-warn-soft' : undefined);
@@ -211,8 +215,11 @@ export function InvoiceFields({ draft, setDraft, lists, suggestions, description
       {draft.lines ? (
         <div className="flex flex-wrap gap-2">
           <Button onClick={addLine}><Icon name="add" />Thêm dòng</Button>
-          <Button variant="ghost" data-testid="lines-copy" onClick={copyLines}><Icon name="content_copy" />Copy bảng</Button>
-          <Button variant="ghost" data-testid="lines-paste" onClick={pasteLines}><Icon name="content_paste" />Dán bảng</Button>
+          {hideCopyPaste ? null : <>
+            <Button variant="ghost" data-testid="lines-copy" onClick={copyLines}><Icon name="content_copy" />Copy bảng</Button>
+            <Button variant="ghost" data-testid="lines-paste" onClick={pasteLines}><Icon name="content_paste" />Dán bảng</Button>
+          </>}
+          {lineActions}
         </div>
       ) : null}
       {draft.lines ? descriptionField : null}

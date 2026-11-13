@@ -151,12 +151,6 @@ export function ScanInvoice({ scan, image, lists, compact = false, onDone, onRet
                 Nếu các hóa đơn lẻ đã nhập rồi thì <b>đừng lưu</b> để khỏi tính chi phí 2 lần — anh xem ảnh rồi quyết định.</span>
             </div>
           ) : null}
-          <div className="flex flex-wrap items-center gap-2 text-[13px]">
-            <span className="text-muted">{draft.lines ? 'Hóa đơn chi tiết (từng dòng vật tư)' : 'Hóa đơn nhanh (1 dòng, 1 số tiền)'}</span>
-            {draft.lines
-              ? <Button size="sm" data-testid="to-quick" onClick={toQuick}><Icon name="bolt" />Chuyển thành hóa đơn nhanh</Button>
-              : <Button size="sm" data-testid="to-detail" onClick={toDetail}><Icon name="list" />Chuyển lại hóa đơn chi tiết</Button>}
-          </div>
           {plan.kind === 'new' ? (
             <div className="grid gap-2 rounded-lg border border-accent/40 bg-accent-soft/50 p-3" data-testid="new-supplier">
               <div className="flex flex-wrap items-center gap-2.5">
@@ -183,7 +177,11 @@ export function ScanInvoice({ scan, image, lists, compact = false, onDone, onRet
             </div>
           ) : null}
 
-          <InvoiceFields draft={draft} setDraft={setDraft} lists={lists} suggestions={suggestions} descriptions={descriptions} bad={bad} compact={compact} unsureHead={init.unsureHead} unsureCells={init.unsureCells} />
+          <InvoiceFields draft={draft} setDraft={setDraft} lists={lists} suggestions={suggestions} descriptions={descriptions} bad={bad} compact={compact} unsureHead={init.unsureHead} unsureCells={init.unsureCells}
+            hideCopyPaste lineActions={<Button data-testid="to-quick" onClick={toQuick}><Icon name="bolt" />Chuyển thành hóa đơn nhanh</Button>} />
+          {draft.lines ? null : (
+            <div><Button data-testid="to-detail" onClick={toDetail}><Icon name="list" />Chuyển lại hóa đơn chi tiết</Button></div>
+          )}
 
           <div className="flex flex-wrap items-center gap-2 text-[13px]" data-testid="printed-total">
             {total.status === 'none' ? <span className="text-muted">Không thấy số tổng in trên hóa đơn để so.</span>
