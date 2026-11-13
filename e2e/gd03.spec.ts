@@ -94,7 +94,7 @@ test.describe('Thống Kê CP/HĐ', () => {
     await page.goto('/thong-ke-cp-hd');
     await expect(page.getByTestId('expense-table')).toBeVisible();
     const all = digits(await page.getByTestId('expense-total').textContent());
-    await page.getByLabel('Loại chi phí', { exact: true }).selectOption({ label: 'Nhân Công' });
+    await page.getByLabel('Loại chi phí', { exact: true }).fill('Nhân Công');
     const wage = digits(await page.getByTestId('expense-total').textContent());
     expect(wage).toBeGreaterThan(0);
     expect(wage).toBeLessThan(all);

@@ -107,7 +107,7 @@ test('Đổi tên công trình → Chi tiết, Lợi Nhuận, Thống Kê CP/HĐ
     await page.goto('/thong-ke-cp-hd');
     await page.getByLabel('Tìm nội dung…').fill('');
     await expect(page.getByTestId('expense-table')).toBeVisible();
-    await page.getByLabel('Công trình', { exact: true }).selectOption({ label: newName });
+    await page.getByLabel('Công trình', { exact: true }).fill(newName);
     await expect(page.getByTestId('expense-table').locator('tbody tr').first()).toContainText(newName);
   } finally {
     await page.goto(`/cong-trinh/${pick!.id}`);

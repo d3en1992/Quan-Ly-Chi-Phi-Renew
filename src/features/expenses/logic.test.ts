@@ -184,3 +184,15 @@ describe('Người mua (13/11/2026)', () => {
     expect(buyerOf('  ', list)).toEqual({ buyerId: null });
   });
 });
+
+describe('matchFilterText — ô lọc gõ-tìm', () => {
+  it('trống = tất cả; đúng tên = đúng tên đó; gõ dở = có chứa, không dấu', async () => {
+    const { matchFilterText } = await import('./logic');
+    const names = ['CT A Huynh (PTH, TP)', 'CT A Huynh 2'];
+    expect(matchFilterText('', 'bất kỳ', names)).toBe(true);
+    expect(matchFilterText('ct a huynh (pth, tp)', 'CT A Huynh (PTH, TP)', names)).toBe(true);
+    expect(matchFilterText('ct a huynh (pth, tp)', 'CT A Huynh 2', names)).toBe(false);
+    expect(matchFilterText('huynh', 'CT A Huynh 2', names)).toBe(true);
+    expect(matchFilterText('vat lieu', 'Vật Liệu Xây Dựng', [])).toBe(true);
+  });
+});

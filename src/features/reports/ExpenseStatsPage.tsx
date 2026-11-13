@@ -5,6 +5,8 @@ import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
 import { Button, Icon } from '@/components/ui/button';
 import { FilterSelect, MiniList, MobileCard, MobileRow, Money, Pager, SearchBox, usePaged, type Option } from '@/components/ui/data';
+import { FilterCombo } from '@/components/ui/combo';
+import { matchFilterText } from '@/features/expenses/logic';
 import { Card, EmptyState, ErrorState, LoadingState, PageHeader, Pill } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
 import { buildCostEntries, inYear, summarizeExpenses, type CostEntry } from '@/lib/calc';
@@ -50,6 +52,8 @@ export function buildRows(data: ReportData): Row[] {
 
 const uniqueOptions = (values: string[]): Option[] =>
   [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi')).map((v) => ({ value: v, label: v }));
+/** Gợi ý cho ô lọc gõ-tìm (FilterCombo) */
+const uniqueNames = (values: string[]) => [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi')).map((v) => ({ id: v, name: v }));
 
 export function PaidPill({ paid }: { paid: boolean }) {
   return paid ? <Pill tone="good">Đã trả</Pill> : <Pill tone="warn">Mua nợ</Pill>;
@@ -128,17 +132,20 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
     [all, years],
   );
   const options = useMemo(() => ({
-    projects: [...new Map(inScope.map((r) => [r.projectId, r.project]))].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label, 'vi')),
-    types: uniqueOptions(inScope.map((r) => r.type)),
-    suppliers: uniqueOptions(inScope.map((r) => r.supplier)),
+    projects: uniqueNames(inScope.map((r) => r.project)),
+    types: uniqueNames(inScope.map((r) => r.type)),
+    suppliers: uniqueNames(inScope.map((r) => r.supplier)),
     buyers: uniqueOptions(inScope.map((r) => r.buyer)),
+    projectNames: [...new Set(inScope.map((r) => r.project))],
+    typeNames: [...new Set(inScope.map((r) => r.type))],
+    supplierNames: [...new Set(inScope.map((r) => r.supplier).filter(Boolean))],
   }), [inScope]);
   const rows = useMemo(
     () => inScope.filter((r) =>
-      (!month || r.month === month) && (!project || r.projectId === project) && (!type || r.type === type) &&
-      (!supplier || r.supplier === supplier) && (!buyer || r.buyer === buyer) && (!paid || r.paid === (paid === 'paid')) &&
+      (!month || r.month === month) && matchFilterText(project, r.project, options.projectNames) && matchFilterText(type, r.type, options.typeNames) &&
+      matchFilterText(supplier, r.supplier, options.supplierNames) && (!buyer || r.buyer === buyer) && (!paid || r.paid === (paid === 'paid')) &&
       (!source || (source === 'timesheet' ? !r.entry.expense : r.source === source)) && matchesSearch(search, r.description, r.project, r.supplier, r.type)),
-    [inScope, month, project, type, supplier, buyer, paid, source, search],
+    [inScope, options, month, project, type, supplier, buyer, paid, source, search],
   );
   const summary = useMemo(() => {
     const typeOf = new Map(rows.map((r) => [r.entry, r.type]));
@@ -152,13 +159,16 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
   const fill = 'max-sm:w-full max-sm:max-w-none max-sm:[&_select]:max-w-none max-sm:[&_select]:flex-1';
   const filters = (
     <div className="grid shrink-0 gap-2" data-testid="stats-filters">
-      <SearchBox value={search} onChange={setSearch} placeholder="Tìm nội dung…" className="w-full sm:max-w-none" />
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-        <FilterSelect label="Công trình" value={project} onChange={setProject} options={options.projects} className={`col-span-2 ${fill}`} />
-        <FilterSelect label="Loại chi phí" value={type} onChange={setType} options={options.types} className={fill} />
-        <FilterSelect label="NCC" value={supplier} onChange={setSupplier} options={options.suppliers} className={fill} />
+      {/* 13/11/2026: hàng 1 = Tìm nội dung + Công trình; hàng 2 = Loại chi phí · NCC · Lọc nâng cao. Ba ô này gõ để tìm, bấm để xổ danh sách */}
+      <div className="grid gap-2 sm:grid-cols-2">
+        <SearchBox value={search} onChange={setSearch} placeholder="Tìm nội dung…" className="w-full sm:max-w-none" />
+        <FilterCombo label="Công trình" value={project} onChange={setProject} items={options.projects} />
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <FilterCombo label="Loại chi phí" value={type} onChange={setType} items={options.types} />
+        <FilterCombo label="NCC" value={supplier} onChange={setSupplier} items={options.suppliers} />
         <Button data-testid="stats-adv" aria-expanded={advOpen} onClick={() => setAdvOpen((o) => !o)}
-          className={`col-span-2 h-9 ${advCount ? 'border-accent text-accent' : ''}`}>
+          className={`col-span-2 h-9 sm:col-span-1 ${advCount ? 'border-accent text-accent' : ''}`}>
           <Icon name={advOpen ? 'expand_less' : 'tune'} />Lọc nâng cao{advCount ? ` (${advCount})` : ''}
         </Button>
       </div>

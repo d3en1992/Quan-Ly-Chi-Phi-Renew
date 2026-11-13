@@ -130,3 +130,24 @@ export function Combo({ value, onChange, items, groupLabel, onCreate, free = fal
     </>
   );
 }
+
+/**
+ * Ô LỌC vừa gõ tìm vừa xổ danh sách (dùng ở thanh lọc báo cáo). Nhãn nhỏ bên trái như FilterSelect, nút × để bỏ lọc.
+ * Trống = "Tất cả". Gõ dở (chưa khớp đúng tên) thì nơi dùng lọc theo "có chứa" — xem `matchFilterText`.
+ */
+export function FilterCombo({ label, value, onChange, items, className }: {
+  label: string; value: string; onChange: (text: string) => void; items: readonly SuggestItem[]; className?: string;
+}) {
+  return (
+    <label className={cn('flex h-9 min-w-0 items-center gap-1 rounded-lg border border-line bg-surface pl-2.5 text-[13px]', className)}>
+      <small className="shrink-0 text-[11.5px] text-muted">{label}</small>
+      <Combo aria-label={label} value={value} onChange={onChange} items={items} groupLabel={label} invalid={false} placeholder="Tất cả"
+        className="!h-full !min-w-0 flex-1 !rounded-none !border-0 !bg-transparent !px-1 font-medium focus:!outline-none" />
+      {value ? (
+        <button type="button" aria-label={`Bỏ lọc ${label}`} className="grid h-full w-7 shrink-0 place-items-center text-faint hover:text-fg" onClick={() => onChange('')}>
+          <span className="ms text-[16px]">close</span>
+        </button>
+      ) : null}
+    </label>
+  );
+}

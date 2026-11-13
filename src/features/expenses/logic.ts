@@ -245,3 +245,14 @@ export function mergeBuyerNames(catalog: readonly { id: string; name: string }[]
   }
   return [...catalog, ...extra].sort((a, b) => a.name.localeCompare(b.name, 'vi'));
 }
+
+/**
+ * Ô lọc gõ-tìm (FilterCombo): trống = tất cả; gõ đúng một tên trong danh sách = lọc đúng tên đó;
+ * gõ dở = lọc theo "có chứa" (không dấu, không phân biệt hoa thường).
+ */
+export function matchFilterText(sel: string, value: string, names: readonly string[]): boolean {
+  const q = normVi(sel);
+  if (!q) return true;
+  const v = normVi(value);
+  return names.some((n) => normVi(n) === q) ? v === q : v.includes(q);
+}

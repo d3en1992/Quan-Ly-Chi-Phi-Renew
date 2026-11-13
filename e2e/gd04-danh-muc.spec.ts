@@ -79,7 +79,7 @@ test('Đổi tên một loại chi phí đang dùng → Thống Kê CP/HĐ hiệ
     await expect(page.getByText('mọi nơi hiện tên mới')).toBeVisible();
     await page.goto('/thong-ke-cp-hd');
     await expect(page.getByTestId('expense-table')).toBeVisible();
-    await page.getByLabel('Loại chi phí', { exact: true }).selectOption({ label: newName });
+    await page.getByLabel('Loại chi phí', { exact: true }).fill(newName);
     await expect(page.getByTestId('expense-table').locator('tbody tr').first()).toContainText(newName);
   } finally {
     await page.goto('/danh-muc');
