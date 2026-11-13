@@ -42,12 +42,12 @@ describe('form hóa đơn chi tiết', () => {
     if (!r2.ok) expect(r2.bad).toEqual(['supplier', 'amount']);
   });
   it('hợp lệ → dữ liệu ghi kho: đổi tên ra id, bỏ dòng trống, tổng = cộng dòng', () => {
-    const d = { ...blankInvoice('2026-11-01', true), project: 'ct a huynh (pth, tp)', type: 'COPHA', supplier: 'copha tan thanh', buyer: 'ks lam', invoiceNo: ' 0001284 ' };
+    const d = { ...blankInvoice('2026-11-01', true), project: 'ct a huynh (pth, tp)', type: 'COPHA', supplier: 'copha tan thanh', buyer: 'ks lam' };
     d.lines = [blankLine({ name: 'Ván 20', unit: 'tấm', quantity: '10', unitPrice: 140000 }), blankLine(), blankLine({ name: 'Vận chuyển', unitPrice: 100000 })];
     const r = checkInvoice(d, lists, 'detail');
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.input).toMatchObject({ projectId: P, typeId: T, supplierId: S1, buyerId: B, amount: 1500000, invoiceNo: '0001284', source: 'detail', description: 'Ván 20, Vận chuyển', paid: true });
+      expect(r.input).toMatchObject({ projectId: P, typeId: T, supplierId: S1, buyerId: B, amount: 1500000, source: 'detail', description: 'Ván 20, Vận chuyển', paid: true });
       expect(r.input.lines).toEqual([
         { name: 'Ván 20', unit: 'tấm', quantity: 10, unitPrice: 140000, discount: null, amount: 1400000 },
         { name: 'Vận chuyển', unit: null, quantity: 1, unitPrice: 100000, discount: null, amount: 100000 },

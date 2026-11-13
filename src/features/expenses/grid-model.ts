@@ -132,7 +132,7 @@ export function checkRow(row: GridRow, date: string | null, lists: GridLists): R
     state: 'valid',
     input: {
       date, projectId: project.id, typeId: type.id, supplierId: supplier?.id ?? null, ...buyerOf(row.buyer, lists.buyers),
-      paid: row.paid, description: row.description.trim(), amount, invoiceNo: null, source: 'quick',
+      paid: row.paid, description: row.description.trim(), amount, source: 'quick',
     },
   };
 }

@@ -191,7 +191,7 @@ test('Hóa đơn chi tiết: lưu 2 dòng vật tư → bấm dòng trong ngày 
   await page.getByLabel('Công trình', { exact: true }).fill(names.project);
   await page.getByLabel('Loại chi phí', { exact: true }).fill(names.type);
   await page.getByLabel('Nhà cung cấp', { exact: true }).fill(names.creditSupplier);
-  await page.getByLabel('Số HĐ').fill('0001284');
+  await expect(page.getByLabel('Số HĐ')).toHaveCount(0); // 13/11/2026: bỏ ô Số HĐ
   await expect(page.getByLabel('Đã thanh toán lúc mua')).not.toBeChecked();   // NCC mua nợ → tự bỏ tích
   await page.getByLabel('Nội dung', { exact: true }).fill(`${TAG} chi tiết`);
   await page.getByLabel('Tên vật tư dòng 1').fill('Ván ép coffa 20 x 4');
@@ -200,7 +200,17 @@ test('Hóa đơn chi tiết: lưu 2 dòng vật tư → bấm dòng trong ngày 
   await page.getByLabel('Đơn giá dòng 1').fill('140000');
   await page.getByLabel('Tên vật tư dòng 2').fill('Vận chuyển');
   await page.getByLabel('Đơn giá dòng 2').fill('100000');
-  await page.getByLabel('Số HĐ').focus();
+  await page.getByLabel('Nội dung', { exact: true }).focus();
+  expect(await money(page, 'invoice-total')).toBe(1_500_000);
+  // Nội dung nằm DƯỚI bảng vật tư; Copy bảng → thêm dòng 3 → Dán bảng (hỏi ghi đè) → còn đúng 2 dòng đã copy
+  const tblBox = (await page.getByTestId('invoice-lines').boundingBox())!;
+  expect((await page.getByLabel('Nội dung', { exact: true }).boundingBox())!.y).toBeGreaterThan(tblBox.y + tblBox.height);
+  await page.getByTestId('lines-copy').click();
+  await page.getByLabel('Tên vật tư dòng 3').fill('Dòng tạm');
+  await page.getByTestId('lines-paste').click();
+  await page.getByRole('dialog', { name: 'Ghi đè dòng vật tư?' }).getByRole('button', { name: 'Ghi đè' }).click();
+  await expect(page.getByLabel('Tên vật tư dòng 3')).toHaveCount(0);
+  await expect(page.getByLabel('Tên vật tư dòng 2')).toHaveValue('Vận chuyển');
   expect(await money(page, 'invoice-total')).toBe(1_500_000);
   await page.screenshot({ path: `${SHOTS}/hoa-don-chi-tiet-da-nhap.png`, fullPage: true });
   await page.getByTestId('detail-save').click();

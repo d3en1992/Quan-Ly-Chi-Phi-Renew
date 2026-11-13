@@ -11,9 +11,9 @@ type SupplierLite = Named & { address?: string | null; phone?: string | null; bu
 // ───────────── Hóa đơn ─────────────
 
 /** Ô đầu phiếu được tô vàng (AI không chắc, hoặc AI không khớp được → người dùng phải xem) */
-export type HeadKey = 'date' | 'project' | 'type' | 'supplier' | 'buyer' | 'invoiceNo';
+export type HeadKey = 'date' | 'project' | 'type' | 'supplier' | 'buyer';
 const HEAD_OF: Record<string, HeadKey> = {
-  date: 'date', invoice_no: 'invoiceNo', supplier_name: 'supplier', supplier_match: 'supplier',
+  date: 'date', supplier_name: 'supplier', supplier_match: 'supplier',
   project_match: 'project', expense_type_match: 'type', buyer_match: 'buyer',
 };
 /** Cột dòng vật tư: 0 tên · 1 ĐVT · 2 SL · 3 đơn giá (thành tiền tự tính nên không tô) */
@@ -50,7 +50,6 @@ export function invoiceFromScan(inv: InvoiceScan, lists: { projects: readonly Na
       project: project?.name ?? '', type: type?.name ?? '', buyer: buyer?.name ?? '',
       // NCC chưa có → giữ tên in trên hóa đơn (ô "Thêm nhà cung cấp mới" sẽ tạo lúc lưu)
       supplier: supplier?.name ?? inv.supplier_name,
-      invoiceNo: inv.invoice_no,
       paid: supplier ? !supplier.buys_on_credit : true,
       description: '', amount: 0,
       lines: lines.length ? lines : [blankLine()],

@@ -29,7 +29,7 @@ const closureSchema = z.object({
 });
 const creditSchema = z.object({
   id: z.string(), project_id: z.string(), supplier_id: z.string().nullable(), date, amount: money, paid_at_purchase: z.boolean(),
-  description: z.string().nullable(), invoice_no: z.string().nullable(), created_at: z.string().nullable(),
+  description: z.string().nullable(), created_at: z.string().nullable(),
 });
 const partySchema = z.object({ id: z.string(), name: z.string(), archived: z.boolean() });
 const supplierSchema = partySchema.extend({ buys_on_credit: z.boolean() });

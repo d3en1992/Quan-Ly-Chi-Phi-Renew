@@ -40,7 +40,7 @@ export function buildRows(data: ReportData): Row[] {
       type: c.source === 'wage' ? WAGE_TYPE : c.source === 'retail' ? RETAIL_TYPE : (e?.expense_type_id && data.catalogName.get(e.expense_type_id)) || 'Chưa phân loại',
       supplier: (e?.supplier_id && data.supplierName.get(e.supplier_id)) || '',
       buyer: c.source === 'retail' ? worker : (e?.buyer_id && data.catalogName.get(e.buyer_id)) || '',
-      description: c.source === 'wage' ? `Lương tuần ${range}` : c.source === 'retail' ? `HĐ mua lẻ – ${worker} (${range})` : [e?.description, e?.invoice_no ? `Số HĐ ${e.invoice_no}` : ''].filter(Boolean).join(' · '),
+      description: c.source === 'wage' ? `Lương tuần ${range}` : c.source === 'retail' ? `HĐ mua lẻ – ${worker} (${range})` : e?.description ?? '',
       paid: c.paid_at_purchase,
       source: e?.source ?? c.source,
       amount: c.amount,

@@ -11,7 +11,6 @@ export type InvoiceDraft = {
   /** YYYY-MM-DD */
   date: string;
   project: string; type: string; supplier: string; buyer: string;
-  invoiceNo: string;
   paid: boolean;
   /** Nội dung; ở hóa đơn chi tiết để trống = tự ghép từ tên vật tư */
   description: string;
@@ -29,7 +28,7 @@ export const blankLine = (from?: Partial<LineDraft>): LineDraft => ({ key: nextK
 export const blankLines = (n: number): LineDraft[] => Array.from({ length: n }, () => blankLine());
 
 export function blankInvoice(date: string, withLines: boolean): InvoiceDraft {
-  return { date, project: '', type: '', supplier: '', buyer: '', invoiceNo: '', paid: true, description: '', amount: 0, lines: withLines ? blankLines(5) : null };
+  return { date, project: '', type: '', supplier: '', buyer: '', paid: true, description: '', amount: 0, lines: withLines ? blankLines(5) : null };
 }
 
 /** Số lượng gõ tay: "2,5" / "2.5" / "10" → số; sai hoặc âm → 0 */
@@ -90,7 +89,7 @@ export function checkInvoice(d: InvoiceDraft, lists: InvoiceLists, source: Expen
     ok: true,
     input: {
       date: d.date, projectId: project.id, typeId: type.id, supplierId: supplier?.id ?? null, ...buyerOf(d.buyer, lists.buyers), paid: d.paid,
-      description: invoiceDescription(d), amount, invoiceNo: d.invoiceNo.trim() || null, source,
+      description: invoiceDescription(d), amount, source,
       ...(used ? {
         lines: used.map((l) => ({
           name: l.name.trim(), unit: l.unit.trim() || null, quantity: l.quantity.trim() ? parseQuantity(l.quantity) : 1,

@@ -112,7 +112,7 @@ const PRIVATE_COLS = [priv('phone', 'SĐT', 14), priv('id_number', 'SỐ CCCD', 
 // Cột của hóa đơn — dùng lại cho khối ghép "Hóa đơn + dòng vật tư"
 export const EXPENSE_HEAD_COLS: Column[] = [
   date('date'), ref('expense_type_id', 'LOẠI CHI PHÍ', 'catalog_items', 18), ref('supplier_id', 'NHÀ CUNG CẤP', 'suppliers', 24),
-  ref('buyer_id', 'NGƯỜI MUA', 'catalog_items', 12), txt('invoice_no', 'SỐ HĐ', 10), bool('paid_at_purchase', 'ĐÃ TT'),
+  ref('buyer_id', 'NGƯỜI MUA', 'catalog_items', 12), bool('paid_at_purchase', 'ĐÃ TT'),
 ];
 
 export const DATASETS: Dataset[] = [

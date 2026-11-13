@@ -16,7 +16,7 @@ const projectSchema = z.object({
 });
 const expenseSchema = z.object({
   id: z.string(), project_id: z.string(), date, amount: money, paid_at_purchase: z.boolean(), supplier_id: z.string().nullable(),
-  expense_type_id: z.string().nullable(), buyer_id: z.string().nullable(), description: z.string().nullable(), invoice_no: z.string().nullable(),
+  expense_type_id: z.string().nullable(), buyer_id: z.string().nullable(), description: z.string().nullable(),
   source: z.string().nullable(), created_by: z.string().nullable(), created_at: z.string().nullable(), receipt_image_path: z.string().nullable(),
 });
 const weekSchema = z.object({ id: z.string(), project_id: z.string(), week_start: z.string() });

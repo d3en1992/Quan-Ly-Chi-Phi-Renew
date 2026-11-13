@@ -60,7 +60,7 @@ describe('Chụp hóa đơn → form', () => {
     const d = invoiceFromScan(r.invoice, lists, '2026-11-12');
     expect(d.draft.supplier).toBe('SẮT THÉP AN PHÚ');
     expect(d.draft.paid).toBe(false);
-    expect(d.unsureHead).toEqual(expect.arrayContaining(['date', 'invoiceNo', 'project']));
+    expect(d.unsureHead).toEqual(expect.arrayContaining(['date', 'project']));
     const t = checkPrintedTotal(d.draft, d.printedTotal);
     expect(t.status).toBe('diff');
     expect(t.status === 'diff' && t.gap).toBe(600000);

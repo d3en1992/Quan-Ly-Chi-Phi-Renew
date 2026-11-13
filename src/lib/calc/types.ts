@@ -24,7 +24,6 @@ export type CalcExpense = {
   expense_type_id?: string | null;
   buyer_id?: string | null;
   description?: string | null;
-  invoice_no?: string | null;
   source?: string | null;
   created_at?: string | null;
 };

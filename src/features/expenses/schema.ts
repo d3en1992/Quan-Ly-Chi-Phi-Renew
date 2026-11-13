@@ -24,7 +24,6 @@ export const expenseInputSchema = z.object({
   paid: z.boolean(),
   description: z.string().trim().max(2000),
   amount: z.number().int('Số tiền phải là số nguyên (đồng)').min(0, 'Số tiền không được âm').max(999_999_999_999, 'Số tiền quá lớn'),
-  invoiceNo: z.string().trim().max(60).nullable().optional(),
   source: z.enum(['quick', 'detail', 'scan', 'import']),
   /** Ảnh hóa đơn trong kho ảnh `receipts` (chụp hóa đơn, GĐ9); không có trường này = không đụng ảnh cũ */
   receiptImagePath: z.string().max(300).nullable().optional(),
