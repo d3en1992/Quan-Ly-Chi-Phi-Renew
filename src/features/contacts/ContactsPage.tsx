@@ -14,7 +14,7 @@ import { hasLevel } from '@/lib/permissions';
 import { useReportData } from '@/features/reports/api';
 import { matchesSearch } from '@/features/reports/shared';
 import { projectNumbers } from '@/features/projects/numbers';
-import { useDeleteContact, useContacts, useToggleCredit, type ContactKind, type ContactsData } from './api';
+import { linkedSubOf, useDeleteContact, useContacts, useToggleCredit, type ContactKind, type ContactsData } from './api';
 import { ContactForm, KIND_TITLE } from './ContactForm';
 import { Sheet } from '@/components/ui/sheet';
 import { ScanWorkspace } from '@/features/scan/ScanWorkspace';
@@ -140,7 +140,7 @@ export function ContactsPage() {
       <Sheet open={scanOpen} onOpenChange={setScanOpen} title="Chụp CCCD" wide>
         {scanOpen ? <ScanWorkspace defaultKind="id_card" lockKind compact onSaved={() => setScanOpen(false)} /> : null}
       </Sheet>
-      {form ? <ContactForm open onClose={() => setForm(null)} kind={form.kind} id={form.id} data={q.data} canSeeIds={canSeeIds} /> : null}
+      {form ? <ContactForm key={`${form.kind}:${form.id}`} open onClose={() => setForm(null)} kind={form.kind} id={form.id} data={q.data} canSeeIds={canSeeIds} onOpen={(kind, id) => setForm({ kind, id })} /> : null}
       <ConfirmDialog open={!!deleting} onOpenChange={(o) => { if (!o) setDeleting(null); }} title="Xóa khỏi Danh Bạ?" danger busy={del.isPending} confirmLabel="Xóa"
         message={<>Xóa <b>{deleting?.name}</b>? Mục bị xóa vào Thùng Rác, khôi phục được.</>} onConfirm={() => void doDelete()} />
     </>
@@ -196,20 +196,25 @@ function buildRows(tab: ContactKind, d: ContactsData, report: ReturnType<typeof 
   }
   if (tab === 'worker') {
     return d.workers.map((w) => {
-      const pv = d.priv.get(w.id);
+      // Thầu phụ cũng làm công nhân: thông tin cá nhân lấy từ hồ sơ thầu phụ (lưu một chỗ)
+      const sub = linkedSubOf(d, w.id);
+      const o = sub?.id ?? w.id;
+      const fullName = sub ? sub.contact_person : w.full_name;
+      const pv = d.priv.get(o);
       const year = pv?.date_of_birth ? pv.date_of_birth.slice(0, 4) : '';
-      const hasBank = d.masked.get(w.id)?.has_bank_account;
+      const hasBank = d.masked.get(o)?.has_bank_account;
+      const subTag = sub ? <Pill tone="accent">Thầu phụ: {sub.name}</Pill> : null;
       return {
-        id: w.id, kind: 'worker', name: w.name, haystack: [w.name, w.full_name, phoneText(w.id)], extra: { filter: w.role ?? '' },
+        id: w.id, kind: 'worker', name: w.name, haystack: [w.name, fullName, phoneText(o), sub?.name], extra: { filter: w.role ?? '' },
         cols: [
-          { head: 'Tên gọi', cell: <b className="font-semibold">{w.name}</b> }, { head: 'T/P', cell: w.role ? <Pill tone={w.role === 'C' ? 'accent' : 'neutral'}>{ROLE_LABEL[w.role] ?? w.role}</Pill> : dim('—') },
-          { head: 'Họ tên (theo CCCD)', cell: text(w.full_name) }, { head: 'Năm sinh', cell: year ? <span className="num">{year}</span> : dim(ctx.canSeeIds ? '—' : 'ẩn theo quyền') },
-          { head: 'Quê quán', wrap: true, cell: pv?.hometown ? pv.hometown : dim(ctx.canSeeIds ? '—' : 'ẩn theo quyền') }, { head: 'Số điện thoại', cell: phoneOf(w.id) },
-          { head: 'CCCD', cell: idOf(w.id) }, { head: 'Tài khoản nhận lương', cell: hasBank ? (ctx.canSeeIds && pv?.bank_account ? <span className="num text-muted">{[pv.bank_name, '•••' + pv.bank_account.slice(-4)].filter(Boolean).join(' · ')}</span> : <span className="text-muted">Đã có</span>) : dim('—') },
+          { head: 'Tên gọi', cell: <span className="inline-flex items-center gap-1.5"><b className="font-semibold">{w.name}</b>{subTag}</span> }, { head: 'T/P', cell: w.role ? <Pill tone={w.role === 'C' ? 'accent' : 'neutral'}>{ROLE_LABEL[w.role] ?? w.role}</Pill> : dim('—') },
+          { head: 'Họ tên (theo CCCD)', cell: text(fullName) }, { head: 'Năm sinh', cell: year ? <span className="num">{year}</span> : dim(ctx.canSeeIds ? '—' : 'ẩn theo quyền') },
+          { head: 'Quê quán', wrap: true, cell: pv?.hometown ? pv.hometown : dim(ctx.canSeeIds ? '—' : 'ẩn theo quyền') }, { head: 'Số điện thoại', cell: phoneOf(o) },
+          { head: 'CCCD', cell: idOf(o) }, { head: 'Tài khoản nhận lương', cell: hasBank ? (ctx.canSeeIds && pv?.bank_account ? <span className="num text-muted">{[pv.bank_name, '•••' + pv.bank_account.slice(-4)].filter(Boolean).join(' · ')}</span> : <span className="text-muted">Đã có</span>) : dim('—') },
         ],
-        mobileTitle: <>{w.name} {w.role ? <Pill>{ROLE_LABEL[w.role] ?? w.role}</Pill> : null}</>,
-        tel: telOf(phoneText(w.id)),
-        mobileMeta: [<span key="a" className="min-w-0 truncate">{[w.full_name, phoneText(w.id)].filter(Boolean).join(' · ') || 'chưa có họ tên, SĐT'}</span>],
+        mobileTitle: <>{w.name} {w.role ? <Pill>{ROLE_LABEL[w.role] ?? w.role}</Pill> : null} {subTag}</>,
+        tel: telOf(phoneText(o)),
+        mobileMeta: [<span key="a" className="min-w-0 truncate">{[fullName, phoneText(o)].filter(Boolean).join(' · ') || 'chưa có họ tên, SĐT'}</span>],
       };
     });
   }
@@ -250,14 +255,16 @@ function buildRows(tab: ContactKind, d: ContactsData, report: ReturnType<typeof 
   const standing = report ? subcontractorStandings(report.subcontracts, report.payments) : new Map();
   return d.subcontractors.map((t) => {
     const s = standing.get(t.id) ?? { contracts: 0, debt: 0 };
+    const worker = t.worker_id ? d.workers.find((w) => w.id === t.worker_id) : undefined;
+    const workerTag = worker ? <Pill tone="good">Cũng làm CN: {worker.name}</Pill> : null;
     return {
-      id: t.id, kind: 'subcontractor', name: t.name, haystack: [t.name, t.field, t.contact_person, phoneText(t.id)],
+      id: t.id, kind: 'subcontractor', name: t.name, haystack: [t.name, t.field, t.contact_person, phoneText(t.id), worker?.name],
       cols: [
-        { head: 'Thầu phụ', cell: <b className="font-semibold whitespace-nowrap">{t.name}</b> }, { head: 'Lĩnh vực', wrap: true, cell: t.field ?? dim('—') },
+        { head: 'Thầu phụ', cell: <span className="inline-flex items-center gap-1.5 whitespace-nowrap"><b className="font-semibold">{t.name}</b>{workerTag}</span> }, { head: 'Lĩnh vực', wrap: true, cell: t.field ?? dim('—') },
         { head: 'Người liên hệ', cell: text(t.contact_person) }, { head: 'Số điện thoại', cell: phoneOf(t.id) },
         { head: 'Số HĐ', right: true, cell: <span className="num">{s.contracts}</span> }, { head: 'Còn phải trả', right: true, cell: <Money value={s.debt} className="text-bad" /> },
       ],
-      mobileTitle: t.name, tel: telOf(phoneText(t.id)), mobileMeta: [<span key="a">{t.field || '—'} · {s.contracts} HĐ</span>, <span key="b" className="num">{s.debt ? `còn ${Math.round(s.debt).toLocaleString('vi-VN')}` : ''}</span>],
+      mobileTitle: <>{t.name} {workerTag}</>, tel: telOf(phoneText(t.id)), mobileMeta: [<span key="a">{t.field || '—'} · {s.contracts} HĐ</span>, <span key="b" className="num">{s.debt ? `còn ${Math.round(s.debt).toLocaleString('vi-VN')}` : ''}</span>],
     };
   });
 }

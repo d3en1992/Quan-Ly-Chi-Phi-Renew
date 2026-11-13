@@ -802,14 +802,14 @@ isOneToOne: false
                   ]
                 },"subcontractors": {
                   Row: {
-                    "archived": boolean,"company_id": string,"contact_person": string | null,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"field": string | null,"id": string,"name": string,"note": string | null,"updated_at": string
+                    "archived": boolean,"company_id": string,"contact_person": string | null,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"field": string | null,"id": string,"name": string,"note": string | null,"updated_at": string,"worker_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "archived"?: boolean,"company_id"?: string,"contact_person"?: string | null,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"field"?: string | null,"id"?: string,"name": string,"note"?: string | null,"updated_at"?: string
+                    "archived"?: boolean,"company_id"?: string,"contact_person"?: string | null,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"field"?: string | null,"id"?: string,"name": string,"note"?: string | null,"updated_at"?: string,"worker_id"?: string | null
                   }
                   Update: {
-                    "archived"?: boolean,"company_id"?: string,"contact_person"?: string | null,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"field"?: string | null,"id"?: string,"name"?: string,"note"?: string | null,"updated_at"?: string
+                    "archived"?: boolean,"company_id"?: string,"contact_person"?: string | null,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"field"?: string | null,"id"?: string,"name"?: string,"note"?: string | null,"updated_at"?: string,"worker_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -817,6 +817,12 @@ isOneToOne: false
       columns: ["company_id"]
 isOneToOne: false
       referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "subcontractors_worker_id_fkey"
+      columns: ["worker_id"]
+isOneToOne: false
+      referencedRelation: "workers"
       referencedColumns: ["id"]
     }
                   ]

@@ -4,11 +4,16 @@ import { Sheet } from '@/components/ui/sheet';
 import { Button, Icon } from '@/components/ui/button';
 import { Checkbox, Field, Input, Select } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
-import { useSaveContact, type ContactKind, type ContactsData, type PrivateFields } from './api';
+import { Combo } from '@/components/ui/combo';
+import { linkedSubOf, privateOwnerId, useSaveContact, type ContactKind, type ContactsData, type PrivateFields } from './api';
 
 export const KIND_TITLE: Record<ContactKind, string> = { customer: 'khách hàng', worker: 'công nhân', employee: 'nhân viên', supplier: 'nhà cung cấp', subcontractor: 'thầu phụ' };
 
-type Props = { open: boolean; onClose: () => void; kind: ContactKind; id: string | null; data: ContactsData; canSeeIds: boolean };
+type Props = {
+  open: boolean; onClose: () => void; kind: ContactKind; id: string | null; data: ContactsData; canSeeIds: boolean;
+  /** Mở hồ sơ khác (công nhân đã nối → hồ sơ thầu phụ) */
+  onOpen?: (kind: ContactKind, id: string) => void;
+};
 type Form = Record<string, string | boolean>;
 
 const PRIV_KEYS = ['phone', 'id_number', 'date_of_birth', 'hometown', 'permanent_address', 'bank_name', 'bank_account', 'bank_holder'] as const;
@@ -20,24 +25,33 @@ const PRIV_LABEL: Record<(typeof PRIV_KEYS)[number], string> = {
   bank_name: 'Ngân hàng', bank_account: 'Số tài khoản nhận lương', bank_holder: 'Chủ tài khoản',
 };
 
+/** Gợi ý tên trong sổ chấm công từ tên thầu phụ: "TPSN ĐỎ" → "ĐỎ" */
+export const workerNameFromSub = (name: string) => name.trim().replace(/^(TP[A-ZĐ]*|THẦU PHỤ)\s+/i, '').trim() || name.trim();
+
 function initial(kind: ContactKind, id: string | null, data: ContactsData): Form {
-  const priv = (id && data.priv.get(id)) || ({} as Partial<PrivateFields>);
+  const priv = (id && data.priv.get(privateOwnerId(data, kind, id))) || ({} as Partial<PrivateFields>);
   const p = Object.fromEntries(PRIV_KEYS.map((k) => [k, (priv as Record<string, string | null>)[k] ?? '']));
   if (kind === 'customer') { const r = data.customers.find((x) => x.id === id); return { name: r?.name ?? '', full_name: r?.full_name ?? '', address: r?.address ?? '', email: r?.email ?? '', tax_code: r?.tax_code ?? '', note: r?.note ?? '', ...p }; }
   if (kind === 'worker') { const r = data.workers.find((x) => x.id === id); return { name: r?.name ?? '', role: r?.role ?? 'T', full_name: r?.full_name ?? '', note: r?.note ?? '', ...p }; }
   if (kind === 'employee') { const r = data.employees.find((x) => x.id === id); return { full_name: r?.full_name ?? '', title: r?.title ?? '', started_on: r?.started_on ?? '', note: r?.note ?? '', ...p }; }
   if (kind === 'supplier') { const r = data.suppliers.find((x) => x.id === id); return { name: r?.name ?? '', address: r?.address ?? '', phone: r?.phone ?? '', buys_on_credit: r?.buys_on_credit ?? false, note: r?.note ?? '' }; }
   const r = data.subcontractors.find((x) => x.id === id);
-  return { name: r?.name ?? '', field: r?.field ?? '', contact_person: r?.contact_person ?? '', note: r?.note ?? '', ...p };
+  const w = r?.worker_id ? data.workers.find((x) => x.id === r.worker_id) : undefined;
+  return { name: r?.name ?? '', field: r?.field ?? '', contact_person: r?.contact_person ?? '', note: r?.note ?? '', alsoWorker: !!w, workerName: w?.name ?? '', workerRole: w?.role ?? 'T', ...p };
 }
 
-export function ContactForm({ open, onClose, kind, id, data, canSeeIds }: Props) {
+export function ContactForm({ open, onClose, kind, id, data, canSeeIds, onOpen }: Props) {
   const toast = useToast();
   const save = useSaveContact();
   const [f, setF] = useState<Form>({});
   const [error, setError] = useState('');
   useEffect(() => { if (open) { setF(initial(kind, id, data)); setError(''); } }, [open, kind, id]); // eslint-disable-line react-hooks/exhaustive-deps
   const set = (k: string, v: string | boolean) => setF((x) => ({ ...x, [k]: v }));
+  // Công nhân đã nối với thầu phụ: thông tin cá nhân lưu ở hồ sơ thầu phụ (sửa ở đó)
+  const linkedSub = kind === 'worker' && id ? linkedSubOf(data, id) : undefined;
+  // Thầu phụ tích "Cũng làm công nhân" → hồ sơ thầu phụ giữ đủ thông tin cá nhân như công nhân
+  const privKeys = kind === 'subcontractor' && f.alsoWorker ? PRIV_KEYS : linkedSub ? [] : PRIV_BY_KIND[kind];
+  const workerItems = data.workers.filter((w) => !data.subcontractors.some((t) => t.worker_id === w.id && t.id !== id));
   const text = (k: string, label: string, props: { type?: string; placeholder?: string } = {}) => (
     <Field label={label} key={k}><Input aria-label={label} type={props.type} placeholder={props.placeholder} value={String(f[k] ?? '')} onChange={(e) => set(k, e.target.value)} /></Field>
   );
@@ -53,9 +67,12 @@ export function ContactForm({ open, onClose, kind, id, data, canSeeIds }: Props)
     else if (kind === 'employee') fields = { full_name: s('full_name'), title: s('title') || null, started_on: s('started_on') || null, note: s('note') || null };
     else if (kind === 'supplier') fields = { name: s('name'), address: s('address') || null, phone: s('phone') || null, buys_on_credit: !!f.buys_on_credit, note: s('note') || null };
     else fields = { name: s('name'), field: s('field') || null, contact_person: s('contact_person') || null, note: s('note') || null };
-    const priv = canSeeIds && PRIV_BY_KIND[kind].length ? Object.fromEntries(PRIV_BY_KIND[kind].map((k) => [k, s(k)])) : null;
+    if (kind === 'worker' && linkedSub) delete fields.full_name; // họ tên lấy theo người liên hệ của thầu phụ
+    if (kind === 'subcontractor' && f.alsoWorker && !s('workerName')) return setError('Nhập tên trong sổ chấm công (công nhân).');
+    const priv = canSeeIds && privKeys.length ? Object.fromEntries(privKeys.map((k) => [k, s(k)])) : null;
+    const alsoWorker = kind === 'subcontractor' ? (f.alsoWorker ? { name: s('workerName'), role: s('workerRole') || 'T' } : null) : undefined;
     try {
-      await save.mutateAsync({ kind, id, fields, priv });
+      await save.mutateAsync({ kind, id, fields, priv, alsoWorker });
       toast(id ? 'Đã cập nhật' : `Đã thêm ${KIND_TITLE[kind]}`);
       onClose();
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
@@ -73,7 +90,12 @@ export function ContactForm({ open, onClose, kind, id, data, canSeeIds }: Props)
               <option value="C">Cai (C)</option><option value="T">Thợ (T)</option><option value="P">Phụ (P)</option>
             </Select>
           </Field>
-          {text('full_name', 'Họ tên theo CCCD')}
+          {linkedSub ? (
+            <div className="grid gap-2 rounded-lg bg-accent-soft px-3 py-2.5 text-[13px]" data-testid="worker-linked">
+              <span>Người này là thầu phụ <b>{linkedSub.name}</b>{linkedSub.contact_person ? <> ({linkedSub.contact_person})</> : null}. Họ tên, SĐT, CCCD, tài khoản… lưu ở hồ sơ thầu phụ.</span>
+              {onOpen ? <Button size="sm" onClick={() => onOpen('subcontractor', linkedSub.id)}><Icon name="open_in_new" />Mở hồ sơ thầu phụ</Button> : null}
+            </div>
+          ) : text('full_name', 'Họ tên theo CCCD')}
         </>
       ) : null}
       {kind === 'employee' ? <>{text('full_name', 'Họ tên *')}{text('title', 'Chức danh')}{text('started_on', 'Ngày vào làm', { type: 'date' })}</> : null}
@@ -83,8 +105,29 @@ export function ContactForm({ open, onClose, kind, id, data, canSeeIds }: Props)
           <Checkbox checked={!!f.buys_on_credit} onChange={(v) => set('buys_on_credit', v)} label="Mua nợ (hóa đơn mới tự bỏ tích Đã TT)" />
         </>
       ) : null}
-      {kind === 'subcontractor' ? <>{text('name', 'Tên thầu phụ *')}{text('field', 'Lĩnh vực')}{text('contact_person', 'Người liên hệ')}</> : null}
-      {canSeeIds ? PRIV_BY_KIND[kind].map((k) => text(k, PRIV_LABEL[k], k === 'date_of_birth' ? { type: 'date' } : {})) : PRIV_BY_KIND[kind].length ? <div className="rounded-lg bg-surface-2 px-3 py-2 text-[12.5px] text-muted">SĐT, CCCD, tài khoản nhận lương chỉ hiện và sửa được với tài khoản có quyền "Xem SĐT, số CCCD".</div> : null}
+      {kind === 'subcontractor' ? (
+        <>
+          {text('name', 'Tên thầu phụ *')}{text('field', 'Lĩnh vực')}{text('contact_person', f.alsoWorker ? 'Họ tên (người liên hệ, theo CCCD)' : 'Người liên hệ')}
+          <div className="grid gap-2 rounded-lg border border-line-soft p-2.5">
+            <Checkbox checked={!!f.alsoWorker} label="Cũng làm công nhân (lâu lâu qua làm, có tên trong sổ chấm công)"
+              onChange={(v) => setF((x) => ({ ...x, alsoWorker: v, workerName: v && !String(x.workerName ?? '').trim() ? workerNameFromSub(String(x.name ?? '')) : (x.workerName ?? '') }))} />
+            {f.alsoWorker ? (
+              <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2">
+                <Field label="Tên trong sổ chấm công">
+                  <Combo aria-label="Tên trong sổ chấm công" free value={String(f.workerName ?? '')} onChange={(v) => set('workerName', v)} items={workerItems} groupLabel="Công nhân có sẵn" placeholder="VD: ĐỎ" />
+                </Field>
+                <Field label="Loại">
+                  <Select aria-label="Loại công nhân của thầu phụ" value={String(f.workerRole ?? 'T')} onChange={(e) => set('workerRole', e.target.value)}>
+                    <option value="C">Cai</option><option value="T">Thợ</option><option value="P">Phụ</option>
+                  </Select>
+                </Field>
+                <small className="col-span-2 text-[12px] text-muted">Chọn công nhân có sẵn hoặc gõ tên mới (tự tạo). Thông tin cá nhân lưu ở đây, hồ sơ công nhân hiện theo.</small>
+              </div>
+            ) : null}
+          </div>
+        </>
+      ) : null}
+      {canSeeIds ? privKeys.map((k) => text(k, PRIV_LABEL[k], k === 'date_of_birth' ? { type: 'date' } : {})) : privKeys.length ? <div className="rounded-lg bg-surface-2 px-3 py-2 text-[12.5px] text-muted">SĐT, CCCD, tài khoản nhận lương chỉ hiện và sửa được với tài khoản có quyền "Xem SĐT, số CCCD".</div> : null}
       {text('note', 'Ghi chú')}
       {error ? <div role="alert" className="rounded-lg bg-bad-soft px-3 py-2 text-[13px] text-bad">{error}</div> : null}
     </Sheet>

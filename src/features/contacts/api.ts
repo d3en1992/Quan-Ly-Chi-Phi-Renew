@@ -20,7 +20,7 @@ const customerSchema = z.object({ id: z.string(), name: z.string(), full_name: s
 const workerSchema = z.object({ id: z.string(), name: z.string(), role: str, full_name: str, note: str, archived: z.boolean() });
 const employeeSchema = z.object({ id: z.string(), full_name: z.string(), title: str, profile_id: str, started_on: str, note: str, archived: z.boolean() });
 const supplierSchema = z.object({ id: z.string(), name: z.string(), address: str, phone: str, buys_on_credit: z.boolean(), note: str, archived: z.boolean() });
-const subcontractorSchema = z.object({ id: z.string(), name: z.string(), field: str, contact_person: str, note: str, archived: z.boolean() });
+const subcontractorSchema = z.object({ id: z.string(), name: z.string(), field: str, contact_person: str, note: str, archived: z.boolean(), worker_id: str });
 const maskedSchema = z.object({
   customer_id: str, worker_id: str, employee_id: str, subcontractor_id: str, phone: str, id_number: str, has_bank_account: z.boolean(),
 });
@@ -46,6 +46,12 @@ export type ContactsData = {
 };
 
 export const CONTACTS_KEY = ['contacts'] as const;
+
+/** Thầu phụ đã nối với công nhân này (thầu phụ cũng làm công nhân) — migration 000014 */
+export const linkedSubOf = (d: Pick<ContactsData, 'subcontractors'>, workerId: string) => d.subcontractors.find((s) => s.worker_id === workerId);
+/** Mã để tra thông tin cá nhân: công nhân đã nối thầu phụ thì lấy của thầu phụ (lưu một chỗ) */
+export const privateOwnerId = (d: Pick<ContactsData, 'subcontractors'>, kind: ContactKind, id: string) =>
+  (kind === 'worker' ? linkedSubOf(d, id)?.id : undefined) ?? id;
 const cols = (s: z.ZodObject<z.ZodRawShape>) => Object.keys(s.shape).join(',');
 
 async function list<S extends z.ZodObject<z.ZodRawShape>>(table: string, schema: S, order: string): Promise<z.infer<S>[]> {
@@ -89,6 +95,7 @@ function useInvalidate() {
 }
 
 function friendly(e: { message: string; code?: string }): Error {
+  if (e.code === '23505' && e.message.includes('subcontractors_worker_uq')) return new Error('Công nhân này đã nối với một thầu phụ khác.');
   if (e.code === '23505') return new Error('Đã có người trùng tên này.');
   if (e.code === '42501') return new Error('Bạn không có quyền thực hiện thao tác này.');
   return new Error(e.message);
@@ -101,14 +108,34 @@ export type SaveInput = {
   fields: Record<string, unknown>;
   /** Cột của contact_private; null = không đụng (người không có quyền xem CCCD) */
   priv: Partial<PrivateFields> | null;
+  /** Chỉ cho thầu phụ: "Cũng làm công nhân" — tên trong sổ chấm công (chưa có thì tạo công nhân mới). null = bỏ nối; undefined = không đụng */
+  alsoWorker?: { name: string; role: string } | null;
 };
 
 export function useSaveContact() {
   const done = useInvalidate();
   return useMutation({
-    mutationFn: async ({ kind, id, fields, priv }: SaveInput) => {
+    mutationFn: async ({ kind, id, fields: rawFields, priv, alsoWorker }: SaveInput) => {
       const table = TABLE_OF[kind];
+      const fields = { ...rawFields };
       let rowId = id;
+      // Thầu phụ cũng làm công nhân: tìm công nhân theo tên trong sổ chấm công, chưa có thì tạo; họ tên đồng bộ theo người liên hệ
+      let linkedWorker: string | null = null;
+      if (kind === 'subcontractor' && alsoWorker !== undefined) {
+        if (alsoWorker) {
+          const name = alsoWorker.name.trim().split(' ').filter(Boolean).join(' ').toUpperCase();
+          const { data: found, error: fe } = await sb.from('workers').select('id').ilike('name', name).is('deleted_at', null).maybeSingle();
+          if (fe) throw friendly(fe);
+          if (found) linkedWorker = (found as { id: string }).id;
+          else {
+            const { data: w, error: we } = await sb.from('workers')
+              .insert({ name, role: alsoWorker.role || 'T', full_name: (fields.contact_person as string | null) ?? null }).select('id').single();
+            if (we) throw friendly(we);
+            linkedWorker = (w as { id: string }).id;
+          }
+        }
+        fields.worker_id = linkedWorker;
+      }
       if (id) {
         const { error } = await sb.from(table).update(fields).eq('id', id);
         if (error) throw friendly(error);
@@ -129,6 +156,10 @@ export function useSaveContact() {
           const { error } = await sb.from('contact_private').insert({ ...clean, [fk]: rowId } as never);
           if (error) throw friendly(error);
         }
+      }
+      if (linkedWorker && fields.contact_person) {
+        const { error } = await sb.from('workers').update({ full_name: fields.contact_person }).eq('id', linkedWorker);
+        if (error) throw friendly(error);
       }
       return rowId!;
     },

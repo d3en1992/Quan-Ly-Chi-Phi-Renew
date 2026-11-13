@@ -165,15 +165,20 @@ async function main() {
       if (!w) { missing.push(`${m.fullName} → công nhân "${m.name}" không có trong app`); continue; }
       const { error } = await sb.from('workers').update({ full_name: m.fullName }).eq('id', w.id);
       if (error) throw new Error(error.message);
-      await putPrivate('worker_id', w.id, m.priv);
+      if (m.t.sub) {
+        // Thầu phụ cũng làm công nhân (migration 000014): thông tin cá nhân chỉ lưu ở hồ sơ thầu phụ → bỏ bản ở công nhân
+        const { error: de } = await sb.from('contact_private').update({ deleted_at: new Date().toISOString() }).eq('worker_id', w.id).is('deleted_at', null);
+        if (de) throw new Error(de.message);
+      } else await putPrivate('worker_id', w.id, m.priv);
       done.push(`${m.fullName} → công nhân ${w.name}`);
     } else if (m.kind === 'sub') {
       const s = byName(subs, m.name) ?? (m.t.create ? await ensure('subcontractors', subs, m.name, m.t.field ? { field: m.t.field } : {}) : undefined);
       if (!s) { missing.push(`${m.fullName} → thầu phụ "${m.name}" không có trong app`); continue; }
-      const { error } = await sb.from('subcontractors').update({ contact_person: m.fullName }).eq('id', s.id);
+      const w = m.t.worker ? byName(workers, m.t.worker) : undefined;
+      const { error } = await sb.from('subcontractors').update({ contact_person: m.fullName, ...(w ? { worker_id: w.id } : {}) }).eq('id', s.id);
       if (error) throw new Error(error.message);
       await putPrivate('subcontractor_id', s.id, m.priv);
-      done.push(`${m.fullName} → thầu phụ ${s.name}`);
+      done.push(`${m.fullName} → thầu phụ ${s.name}${w ? ` (nối công nhân ${w.name})` : ''}`);
     } else {
       const e = await putEmployee(m.fullName, m.t.employee);
       await putPrivate('employee_id', e.id, m.priv);

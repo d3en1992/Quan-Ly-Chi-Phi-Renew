@@ -79,3 +79,34 @@ test('Chỉ xem không thấy Danh Bạ; nhà cung cấp bật / tắt Mua nợ'
   await page.goto('/danh-ba');
   await expect(page.getByText('Không có quyền xem mục này')).toBeVisible();
 });
+
+test('Thầu phụ tích "Cũng làm công nhân" → tạo / nối công nhân, thông tin cá nhân lưu một chỗ (13/11/2026)', async ({ page }) => {
+  const errors = watchConsole(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await login(page, 'e2e.admin');
+  await page.goto('/danh-ba');
+  const sub = `E2E TP ${Date.now() % 100000}`, worker = `E2E CN ${Date.now() % 100000}`;
+  await page.getByRole('tab', { name: 'THẦU PHỤ' }).click();
+  await page.getByRole('button', { name: 'Thêm', exact: true }).click();
+  const sheet = page.getByRole('dialog');
+  await sheet.getByLabel('Tên thầu phụ *').fill(sub);
+  await sheet.getByLabel('Cũng làm công nhân (lâu lâu qua làm, có tên trong sổ chấm công)').check();
+  await sheet.getByRole('combobox', { name: 'Tên trong sổ chấm công' }).fill(worker);
+  await sheet.getByLabel('Họ tên (người liên hệ, theo CCCD)').fill('Nguyễn Văn Thử');
+  await sheet.getByLabel('Số điện thoại').fill('0909123456');
+  await sheet.getByRole('button', { name: 'Lưu' }).click();
+  await expect(page.getByText('Đã thêm thầu phụ')).toBeVisible();
+  await expect(page.getByTestId('contacts-table')).toContainText(`Cũng làm CN: ${worker}`);
+
+  // Bên công nhân: có nhãn thầu phụ, họ tên + SĐT lấy từ hồ sơ thầu phụ; mở ra thấy ô báo "lưu ở hồ sơ thầu phụ"
+  await page.getByRole('tab', { name: 'CÔNG NHÂN' }).click();
+  const row = page.getByTestId('contacts-table').locator('tbody tr', { hasText: worker });
+  await expect(row).toContainText(`Thầu phụ: ${sub}`);
+  await expect(row).toContainText('Nguyễn Văn Thử');
+  await expect(row).toContainText('0909123456');
+  await row.click();
+  await expect(page.getByTestId('worker-linked')).toBeVisible();
+  await page.getByRole('button', { name: 'Mở hồ sơ thầu phụ' }).click();
+  await expect(page.getByRole('dialog').getByLabel('Tên thầu phụ *')).toHaveValue(sub);
+  expect(errors).toEqual([]);
+});

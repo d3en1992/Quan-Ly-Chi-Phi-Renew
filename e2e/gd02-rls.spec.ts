@@ -82,17 +82,19 @@ test('Quản lý đọc được doanh thu; SĐT chỉ người có quyền mớ
   for (const table of ['receipts', 'main_contracts', 'settlements', 'equipment', 'cost_allocations']) {
     expect(await count(ql, table), `Quản lý đọc ${table}`).toBe(await count(admin, table));
   }
-  const privateRows = await count(admin, 'contact_private');
+  const live = (q: any) => q.is('deleted_at', null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const privateRows = await count(admin, 'contact_private', live);
   expect(privateRows).toBeGreaterThan(0);
-  expect(await count(ql, 'contact_private')).toBe(privateRows);
+  expect(await count(ql, 'contact_private', live)).toBe(privateRows);
   expect(await count(kt, 'contact_private')).toBe(0);
 
   const { data: clear } = await ql.rpc('list_contact_private_masked');
   const { data: masked, error } = await kt.rpc('list_contact_private_masked');
   expect(error).toBeNull();
   expect(masked).toHaveLength(privateRows);
-  expect((clear as { phone: string }[]).every((r) => /^\d+$/.test(r.phone))).toBe(true);
-  expect((masked as { phone: string }[]).every((r) => r.phone.includes('•••'))).toBe(true);
+  // Dòng chỉ có CCCD (danh sách bảo hiểm) thì không có SĐT — chỉ xét dòng có SĐT
+  expect((clear as { phone: string | null }[]).filter((r) => r.phone).every((r) => /^\d+$/.test(r.phone!))).toBe(true);
+  expect((masked as { phone: string | null }[]).filter((r) => r.phone).every((r) => r.phone!.includes('•••'))).toBe(true);
 });
 
 test('Chỉ xem: chỉ thấy công trình được giao, không thấy tiền thu', async () => {
