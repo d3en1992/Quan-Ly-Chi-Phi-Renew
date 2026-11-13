@@ -9,7 +9,7 @@
 // Gọi: supabase.functions.invoke('scan-document', { body: { image_base64, mime_type, note, kind, fixture? } })
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import {
-  buildPrompt, GEMINI_RESPONSE_SCHEMA, normalizeScan, pickFixture, SCAN_FIXTURES,
+  buildPrompt, matchProjectByNote, normalizeScan, pickFixture, SCAN_FIXTURES,
   type ScanContext, type ScanRequestKind, type ScanResponse,
 } from '../_shared/scan.ts';
 import fxInvoiceNew from './fixtures/hoa-don-ncc-moi.json' with { type: 'json' };
@@ -40,9 +40,11 @@ const env = (...names: string[]) => {
 type Body = { image_base64?: string; mime_type?: string; note?: string; kind?: ScanRequestKind; fixture?: string };
 const KINDS: ScanRequestKind[] = ['auto', 'invoice', 'id_card', 'contract'];
 /** Thứ tự xoay tua mặc định — model đầu đọc tốt nhất; mỗi model gói miễn phí có lượt riêng (≈ 5 lần/phút, 20 lần/ngày) */
-// (thử 13/11/2026: 3.8-flash, 3.5-flash-lite, 3.1-flash-lite chạy; 3.7-flash hay quá tải; 3.5-flash hay treo; bản 2.5 đã ngừng cho key mới)
-const DEFAULT_MODELS = 'gemini-3.8-flash,gemini-3.7-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.5-flash';
-const PER_MODEL_TIMEOUT_MS = 40_000;
+// Model lite lên đầu (anh Tình chốt 13/11/2026: nhanh, đọc đủ chính xác, nhiều lượt/phút); bản 2.5 đã ngừng cho key mới
+const DEFAULT_MODELS = 'gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.8-flash,gemini-3.7-flash';
+/** Mức "suy nghĩ" của Gemini 3: minimal = nhanh nhất (giống bot n8n). Đổi bằng secret GEMINI_THINKING (minimal/low/medium/high) */
+const DEFAULT_THINKING = 'minimal';
+const PER_MODEL_TIMEOUT_MS = 30_000;
 const TOTAL_BUDGET_MS = 110_000;
 const MAX_BASE64 = 4_500_000; // ~3,3 MB ảnh — ảnh đã thu nhỏ 1600px chỉ khoảng 200–500 KB
 
@@ -100,8 +102,15 @@ Deno.serve(async (req) => {
     const models = (env('GEMINI_MODELS', 'GEMINI_MODEL') || DEFAULT_MODELS).split(',').map((m) => m.trim()).filter(Boolean);
 
     const payload = JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: buildPrompt(kind, note, ctx) }, { inline_data: { mime_type: mime, data: image } }] }],
-      generationConfig: { responseMimeType: 'application/json', responseSchema: GEMINI_RESPONSE_SCHEMA, temperature: 0 },
+      systemInstruction: { parts: [{ text: buildPrompt(kind, note, ctx) }] },
+      contents: [{ role: 'user', parts: [
+        { text: note.trim() ? `Ảnh chứng từ. Ghi chú của người chụp: ${note.trim()}` : 'Ảnh chứng từ, không có ghi chú.' },
+        { inline_data: { mime_type: mime, data: image } },
+      ] }],
+      generationConfig: {
+        responseMimeType: 'application/json', temperature: 0.1, // không gửi responseSchema — mẫu JSON nằm trong câu lệnh
+        thinkingConfig: { thinkingLevel: env('GEMINI_THINKING') || DEFAULT_THINKING },
+      },
     });
     const started = Date.now();
     const fails: { model: string; status: number }[] = [];
@@ -123,14 +132,25 @@ Deno.serve(async (req) => {
         continue;
       }
       const out = await res.json();
-      const text: string = out?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? '';
+      const text: string = (out?.candidates?.[0]?.content?.parts ?? [])
+        .filter((p: { thought?: boolean }) => !p.thought).map((p: { text?: string }) => p.text ?? '').join('')
+        .replace(/^\s*```(json)?/i, '').replace(/```\s*$/, '');
       let raw: unknown;
       try { raw = JSON.parse(text); } catch {
         fails.push({ model, status: 422 }); // trả về không phải JSON → thử model khác
         continue;
       }
       if (fails.length) console.log('Đổi model', fails.map((f) => `${f.model}:${f.status}`).join(' → '), '→', model);
-      const resp: ScanResponse = { ...normalizeScan(raw, ctx, kind), mode: 'gemini', model, warning };
+      const result = normalizeScan(raw, ctx, kind);
+      // Ghi chú nhắc đúng 1 công trình → dùng công trình đó (chắc hơn AI); không thì giữ AI chọn
+      const byNote = matchProjectByNote(note, ctx.project_meta ?? []);
+      if (byNote && result.kind === 'invoice') result.invoice.project_match = byNote;
+      // AI tự chọn công trình (không dựa vào ghi chú) → tô vàng để người dùng xem lại
+      if (!byNote && result.kind === 'invoice' && result.invoice.project_match && !result.invoice.low_confidence.includes('project_match')) {
+        result.invoice.low_confidence.push('project_match');
+      }
+      if (byNote && result.kind === 'contract') result.contract.project_match = byNote;
+      const resp: ScanResponse = { ...result, mode: 'gemini', model, warning };
       return checkKindAllowed(resp, canInvoice, canIdCard, canContract) ?? json(200, resp);
     }
     // Mọi model đều lỗi
@@ -158,20 +178,48 @@ function checkKindAllowed(r: ScanResponse, inv: boolean, id: boolean, ct: boolea
 
 /** Danh sách tên cho AI khớp — đọc bằng chính phiên của người gọi (RLS lọc theo quyền) */
 async function loadContext(sb: ReturnType<typeof createClient>): Promise<ScanContext> {
-  const names = async (table: string, col = 'name', filter?: (q: any) => any) => {
-    let q = sb.from(table).select(col).is('deleted_at', null).limit(2000);
+  const rows = async (table: string, cols: string, filter?: (q: any) => any) => {
+    let q = sb.from(table).select(cols).is('deleted_at', null).limit(2000);
     if (filter) q = filter(q);
     const { data } = await q;
-    return ((data ?? []) as Record<string, unknown>[]).map((r) => String(r[col] ?? '')).filter(Boolean);
+    return (data ?? []) as Record<string, unknown>[];
   };
-  const [projects, expense_types, buyers, suppliers, workers, customers, employees] = await Promise.all([
-    names('projects', 'name', (q) => q.neq('status', 'closed')),
+  const names = async (table: string, col = 'name', filter?: (q: any) => any) =>
+    (await rows(table, col, filter)).map((r) => String(r[col] ?? '')).filter(Boolean);
+  const [projectRows, expense_types, buyers, supplierRows, workers, customers, employees] = await Promise.all([
+    rows('projects', 'name, status, owner_name, address, aliases, note'), // gửi cả CT đã đóng (dữ liệu trạng thái hay chưa cập nhật) — AI ưu tiên CT đang thi công
     names('catalog_items', 'name', (q) => q.eq('kind', 'expense_type').eq('archived', false)),
     names('catalog_items', 'name', (q) => q.eq('kind', 'person').eq('archived', false)),
-    names('suppliers', 'name', (q) => q.eq('archived', false)),
+    rows('suppliers', 'name, phone, note', (q) => q.eq('archived', false)),
     names('workers', 'name', (q) => q.eq('archived', false)),
     names('customers'),
     names('employees', 'full_name', (q) => q.eq('archived', false)),
   ]);
-  return { projects, expense_types, suppliers, buyers, workers, customers, employees };
+  const short = (v: unknown, n = 80) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
+  const project_hints: Record<string, string> = {};
+  const projects = projectRows.map((r) => {
+    const name = String(r.name ?? '');
+    const bits = [
+      r.status === 'active' ? 'ĐANG THI CÔNG' : r.status === 'completed' ? 'đã xong' : r.status === 'closed' ? 'đã đóng' : '',
+      short(r.owner_name) && `chủ đầu tư: ${short(r.owner_name)}`,
+      short(r.address) && `địa chỉ: ${short(r.address)}`,
+      Array.isArray(r.aliases) && r.aliases.length ? `tên gọi khác: ${r.aliases.slice(0, 5).join(', ')}` : '',
+      short(r.note, 60),
+    ].filter(Boolean);
+    if (name && bits.length) project_hints[name] = bits.join('; ');
+    return name;
+  }).filter(Boolean);
+  const supplier_hints: Record<string, string> = {};
+  const suppliers = supplierRows.map((r) => {
+    const name = String(r.name ?? '');
+    const bits = [short(r.phone, 30) && `SĐT ${short(r.phone, 30)}`, short(r.note, 60)].filter(Boolean);
+    if (name && bits.length) supplier_hints[name] = bits.join('; ');
+    return name;
+  }).filter(Boolean);
+  const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10); // giờ Việt Nam
+  const project_meta = projectRows.map((r) => ({
+    name: String(r.name ?? ''), status: String(r.status ?? ''), owner_name: short(r.owner_name),
+    aliases: Array.isArray(r.aliases) ? r.aliases.map(String) : [],
+  })).filter((p) => p.name);
+  return { projects, expense_types, suppliers, buyers, workers, customers, employees, project_hints, supplier_hints, project_meta, today };
 }

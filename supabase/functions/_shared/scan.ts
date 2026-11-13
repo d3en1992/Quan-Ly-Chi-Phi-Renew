@@ -58,6 +58,13 @@ export type ScanResponse = ScanResult & {
 export type ScanContext = {
   projects: string[]; expense_types: string[]; suppliers: string[]; buyers: string[];
   workers: string[]; customers: string[]; employees: string[];
+  /** Mô tả thêm cho AI nhận ra công trình / NCC (chủ đầu tư, địa chỉ, đang thi công, tên gọi khác…) — tên → mô tả */
+  project_hints?: Record<string, string>;
+  supplier_hints?: Record<string, string>;
+  /** Để khớp công trình theo ghi chú bằng code (matchProjectByNote) */
+  project_meta?: ProjectMeta[];
+  /** Hôm nay (YYYY-MM-DD, giờ VN) — để AI đoán năm khi phiếu ghi thiếu */
+  today?: string;
 };
 
 // ───────────── JSON schema (dạng OpenAPI mà Gemini nhận) ─────────────
@@ -116,20 +123,78 @@ const KIND_TEXT: Record<ScanRequestKind, string> = {
   contract: 'Đây là HỢP ĐỒNG thi công (contract).',
 };
 
-const list = (title: string, xs: string[]) => (xs.length ? `${title}: ${xs.slice(0, 400).join(' | ')}` : '');
+// Mẫu JSON viết thẳng trong câu lệnh (giống bot n8n) thay cho responseSchema: schema lồng nhiều tầng làm model lite
+// điền nhầm ô (thử 13/11/2026: cả phiếu bị nhét vào supplier_phone), lại chậm hơn.
+const TPL_INVOICE = ` "invoice": {
+  "date": "YYYY-MM-DD",
+  "invoice_no": "",
+  "supplier_name": "",      // tên cửa hàng in ở đầu phiếu, ngắn gọn (vd "THÉP AN PHÚ")
+  "supplier_address": "",   // 1 địa chỉ, ngắn
+  "supplier_phone": "",     // 1 số điện thoại, chỉ chữ số
+  "supplier_match": "",     // tên NCC trong DANH MỤC nếu cùng cửa hàng, không thì ""
+  "project_match": "",      // tên công trình trong DANH MỤC
+  "expense_type_match": "", // loại chi phí trong DANH MỤC
+  "buyer_match": "",        // người mua trong DANH MỤC (theo ghi chú), không rõ thì ""
+  "printed_total": 0,       // tổng tiền in / viết trên phiếu, đồng
+  "lines": [{"name": "", "unit": "", "quantity": 0, "unit_price": 0, "amount": 0, "low_confidence": []}],
+  "low_confidence": []      // tên các ô đầu phiếu đọc không chắc
+ }`;
+const TPL_ID = ` "id_card": {
+  "full_name": "IN HOA CÓ DẤU", "id_number": "12 chữ số", "date_of_birth": "YYYY-MM-DD", "gender": "Nam hoặc Nữ",
+  "hometown": "", "permanent_address": "", "id_issued_on": "YYYY-MM-DD", "id_issued_place": "",
+  "contact_kind": "worker hoặc customer hoặc employee hoặc unknown",  // theo ghi chú: thợ → worker, khách → customer, nhân viên → employee
+  "contact_match": "",      // tên trong DANH MỤC (Công nhân / Khách hàng / Nhân viên) nếu cùng người
+  "low_confidence": []
+ }`;
+const TPL_CONTRACT = ` "contract": {
+  "customer_name": "", "customer_full_name": "", "customer_address": "", "customer_phone": "",
+  "value": 0, "date": "YYYY-MM-DD", "description": "",   // value = giá trị hợp đồng, đồng
+  "customer_match": "", "project_match": "",            // tên trong DANH MỤC
+  "low_confidence": []
+ }`;
+function jsonTemplate(kind: ScanRequestKind): string {
+  if (kind === 'invoice') return `{\n "kind": "invoice",\n${TPL_INVOICE}\n}`;
+  if (kind === 'id_card') return `{\n "kind": "id_card",\n${TPL_ID}\n}`;
+  if (kind === 'contract') return `{\n "kind": "contract",\n${TPL_CONTRACT}\n}`;
+  return `{\n "kind": "invoice hoặc id_card hoặc contract",\n  // CHỈ điền MỘT phần đúng với kind:\n${TPL_INVOICE},\n${TPL_ID},\n${TPL_CONTRACT}\n}`;
+}
 
-/** Câu lệnh gửi kèm ảnh */
+const list = (title: string, xs: string[], hints?: Record<string, string>) =>
+  xs.length ? `${title}:\n${xs.slice(0, 400).map((x) => `- ${x}${hints?.[x] ? ` (${hints[x]})` : ''}`).join('\n')}` : '';
+
+/** Câu lệnh hệ thống (systemInstruction) — học theo bot Telegram n8n "Bot ghi chi phí công trình V4" (mục "Gom danh mục") */
 export function buildPrompt(kind: ScanRequestKind, note: string, ctx: ScanContext): string {
   return [
-    'Bạn đọc giấy tờ của một công ty xây dựng ở Việt Nam. Trả về JSON đúng schema, chỉ điền phần của đúng loại giấy tờ.',
+    'Bạn là trợ lý đọc chứng từ cho một công ty xây nhà phố ở Việt Nam (Công ty Nguyễn Hữu). Đọc ảnh và trả về JSON theo MẪU bên dưới.',
+    ctx.today ? `Hôm nay là ${ctx.today}.` : '',
     KIND_TEXT[kind],
-    'Tiền là số nguyên đồng (1.250.000 → 1250000). Ngày dạng YYYY-MM-DD. Không bịa: không đọc được thì để trống và ghi tên ô vào low_confidence.',
-    'Ô nào chữ mờ / viết tay khó đọc / bị che thì ghi tên ô vào low_confidence (của dòng hoặc của đầu phiếu).',
-    'Chỉ điền *_match bằng ĐÚNG một tên có trong danh sách dưới đây; không chắc thì để trống.',
-    note.trim() ? `Ghi chú của người chụp: "${note.trim().slice(0, 500)}"` : '',
-    list('Công trình', ctx.projects), list('Loại chi phí', ctx.expense_types), list('Nhà cung cấp', ctx.suppliers),
+    '',
+    'QUY TẮC SỐ (rất quan trọng với phiếu viết tay):',
+    '- Tiền là số nguyên đồng (1.250.000 → 1250000).',
+    '- Phiếu viết tay ở Việt Nam thường VIẾT TẮT, bỏ 3 số 0 cuối, kèm ký hiệu Đ / đ / D / k / n / dấu gạch: "313Đ" = 313000, "10.642Đ" = 10642000, "31.321Đ" = 31321000, "18,5" = 18500, "3tr2" = 3200000, "1tr5" = 1500000.',
+    '- LUÔN kiểm tra: số lượng × đơn giá = thành tiền ở TỪNG dòng, và tổng các dòng = tổng in trên phiếu. Chọn cách hiểu số (nghìn hay đồng) sao cho các phép tính KHỚP. Đơn giá vật liệu xây dựng hiếm khi dưới 1.000 đ.',
+    '- Nếu đọc xong vẫn không khớp thì vẫn ghi đúng từng số đọc được, điền printed_total và ghi ô nghi sai vào low_confidence.',
+    '- Ngày dạng YYYY-MM-DD, ghi ĐÚNG ngày trên chứng từ (Việt Nam ghi ngày/tháng/năm). Thiếu năm thì lấy năm gần nhất không vượt quá hôm nay. Không có ngày thì để trống.',
+    '- unit (đơn vị tính) viết thường: cái, bao, xe, kg, m, m2, m3, cây, viên, cuộn, lon, thùng, khối… Ô ĐVT ghi " hoặc // (ditto) thì để trống.',
+    '',
+    'QUY TẮC TÊN:',
+    '- Các ô *_match PHẢI chép ĐÚNG Y một tên trong DANH MỤC bên dưới (giữ dấu, chữ hoa, ngoặc). Không chắc thì để trống. Tuyệt đối không bịa tên mới.',
+    '- Ô "Khách hàng" trên phiếu của cửa hàng thường là tên NGƯỜI MUA / chủ nhà, KHÔNG phải tên công trình. Xác định công trình theo ghi chú của người chụp, hoặc địa chỉ giao hàng, hoặc tên chủ đầu tư / tên gọi khác trong ngoặc của danh mục.',
+    '- Tên gọi giống nhiều công trình thì ưu tiên công trình ĐANG THI CÔNG.',
+    '- KHÔNG ĐOÁN công trình: không có căn cứ rõ (ghi chú, địa chỉ giao hàng, tên chủ nhà trùng chủ đầu tư) thì project_match = "".',
+    '- Nhà cung cấp: tên cửa hàng in ở đầu phiếu, SĐT, tên gọi khác trong danh mục. Loại dịch vụ chung chung (xe ba gát, xe tải, thợ…) KHÔNG đủ để đoán.',
+    '- Mỗi hóa đơn chọn 1 loại chi phí hợp với phần lớn hàng (vd sắt thép → loại có chữ Sắt Thép).',
+    '- Ô nào chữ mờ / viết tay khó đọc / bị che thì ghi tên ô vào low_confidence (của dòng hoặc của đầu phiếu).',
+    '',
+    note.trim() ? `GHI CHÚ CỦA NGƯỜI CHỤP (ưu tiên khi chọn công trình, loại chi phí, người mua): "${note.trim().slice(0, 500)}"` : 'Người chụp không ghi chú.',
+    '',
+    'TRẢ VỀ MỘT đối tượng JSON đúng mẫu dưới đây, không viết gì khác (không giải thích, không ```):',
+    jsonTemplate(kind),
+    '',
+    'DANH MỤC',
+    list('Công trình', ctx.projects, ctx.project_hints), list('Loại chi phí', ctx.expense_types), list('Nhà cung cấp', ctx.suppliers, ctx.supplier_hints),
     list('Người mua', ctx.buyers), list('Công nhân', ctx.workers), list('Khách hàng', ctx.customers), list('Nhân viên', ctx.employees),
-  ].filter(Boolean).join('\n');
+  ].filter((x) => x !== undefined).join('\n').replace(/\n{3,}/g, '\n\n');
 }
 
 // ───────────── Chuẩn hóa kết quả AI ─────────────
@@ -222,6 +287,40 @@ export function normalizeScan(raw: unknown, ctx: ScanContext, fallbackKind: Scan
       low_confidence: strs(i.low_confidence),
     },
   };
+}
+
+// ───────────── Khớp công trình theo ghi chú (không giao cho AI: model lite hay bỏ qua ghi chú) ─────────────
+
+export type ProjectMeta = { name: string; status?: string | null; owner_name?: string | null; aliases?: string[] | null };
+
+/** Bỏ dấu, chữ thường, gom khoảng trắng: "Cô Phụng" → "co phung" */
+export function foldVi(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+/** Các cách gọi 1 công trình: tên đầy đủ, tên bỏ tiền tố CT/SC/SN và phần trong ngoặc, chủ đầu tư, tên gọi khác */
+function projectKeys(p: ProjectMeta): string[] {
+  const core = p.name.replace(/\(.*?\)/g, ' ').replace(/^\s*(CT|SC|SN|NB)\b\s*-?\s*/i, ' ').split(/\s+-\s+/)[0] ?? '';
+  const keys = [p.name, core, p.owner_name ?? '', ...(p.aliases ?? [])].map(foldVi);
+  return [...keys, ...keys.map((k) => k.replace(/^nha /, ''))].filter((k) => k.length >= 4);
+}
+
+/**
+ * Ghi chú nhắc tới đúng 1 công trình → tên công trình đó; nhiều công trình khớp thì ưu tiên công trình đang thi công,
+ * vẫn còn nhiều (hoặc không khớp) → ''. Khớp nguyên cụm từ (ranh giới từ), không phân biệt dấu.
+ */
+export function matchProjectByNote(note: string, projects: readonly ProjectMeta[]): string {
+  const n = ` ${foldVi(note)} `;
+  if (n.trim().length < 3) return '';
+  // Điểm = độ dài cụm khớp dài nhất ("tinh dang" thắng "tinh"); chỉ giữ các công trình điểm cao nhất
+  const scored = projects.map((p) => ({ p, score: Math.max(0, ...projectKeys(p).filter((k) => n.includes(` ${k} `)).map((k) => k.length)) }));
+  const best = Math.max(0, ...scored.map((x) => x.score));
+  if (!best) return '';
+  const hits = scored.filter((x) => x.score === best).map((x) => x.p);
+  if (hits.length === 1) return hits[0]!.name;
+  const active = hits.filter((p) => p.status === 'active');
+  return active.length === 1 ? active[0]!.name : '';
 }
 
 /** Chế độ giả lập: chọn fixture theo loại + ghi chú (không cần key) */

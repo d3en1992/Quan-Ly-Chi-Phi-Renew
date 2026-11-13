@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeScan, pickFixture, toIsoDate, toMoney, type ScanContext } from '@shared/scan';
+import { buildPrompt, foldVi, matchProjectByNote, normalizeScan, pickFixture, toIsoDate, toMoney, type ProjectMeta, type ScanContext } from '@shared/scan';
 import fxNew from '../../../supabase/functions/scan-document/fixtures/hoa-don-ncc-moi.json';
 import fxBlur from '../../../supabase/functions/scan-document/fixtures/hoa-don-chu-mo.json';
 import fxId from '../../../supabase/functions/scan-document/fixtures/cccd.json';
@@ -110,5 +110,37 @@ describe('lib/export/ten-file', () => {
   it('tên file, ngày', () => {
     expect(exportFileName(new Date(2026, 10, 12, 9, 5))).toBe('DuLieu_2026-11-12_0905.xlsx');
     expect(vnDate('2026-11-09')).toBe('09/11/2026');
+  });
+});
+
+describe('_shared/scan — khớp công trình theo ghi chú', () => {
+  const ps: ProjectMeta[] = [
+    { name: 'CT Cô Phụng (137 Thoại Ngọc Hầu, TP)', status: 'closed', owner_name: 'Cô Phụng' },
+    { name: 'CT A Huynh (PTH, TP)', status: 'active', owner_name: 'A Huynh' },
+    { name: 'SC Nhà Tình Đăng - 213 Quang Trung, GV', status: 'active', owner_name: 'Tình' },
+    { name: 'CT Nhà Tình (925 Âu Cơ, TP)', status: 'active', owner_name: 'Tình' },
+    { name: 'NB Tình (840 HL2, BT)', status: 'closed', owner_name: 'Tình' },
+    { name: 'SN A Sang - Thi Công WC', status: 'closed', owner_name: 'A Sang', aliases: ['sn - a sang (le quat, tp)'] },
+  ];
+  it('bỏ dấu, không phân biệt hoa thường', () => {
+    expect(foldVi('Cô Phụng')).toBe('co phung');
+    expect(matchProjectByNote('cô phụng', ps)).toBe('CT Cô Phụng (137 Thoại Ngọc Hầu, TP)');
+    expect(matchProjectByNote('sắt thép CT co phung', ps)).toBe('CT Cô Phụng (137 Thoại Ngọc Hầu, TP)');
+    expect(matchProjectByNote('A Huynh', ps)).toBe('CT A Huynh (PTH, TP)');
+  });
+  it('không khớp / khớp nhiều công trình đang thi công → để trống', () => {
+    expect(matchProjectByNote('Copha', ps)).toBe('');           // loại chi phí, không phải công trình
+    expect(matchProjectByNote('', ps)).toBe('');
+    expect(matchProjectByNote('chú Tình', ps)).toBe('');        // 3 công trình "Tình", 2 đang thi công
+    expect(matchProjectByNote('nhà Tình', ps)).toBe('CT Nhà Tình (925 Âu Cơ, TP)');
+    expect(matchProjectByNote('Tình Đăng', ps)).toBe('SC Nhà Tình Đăng - 213 Quang Trung, GV');
+  });
+  it('câu lệnh có quy tắc số viết tắt + mẫu JSON + mô tả công trình', () => {
+    const p = buildPrompt('invoice', 'Cô Phụng', { ...ctx, project_hints: { 'CT A Huynh (PTH, TP)': 'ĐANG THI CÔNG' }, today: '2026-11-13' });
+    expect(p).toContain('"313Đ" = 313000');
+    expect(p).toContain('"printed_total"');
+    expect(p).toContain('- CT A Huynh (PTH, TP) (ĐANG THI CÔNG)');
+    expect(p).toContain('Hôm nay là 2026-11-13');
+    expect(p).not.toContain('id_card');
   });
 });
