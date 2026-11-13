@@ -180,6 +180,7 @@ export function buildPrompt(kind: ScanRequestKind, note: string, ctx: ScanContex
     'QUY TẮC TÊN:',
     '- Các ô *_match PHẢI chép ĐÚNG Y một tên trong DANH MỤC bên dưới (giữ dấu, chữ hoa, ngoặc). Không chắc thì để trống. Tuyệt đối không bịa tên mới.',
     '- Ô "Khách hàng" trên phiếu của cửa hàng thường là tên NGƯỜI MUA / chủ nhà, KHÔNG phải tên công trình. Xác định công trình theo ghi chú của người chụp, hoặc địa chỉ giao hàng, hoặc tên chủ đầu tư / tên gọi khác trong ngoặc của danh mục.',
+    '- Tên khách / địa chỉ trên phiếu hay VIẾT TẮT tên đường, phường theo chữ đầu: "PT Hòa" / "PTH" = Phú Thọ Hòa, "TNH" = Thoại Ngọc Hầu, "CVT" = Châu Vĩnh Tế, "LLQ" = Lạc Long Quân, "BT" = Bình Tân, "TP" = Tân Phú. So với địa chỉ và phần trong ngoặc của công trình (vd khách "Chú Hữu PT Hòa" → công trình ở Phú Thọ Hòa).',
     '- Tên gọi giống nhiều công trình thì ưu tiên công trình ĐANG THI CÔNG.',
     '- KHÔNG ĐOÁN công trình: không có căn cứ rõ (ghi chú, địa chỉ giao hàng, tên chủ nhà trùng chủ đầu tư) thì project_match = "".',
     '- Nhà cung cấp: tên cửa hàng in ở đầu phiếu, SĐT, tên gọi khác trong danh mục. Loại dịch vụ chung chung (xe ba gát, xe tải, thợ…) KHÔNG đủ để đoán.',
