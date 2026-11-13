@@ -16,6 +16,8 @@ export type InvoiceScan = {
   supplier_name: string;     // tên cửa hàng in trên hóa đơn
   supplier_address: string;
   supplier_phone: string;
+  /** Ô "Khách hàng" / địa chỉ giao hàng ghi trên phiếu, chép nguyên (vd "Chú Hữu PT Hòa") — để đoán công trình */
+  customer_text: string;
   /** Tên trong danh mục AI cho là khớp ('' = không khớp ai) */
   supplier_match: string;
   project_match: string;
@@ -63,6 +65,8 @@ export type ScanContext = {
   supplier_hints?: Record<string, string>;
   /** Để khớp công trình theo ghi chú bằng code (matchProjectByNote) */
   project_meta?: ProjectMeta[];
+  /** Hóa đơn chi phí ~90 ngày gần nhất có NCC — để đoán công trình theo lịch sử (guessProjectFromHistory) */
+  recent_expenses?: ExpenseHistoryRow[];
   /** Hôm nay (YYYY-MM-DD, giờ VN) — để AI đoán năm khi phiếu ghi thiếu */
   today?: string;
 };
@@ -131,6 +135,7 @@ const TPL_INVOICE = ` "invoice": {
   "supplier_name": "",      // tên cửa hàng in ở đầu phiếu, ngắn gọn (vd "THÉP AN PHÚ")
   "supplier_address": "",   // 1 địa chỉ, ngắn
   "supplier_phone": "",     // 1 số điện thoại, chỉ chữ số
+  "customer_text": "",      // chép NGUYÊN ô Khách hàng / Người nhận / địa chỉ giao hàng trên phiếu (vd "Chú Hữu PT Hòa"), không có thì ""
   "supplier_match": "",     // tên NCC trong DANH MỤC nếu cùng cửa hàng, không thì ""
   "project_match": "",      // tên công trình trong DANH MỤC
   "expense_type_match": "", // loại chi phí trong DANH MỤC
@@ -179,10 +184,11 @@ export function buildPrompt(kind: ScanRequestKind, note: string, ctx: ScanContex
     '',
     'QUY TẮC TÊN:',
     '- Các ô *_match PHẢI chép ĐÚNG Y một tên trong DANH MỤC bên dưới (giữ dấu, chữ hoa, ngoặc). Không chắc thì để trống. Tuyệt đối không bịa tên mới.',
-    '- Ô "Khách hàng" trên phiếu của cửa hàng thường là tên NGƯỜI MUA / chủ nhà, KHÔNG phải tên công trình. Xác định công trình theo ghi chú của người chụp, hoặc địa chỉ giao hàng, hoặc tên chủ đầu tư / tên gọi khác trong ngoặc của danh mục.',
+    '- Ô "Khách hàng" trên phiếu của cửa hàng thường là tên NGƯỜI MUA / chủ nhà, KHÔNG phải tên công trình — chép nguyên vào customer_text. Xác định công trình theo ghi chú của người chụp, hoặc địa chỉ giao hàng, hoặc tên chủ đầu tư / tên gọi khác trong ngoặc của danh mục.',
     '- Tên khách / địa chỉ trên phiếu hay VIẾT TẮT tên đường, phường theo chữ đầu: "PT Hòa" / "PTH" = Phú Thọ Hòa, "TNH" = Thoại Ngọc Hầu, "CVT" = Châu Vĩnh Tế, "LLQ" = Lạc Long Quân, "BT" = Bình Tân, "TP" = Tân Phú. So với địa chỉ và phần trong ngoặc của công trình (vd khách "Chú Hữu PT Hòa" → công trình ở Phú Thọ Hòa).',
     '- Tên gọi giống nhiều công trình thì ưu tiên công trình ĐANG THI CÔNG.',
     '- KHÔNG ĐOÁN công trình: không có căn cứ rõ (ghi chú, địa chỉ giao hàng, tên chủ nhà trùng chủ đầu tư) thì project_match = "".',
+    '- Danh mục NCC có ghi "gần đây giao cho: …": NCC đó hay giao cho công trình nào. Dùng để chọn giữa các công trình cùng khớp địa chỉ / tên khách, KHÔNG đủ để đoán một mình.',
     '- Nhà cung cấp: tên cửa hàng in ở đầu phiếu, SĐT, tên gọi khác trong danh mục. Loại dịch vụ chung chung (xe ba gát, xe tải, thợ…) KHÔNG đủ để đoán.',
     '- Mỗi hóa đơn chọn 1 loại chi phí hợp với phần lớn hàng (vd sắt thép → loại có chữ Sắt Thép).',
     '- Ô nào chữ mờ / viết tay khó đọc / bị che thì ghi tên ô vào low_confidence (của dòng hoặc của đầu phiếu).',
@@ -278,6 +284,7 @@ export function normalizeScan(raw: unknown, ctx: ScanContext, fallbackKind: Scan
     kind: 'invoice', invoice: {
       date: toIsoDate(i.date), invoice_no: str(i.invoice_no), supplier_name: str(i.supplier_name).replace(/\s+/g, ' '),
       supplier_address: str(i.supplier_address), supplier_phone: str(i.supplier_phone),
+      customer_text: str(i.customer_text).replace(/\s+/g, ' ').slice(0, 200),
       supplier_match: pick(i.supplier_match, ctx.suppliers), project_match: pick(i.project_match, ctx.projects),
       expense_type_match: pick(i.expense_type_match, ctx.expense_types), buyer_match: pick(i.buyer_match, ctx.buyers),
       printed_total: toMoney(i.printed_total),
@@ -292,7 +299,11 @@ export function normalizeScan(raw: unknown, ctx: ScanContext, fallbackKind: Scan
 
 // ───────────── Khớp công trình theo ghi chú (không giao cho AI: model lite hay bỏ qua ghi chú) ─────────────
 
-export type ProjectMeta = { name: string; status?: string | null; owner_name?: string | null; aliases?: string[] | null };
+export type ProjectMeta = {
+  name: string; status?: string | null; owner_name?: string | null; aliases?: string[] | null;
+  /** Địa chỉ công trình — để khớp địa chỉ / tên viết tắt trên phiếu (guessProjectFromHistory) */
+  address?: string | null;
+};
 
 /** Bỏ dấu, chữ thường, gom khoảng trắng: "Cô Phụng" → "co phung" */
 export function foldVi(s: string): string {
@@ -322,6 +333,145 @@ export function matchProjectByNote(note: string, projects: readonly ProjectMeta[
   if (hits.length === 1) return hits[0]!.name;
   const active = hits.filter((p) => p.status === 'active');
   return active.length === 1 ? active[0]!.name : '';
+}
+
+// ───────────── Đoán công trình theo hóa đơn đã lưu gần đây ─────────────
+
+/** 1 hóa đơn chi phí đã lưu (đọc ở loadContext): ngày, tên công trình, tên NCC, nội dung / ghi chú cũ */
+export type ExpenseHistoryRow = { date: string; project: string; supplier: string; note?: string };
+
+const HISTORY_DAYS = 90;
+const HALF_LIFE_DAYS = 30;
+const dayDiff = (a: string, b: string) => Math.round((Date.parse(a) - Date.parse(b)) / 86_400_000);
+const vnShortDate = (iso: string) => (iso.length >= 10 ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : iso);
+
+/** Từ đứng trước tên đường / phường, số nhà — bỏ khi tách địa chỉ */
+const ADDRESS_FILLER = new Set(['p', 'q', 'f', 'phuong', 'quan', 'huyen', 'xa', 'duong', 'tp', 'tphcm', 'hcm', 'tx', 'kp', 'ap', 'to', 'so']);
+
+/**
+ * Các cách viết 1 địa chỉ trên phiếu: "Phú Thọ Hòa" → "phu tho hoa", "pt hoa", "p tho hoa", "pth".
+ * Lấy từng cụm 2–4 chữ liên tiếp trong mỗi đoạn (tách bởi dấu phẩy, số nhà); bỏ cách viết quá ngắn (≤ 2 chữ cái).
+ */
+export function addressForms(address: string): string[] {
+  const out = new Set<string>();
+  for (const seg of address.split(/[,;()/]|\d+/)) {
+    const words = foldVi(seg).split(' ').filter((w) => w && !ADDRESS_FILLER.has(w) && !/\d/.test(w));
+    for (let i = 0; i < words.length; i++) {
+      for (let len = 2; len <= 4 && i + len <= words.length; len++) {
+        const span = words.slice(i, i + len);
+        out.add(span.join(' '));
+        for (let k = 1; k < len; k++) out.add([span.slice(0, k).map((w) => w[0]).join(''), ...span.slice(k)].join(' '));
+        if (len >= 3) out.add(span.map((w) => w[0]).join(''));
+      }
+    }
+  }
+  return [...out].filter((f) => f.replace(/ /g, '').length >= 3);
+}
+
+/** Cùng NCC: trùng tên (không dấu), hoặc tên này nằm trọn trong tên kia ("THÉP AN PHÚ" ⊂ "SẮT THÉP AN PHÚ", tên ngắn ≥ 8 ký tự) */
+function sameSupplier(a: string, b: string): boolean {
+  if (a === b) return true;
+  const [s, l] = a.length < b.length ? [a, b] : [b, a];
+  return s.length >= 8 && ` ${l} `.includes(` ${s} `);
+}
+
+/** Các khóa để nhận ra công trình trong ô Khách hàng: tên, chủ đầu tư, tên gọi khác, chữ viết tắt trong ngoặc, địa chỉ */
+function projectTextKeys(p: ProjectMeta): string[] {
+  const inParen = [...p.name.matchAll(/\(([^)]*)\)/g)].map((m) => m[1]!);
+  const abbr = inParen.flatMap((s) => s.split(/[,;]/)).map(foldVi).filter((k) => k.length >= 3); // "(PTH, TP)" → "pth"
+  return [...new Set([...projectKeys(p), ...abbr, ...addressForms(p.address ?? ''), ...inParen.flatMap(addressForms)])];
+}
+
+/**
+ * Đoán công trình cho hóa đơn KHÔNG có ghi chú, dựa vào hóa đơn đã lưu ~90 ngày gần nhất. Chấm điểm từng công trình:
+ * - NCC đó giao cho công trình này bao nhiêu (tính nặng lần gần đây, nửa đời 30 ngày): tối đa 4 điểm, +1 nếu là nơi giao gần nhất;
+ * - ô Khách hàng / địa chỉ giao trên phiếu khớp địa chỉ, tên viết tắt, chủ đầu tư ("PT Hòa" = Phú Thọ Hòa): +3;
+ * - tên khách đó từng xuất hiện trong nội dung hóa đơn cũ của công trình: +2;
+ * - đang thi công +1, đã xong / đã đóng −2.
+ * Chỉ trả tên công trình khi có căn cứ (lịch sử hoặc địa chỉ), điểm ≥ 3 và hơn công trình thứ hai ≥ 2 điểm; không thì ''.
+ */
+export function guessProjectFromHistory(
+  invoice: { supplier: string; date?: string; text?: string },
+  history: readonly ExpenseHistoryRow[],
+  projects: readonly ProjectMeta[],
+): string {
+  const sup = foldVi(invoice.supplier ?? '');
+  const text = ` ${foldVi(invoice.text ?? '')} `;
+  const date = invoice.date || history.reduce((m, r) => (r.date > m ? r.date : m), '');
+  if (!projects.length || (!sup && text.trim().length < 3)) return '';
+
+  // Lịch sử NCC: trọng số theo độ gần, chỉ lấy hóa đơn trong 90 ngày trước ngày phiếu (cho lệch 3 ngày)
+  const weight = new Map<string, number>();
+  let latest = { project: '', date: '' };
+  if (sup) {
+    for (const r of history) {
+      if (!sameSupplier(foldVi(r.supplier), sup)) continue;
+      const age = date ? dayDiff(date, r.date) : 0;
+      if (age < -3 || age > HISTORY_DAYS) continue;
+      weight.set(r.project, (weight.get(r.project) ?? 0) + 0.5 ** (Math.max(0, age) / HALF_LIFE_DAYS));
+      if (r.date > latest.date) latest = { project: r.project, date: r.date };
+    }
+  }
+  const total = [...weight.values()].reduce((a, b) => a + b, 0);
+  const customer = foldVi(invoice.text ?? '');
+
+  const scored = projects.map((p) => {
+    const hist = total ? 4 * ((weight.get(p.name) ?? 0) / total) + (latest.project === p.name ? 1 : 0) : 0;
+    const addr = text.trim().length >= 3 && projectTextKeys(p).some((k) => text.includes(` ${k} `)) ? 3 : 0;
+    const seen = customer.length >= 4 && history.some((r) => r.project === p.name && r.note && ` ${foldVi(r.note)} `.includes(` ${customer} `)) ? 2 : 0;
+    const status = p.status === 'active' ? 1 : p.status === 'completed' || p.status === 'closed' ? -2 : 0;
+    return { name: p.name, score: hist + addr + seen + status, evidence: hist > 0 || addr > 0 || seen > 0 };
+  }).filter((x) => x.evidence).sort((a, b) => b.score - a.score);
+
+  const [best, second] = scored;
+  if (!best || best.score < 3) return '';
+  if (second && best.score - second.score < 2) return '';
+  return best.name;
+}
+
+/** Mỗi NCC gần đây giao cho công trình nào (tối đa 2 nơi, nhiều lần nhất trước) — gửi kèm danh mục NCC cho AI */
+export function supplierRecentProjects(history: readonly ExpenseHistoryRow[]): Record<string, string> {
+  const by = new Map<string, Map<string, { n: number; last: string }>>();
+  for (const r of history) {
+    if (!r.supplier || !r.project) continue;
+    const m = by.get(r.supplier) ?? new Map<string, { n: number; last: string }>();
+    const x = m.get(r.project) ?? { n: 0, last: '' };
+    x.n += 1;
+    if (r.date > x.last) x.last = r.date;
+    m.set(r.project, x);
+    by.set(r.supplier, m);
+  }
+  const out: Record<string, string> = {};
+  for (const [sup, m] of by) {
+    const top = [...m].sort((a, b) => b[1].n - a[1].n || b[1].last.localeCompare(a[1].last)).slice(0, 2);
+    out[sup] = `gần đây giao cho: ${top.map(([p, x]) => `${p} ${x.n} lần, gần nhất ${vnShortDate(x.last)}`).join('; ')}`;
+  }
+  return out;
+}
+
+/**
+ * Chọn công trình cho kết quả AI (hàm máy chủ gọi sau normalizeScan). Thứ tự: ghi chú (matchProjectByNote) > lịch sử hóa đơn
+ * (guessProjectFromHistory) > AI tự đoán. Không dựa vào ghi chú thì tô vàng ô công trình (low_confidence 'project_match').
+ */
+export function applyProjectGuess(result: ScanResult, note: string, ctx: ScanContext): ScanResult {
+  const byNote = matchProjectByNote(note, ctx.project_meta ?? []);
+  if (result.kind === 'contract') {
+    if (byNote) result.contract.project_match = byNote;
+    return result;
+  }
+  if (result.kind !== 'invoice') return result;
+  const inv = result.invoice;
+  if (byNote) {
+    inv.project_match = byNote;
+    return result;
+  }
+  const byHistory = guessProjectFromHistory(
+    { supplier: inv.supplier_match || inv.supplier_name, date: inv.date || ctx.today, text: [inv.customer_text, note].filter(Boolean).join(' ') },
+    ctx.recent_expenses ?? [], ctx.project_meta ?? [],
+  );
+  if (byHistory) inv.project_match = byHistory;
+  if (inv.project_match && !inv.low_confidence.includes('project_match')) inv.low_confidence.push('project_match');
+  return result;
 }
 
 /** Chế độ giả lập: chọn fixture theo loại + ghi chú (không cần key) */

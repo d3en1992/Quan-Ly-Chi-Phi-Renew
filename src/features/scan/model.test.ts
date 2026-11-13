@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { buildPrompt, foldVi, matchProjectByNote, normalizeScan, pickFixture, toIsoDate, toMoney, type ProjectMeta, type ScanContext } from '@shared/scan';
+import {
+  addressForms, applyProjectGuess, buildPrompt, foldVi, guessProjectFromHistory, matchProjectByNote, normalizeScan, pickFixture, supplierRecentProjects,
+  toIsoDate, toMoney, type ExpenseHistoryRow, type ProjectMeta, type ScanContext,
+} from '@shared/scan';
 import fxNew from '../../../supabase/functions/scan-document/fixtures/hoa-don-ncc-moi.json';
 import fxBlur from '../../../supabase/functions/scan-document/fixtures/hoa-don-chu-mo.json';
 import fxId from '../../../supabase/functions/scan-document/fixtures/cccd.json';
@@ -142,5 +145,74 @@ describe('_shared/scan — khớp công trình theo ghi chú', () => {
     expect(p).toContain('- CT A Huynh (PTH, TP) (ĐANG THI CÔNG)');
     expect(p).toContain('Hôm nay là 2026-11-13');
     expect(p).not.toContain('id_card');
+  });
+});
+
+describe('_shared/scan — đoán công trình theo hóa đơn đã lưu', () => {
+  // Dữ liệu giống thật (Supabase trên máy, 13/11/2026): 2 công trình đang thi công cùng P. Phú Thọ Hòa
+  const ps: ProjectMeta[] = [
+    { name: 'CT A Huynh (PTH, TP)', status: 'active', owner_name: 'A Huynh', address: '66 Phú Thọ Hòa, P Phú Thọ Hòa, TPHCM' },
+    { name: 'SC A Phượng (Cải tạo sân, Đổ giả)', status: 'active', owner_name: 'A Phượng', address: '80/8 Phan Đình Phùng, P Phú Thọ Hòa, HCM' },
+    { name: 'CT A Nhựt (205 Thoại Ngọc Hầu, TP)', status: 'active', owner_name: 'A Nhựt', address: '205/15A Thoại Ngọc Hầu, P Phú Thạnh, HCM' },
+    { name: 'CT Cô Phụng (137 Thoại Ngọc Hầu, TP)', status: 'completed', owner_name: 'Cô Phụng', address: '137 Thoại Ngọc Hầu, P Phú Thạnh' },
+  ];
+  const row = (date: string, project: string, supplier = 'SẮT THÉP AN PHÚ', note = ''): ExpenseHistoryRow => ({ date, project, supplier, note });
+  const history: ExpenseHistoryRow[] = [
+    row('2026-10-25', 'CT A Huynh (PTH, TP)'), row('2026-10-18', 'CT A Huynh (PTH, TP)'), row('2026-10-02', 'CT A Huynh (PTH, TP)'),
+    row('2026-09-19', 'CT A Nhựt (205 Thoại Ngọc Hầu, TP)'),
+    row('2026-11-05', 'SC A Phượng (Cải tạo sân, Đổ giả)', 'VLXD HOÀNG ANH'),
+  ];
+
+  it('viết tắt địa chỉ: Phú Thọ Hòa → pt hoa, pth', () => {
+    const f = addressForms('66 Phú Thọ Hòa, P Phú Thọ Hòa, TPHCM');
+    expect(f).toEqual(expect.arrayContaining(['phu tho hoa', 'pt hoa', 'pth', 'p tho hoa']));
+    expect(f).not.toContain('tp');
+  });
+  it('ca mẫu: THÉP AN PHÚ, khách "Chú Hữu PT Hòa" → CT A Huynh (địa chỉ khớp 2 CT, lịch sử NCC phân định)', () => {
+    expect(guessProjectFromHistory({ supplier: 'SẮT THÉP AN PHÚ', date: '2026-11-12', text: 'Chú Hữu PT Hòa' }, history, ps)).toBe('CT A Huynh (PTH, TP)');
+  });
+  it('chỉ địa chỉ, NCC mới chưa giao lần nào → 2 công trình ngang nhau → không đoán', () => {
+    expect(guessProjectFromHistory({ supplier: 'VLXD MỚI TINH', date: '2026-11-12', text: 'Chú Hữu PT Hòa' }, history, ps)).toBe('');
+  });
+  it('chỉ địa chỉ, khớp đúng 1 công trình → chọn', () => {
+    expect(guessProjectFromHistory({ supplier: '', date: '2026-11-12', text: 'giao 80 Phan Đình Phùng' }, history, ps)).toBe('SC A Phượng (Cải tạo sân, Đổ giả)');
+  });
+  it('không có tên khách: NCC giao hẳn cho 1 công trình → chọn; chia đều → không đoán', () => {
+    expect(guessProjectFromHistory({ supplier: 'SẮT THÉP AN PHÚ', date: '2026-11-12' }, history, ps)).toBe('CT A Huynh (PTH, TP)');
+    const even = [row('2026-11-01', 'CT A Huynh (PTH, TP)'), row('2026-11-02', 'CT A Nhựt (205 Thoại Ngọc Hầu, TP)')];
+    expect(guessProjectFromHistory({ supplier: 'SẮT THÉP AN PHÚ', date: '2026-11-12' }, even, ps)).toBe('');
+  });
+  it('hóa đơn cũ hơn 90 ngày không tính; công trình đã xong bị trừ điểm', () => {
+    const old = [row('2026-06-01', 'CT A Huynh (PTH, TP)'), row('2026-06-02', 'CT A Huynh (PTH, TP)')];
+    expect(guessProjectFromHistory({ supplier: 'SẮT THÉP AN PHÚ', date: '2026-11-12' }, old, ps)).toBe('');
+    const done = [row('2026-11-01', 'CT Cô Phụng (137 Thoại Ngọc Hầu, TP)'), row('2026-10-20', 'CT A Nhựt (205 Thoại Ngọc Hầu, TP)')];
+    expect(guessProjectFromHistory({ supplier: 'SẮT THÉP AN PHÚ', date: '2026-11-12', text: 'TNH' }, done, ps)).toBe('');
+  });
+  it('tên khách từng có trong nội dung hóa đơn cũ của công trình → cộng điểm', () => {
+    const h = [row('2026-10-01', 'SC A Phượng (Cải tạo sân, Đổ giả)', 'VLXD HOÀNG ANH', 'Cát đá — chú Bảy giao')];
+    expect(guessProjectFromHistory({ supplier: 'THÉP KHÁC', date: '2026-11-12', text: 'chú Bảy' }, h, ps)).toBe('SC A Phượng (Cải tạo sân, Đổ giả)');
+  });
+  it('NCC gần đây giao cho đâu (dòng gửi kèm cho AI)', () => {
+    expect(supplierRecentProjects(history)['SẮT THÉP AN PHÚ']).toBe(
+      'gần đây giao cho: CT A Huynh (PTH, TP) 3 lần, gần nhất 25/10; CT A Nhựt (205 Thoại Ngọc Hầu, TP) 1 lần, gần nhất 19/09');
+  });
+  it('thứ tự: ghi chú > lịch sử > AI; không theo ghi chú thì tô vàng', () => {
+    const c: ScanContext = { ...ctx, projects: ps.map((p) => p.name), project_meta: ps, recent_expenses: history, today: '2026-11-13' };
+    const scan = (project_match = '') => normalizeScan({ kind: 'invoice', invoice: {
+      supplier_name: 'THÉP AN PHÚ', customer_text: 'Chú Hữu PT Hòa', date: '12/11/2026', project_match, lines: [],
+    } }, c);
+    // AI chọn nhầm SC A Phượng → lịch sử sửa thành CT A Huynh, tô vàng
+    const a = applyProjectGuess(scan('SC A Phượng (Cải tạo sân, Đổ giả)'), '', c);
+    expect(a.kind === 'invoice' && a.invoice.customer_text).toBe('Chú Hữu PT Hòa');
+    expect(a.kind === 'invoice' && a.invoice.project_match).toBe('CT A Huynh (PTH, TP)');
+    expect(a.kind === 'invoice' && a.invoice.low_confidence).toContain('project_match');
+    // Ghi chú thắng, không tô vàng
+    const b = applyProjectGuess(scan(), 'A Nhựt', c);
+    expect(b.kind === 'invoice' && b.invoice.project_match).toBe('CT A Nhựt (205 Thoại Ngọc Hầu, TP)');
+    expect(b.kind === 'invoice' && b.invoice.low_confidence).not.toContain('project_match');
+    // Lịch sử không đủ → giữ AI chọn, tô vàng
+    const d = applyProjectGuess(scan('SC A Phượng (Cải tạo sân, Đổ giả)'), '', { ...c, recent_expenses: [] });
+    expect(d.kind === 'invoice' && d.invoice.project_match).toBe('SC A Phượng (Cải tạo sân, Đổ giả)');
+    expect(d.kind === 'invoice' && d.invoice.low_confidence).toContain('project_match');
   });
 });

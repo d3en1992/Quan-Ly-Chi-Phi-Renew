@@ -9,7 +9,7 @@
 // Gọi: supabase.functions.invoke('scan-document', { body: { image_base64, mime_type, note, kind, fixture? } })
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import {
-  buildPrompt, matchProjectByNote, normalizeScan, pickFixture, SCAN_FIXTURES,
+  applyProjectGuess, buildPrompt, normalizeScan, supplierRecentProjects, type ExpenseHistoryRow, pickFixture, SCAN_FIXTURES,
   type ScanContext, type ScanRequestKind, type ScanResponse,
 } from '../_shared/scan.ts';
 import fxInvoiceNew from './fixtures/hoa-don-ncc-moi.json' with { type: 'json' };
@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     // ---------- Giả lập ----------
     if (!freeKey && !paidKey) {
       const name = body.fixture && (SCAN_FIXTURES as readonly string[]).includes(body.fixture) ? body.fixture : pickFixture(kind, note);
-      const result = normalizeScan(FIXTURES[name], ctx, kind);
+      const result = applyProjectGuess(normalizeScan(FIXTURES[name], ctx, kind), note, ctx);
       const resp: ScanResponse = { ...result, mode: 'mock', warning: 'Chưa có key Gemini — đang dùng dữ liệu mẫu (giả lập).' };
       return checkKindAllowed(resp, canInvoice, canIdCard, canContract) ?? json(200, resp);
     }
@@ -141,15 +141,8 @@ Deno.serve(async (req) => {
         continue;
       }
       if (fails.length) console.log('Đổi model', fails.map((f) => `${f.model}:${f.status}`).join(' → '), '→', model);
-      const result = normalizeScan(raw, ctx, kind);
-      // Ghi chú nhắc đúng 1 công trình → dùng công trình đó (chắc hơn AI); không thì giữ AI chọn
-      const byNote = matchProjectByNote(note, ctx.project_meta ?? []);
-      if (byNote && result.kind === 'invoice') result.invoice.project_match = byNote;
-      // AI tự chọn công trình (không dựa vào ghi chú) → tô vàng để người dùng xem lại
-      if (!byNote && result.kind === 'invoice' && result.invoice.project_match && !result.invoice.low_confidence.includes('project_match')) {
-        result.invoice.low_confidence.push('project_match');
-      }
-      if (byNote && result.kind === 'contract') result.contract.project_match = byNote;
+      // Công trình: ghi chú > hóa đơn đã lưu gần đây (NCC hay giao cho đâu + địa chỉ trên phiếu) > AI tự đoán; không theo ghi chú → tô vàng
+      const result = applyProjectGuess(normalizeScan(raw, ctx, kind), note, ctx);
       const resp: ScanResponse = { ...result, mode: 'gemini', model, warning };
       return checkKindAllowed(resp, canInvoice, canIdCard, canContract) ?? json(200, resp);
     }
@@ -186,7 +179,9 @@ async function loadContext(sb: ReturnType<typeof createClient>): Promise<ScanCon
   };
   const names = async (table: string, col = 'name', filter?: (q: any) => any) =>
     (await rows(table, col, filter)).map((r) => String(r[col] ?? '')).filter(Boolean);
-  const [projectRows, expense_types, buyers, supplierRows, workers, customers, employees] = await Promise.all([
+  const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10); // giờ Việt Nam
+  const since = new Date(Date.parse(today) - 90 * 86_400_000).toISOString().slice(0, 10);
+  const [projectRows, expense_types, buyers, supplierRows, workers, customers, employees, expenseRows] = await Promise.all([
     rows('projects', 'name, status, owner_name, address, aliases, note'), // gửi cả CT đã đóng (dữ liệu trạng thái hay chưa cập nhật) — AI ưu tiên CT đang thi công
     names('catalog_items', 'name', (q) => q.eq('kind', 'expense_type').eq('archived', false)),
     names('catalog_items', 'name', (q) => q.eq('kind', 'person').eq('archived', false)),
@@ -194,7 +189,17 @@ async function loadContext(sb: ReturnType<typeof createClient>): Promise<ScanCon
     names('workers', 'name', (q) => q.eq('archived', false)),
     names('customers'),
     names('employees', 'full_name', (q) => q.eq('archived', false)),
+    // Hóa đơn chi phí 90 ngày gần nhất có NCC — đoán công trình theo "NCC này hay giao cho đâu" (RLS lọc theo phạm vi công trình)
+    rows('expenses', 'date, description, project:projects(name), supplier:suppliers(name)',
+      (q) => q.gte('date', since).not('supplier_id', 'is', null).order('date', { ascending: false })),
   ]);
+  const recent_expenses: ExpenseHistoryRow[] = expenseRows.map((r) => ({
+    date: String(r.date ?? ''),
+    project: String((r.project as { name?: string } | null)?.name ?? ''),
+    supplier: String((r.supplier as { name?: string } | null)?.name ?? ''),
+    note: String(r.description ?? '').slice(0, 120),
+  })).filter((r) => r.date && r.project && r.supplier);
+  const recentBySupplier = supplierRecentProjects(recent_expenses);
   const short = (v: unknown, n = 80) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
   const project_hints: Record<string, string> = {};
   const projects = projectRows.map((r) => {
@@ -212,14 +217,15 @@ async function loadContext(sb: ReturnType<typeof createClient>): Promise<ScanCon
   const supplier_hints: Record<string, string> = {};
   const suppliers = supplierRows.map((r) => {
     const name = String(r.name ?? '');
-    const bits = [short(r.phone, 30) && `SĐT ${short(r.phone, 30)}`, short(r.note, 60)].filter(Boolean);
+    const bits = [short(r.phone, 30) && `SĐT ${short(r.phone, 30)}`, short(r.note, 60), recentBySupplier[name] ?? ''].filter(Boolean);
     if (name && bits.length) supplier_hints[name] = bits.join('; ');
     return name;
   }).filter(Boolean);
-  const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10); // giờ Việt Nam
   const project_meta = projectRows.map((r) => ({
     name: String(r.name ?? ''), status: String(r.status ?? ''), owner_name: short(r.owner_name),
-    aliases: Array.isArray(r.aliases) ? r.aliases.map(String) : [],
+    aliases: Array.isArray(r.aliases) ? r.aliases.map(String) : [], address: short(r.address, 120),
   })).filter((p) => p.name);
-  return { projects, expense_types, suppliers, buyers, workers, customers, employees, project_hints, supplier_hints, project_meta, today };
+  return {
+    projects, expense_types, suppliers, buyers, workers, customers, employees, project_hints, supplier_hints, project_meta, recent_expenses, today,
+  };
 }
