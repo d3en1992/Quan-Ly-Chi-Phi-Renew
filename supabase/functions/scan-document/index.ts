@@ -39,6 +39,11 @@ const env = (...names: string[]) => {
 
 type Body = { image_base64?: string; mime_type?: string; note?: string; kind?: ScanRequestKind; fixture?: string };
 const KINDS: ScanRequestKind[] = ['auto', 'invoice', 'id_card', 'contract'];
+/** Thứ tự xoay tua mặc định — model đầu đọc tốt nhất; mỗi model gói miễn phí có lượt riêng (≈ 5 lần/phút, 20 lần/ngày) */
+// (thử 13/11/2026: 3.8-flash, 3.5-flash-lite, 3.1-flash-lite chạy; 3.7-flash hay quá tải; 3.5-flash hay treo; bản 2.5 đã ngừng cho key mới)
+const DEFAULT_MODELS = 'gemini-3.8-flash,gemini-3.7-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.5-flash';
+const PER_MODEL_TIMEOUT_MS = 40_000;
+const TOTAL_BUDGET_MS = 110_000;
 const MAX_BASE64 = 4_500_000; // ~3,3 MB ảnh — ảnh đã thu nhỏ 1600px chỉ khoảng 200–500 KB
 
 Deno.serve(async (req) => {
@@ -90,34 +95,53 @@ Deno.serve(async (req) => {
     const privacy = kind === 'id_card' || kind === 'auto';
     const key = privacy ? paidKey || freeKey : freeKey || paidKey;
     const warning = privacy && !paidKey ? 'Chưa có GEMINI_API_KEY_PAID — ảnh này được đọc bằng key miễn phí.' : undefined;
-    const model = env('GEMINI_MODEL') || 'gemini-3.8-flash'; // 2.5-flash đã ngừng cho key mới (11/2026); đổi model bằng secret GEMINI_MODEL
+    // Xoay tua model (giống bot n8n): model nào hết lượt (429) / quá tải (503) / không dùng được (404…) / treo → chuyển model sau.
+    // Đổi danh sách bằng secret GEMINI_MODELS="model-a,model-b,…" (không cần sửa code).
+    const models = (env('GEMINI_MODELS', 'GEMINI_MODEL') || DEFAULT_MODELS).split(',').map((m) => m.trim()).filter(Boolean);
 
     const payload = JSON.stringify({
       contents: [{ role: 'user', parts: [{ text: buildPrompt(kind, note, ctx) }, { inline_data: { mime_type: mime, data: image } }] }],
       generationConfig: { responseMimeType: 'application/json', responseSchema: GEMINI_RESPONSE_SCHEMA, temperature: 0 },
     });
-    // Gemini hay báo 503 (quá tải) / 500 lúc đông → tự thử lại tối đa 2 lần
-    let res: Response | null = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      if (attempt) await new Promise((r) => setTimeout(r, 1500 * attempt));
-      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: payload,
-      });
-      if (res.status !== 503 && res.status !== 500) break;
+    const started = Date.now();
+    const fails: { model: string; status: number }[] = [];
+    for (const model of models) {
+      if (Date.now() - started > TOTAL_BUDGET_MS) break; // hàm máy chủ bị cắt ở ~150 giây
+      let res: Response;
+      try {
+        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: payload,
+          signal: AbortSignal.timeout(PER_MODEL_TIMEOUT_MS),
+        });
+      } catch {
+        fails.push({ model, status: 504 }); // treo quá lâu / mất mạng
+        continue;
+      }
+      if (!res.ok) {
+        console.error('Gemini lỗi', model, res.status, (await res.text()).slice(0, 300));
+        fails.push({ model, status: res.status });
+        continue;
+      }
+      const out = await res.json();
+      const text: string = out?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? '';
+      let raw: unknown;
+      try { raw = JSON.parse(text); } catch {
+        fails.push({ model, status: 422 }); // trả về không phải JSON → thử model khác
+        continue;
+      }
+      if (fails.length) console.log('Đổi model', fails.map((f) => `${f.model}:${f.status}`).join(' → '), '→', model);
+      const resp: ScanResponse = { ...normalizeScan(raw, ctx, kind), mode: 'gemini', model, warning };
+      return checkKindAllowed(resp, canInvoice, canIdCard, canContract) ?? json(200, resp);
     }
-    if (!res) return json(502, { error: 'AI không phản hồi. Thử lại hoặc nhập tay.' });
-    if (res.status === 429) return json(429, { error: 'Hết lượt AI miễn phí hôm nay. Anh nhập tay giúp em nhé.' });
-    if (res.status === 503) return json(503, { error: 'AI của Google đang quá tải. Đợi một lát rồi bấm lại.' });
-    if (!res.ok) {
-      console.error('Gemini lỗi', res.status, (await res.text()).slice(0, 500));
-      return json(502, { error: `AI đọc ảnh lỗi (${res.status}). Thử lại hoặc nhập tay.` });
+    // Mọi model đều lỗi
+    const codes = fails.map((f) => f.status);
+    if (codes.length && codes.every((c) => c === 429 || c === 404 || c === 403)) {
+      return json(429, { error: 'Hết lượt AI miễn phí của tất cả mô hình. Đợi 1 phút (hoặc đến mai) rồi thử lại, hoặc nhập tay.' });
     }
-    const out = await res.json();
-    const text: string = out?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? '';
-    let raw: unknown = {};
-    try { raw = JSON.parse(text); } catch { return json(502, { error: 'AI trả kết quả không đọc được. Thử chụp lại rõ hơn.' }); }
-    const resp: ScanResponse = { ...normalizeScan(raw, ctx, kind), mode: 'gemini', model, warning };
-    return checkKindAllowed(resp, canInvoice, canIdCard, canContract) ?? json(200, resp);
+    if (codes.some((c) => c === 503 || c === 500 || c === 504)) {
+      return json(503, { error: 'AI của Google đang quá tải. Đợi một lát rồi bấm lại.' });
+    }
+    return json(502, { error: `AI đọc ảnh lỗi (${codes.join(', ') || 'không có mô hình'}). Thử lại hoặc nhập tay.` });
   } catch (e) {
     console.error(e);
     return json(500, { error: e instanceof Error ? e.message : String(e) });
