@@ -4,9 +4,10 @@ dist/
 .env.*
 !.env.example
 du-lieu/
-# Ảnh chụp: chỉ giữ ảnh nhỏ (png) trong anh-chup/, bỏ video / trace Playwright
-anh-chup/**/*.webm
-anh-chup/**/*.zip
+# Ảnh chụp Playwright (có dữ liệu thật) — chỉ để trên máy
+anh-chup/
+# Ngữ cảnh app cho AI / coder — chỉ để trên máy
+QLCP-RENEW-INFO.md
 test-results/
 playwright-report/
 supabase/.temp/

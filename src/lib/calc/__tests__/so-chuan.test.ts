@@ -1,6 +1,6 @@
 // SO SỐ VỚI APP CŨ — cổng bắt buộc của GĐ3: lệch 0 đồng.
 // - `du-lieu/snapshot.json` : bản sao lưu app cũ (đã chuyển sang kho mới bằng `npm run migrate:legacy`).
-// - `du-lieu/so-chuan.json` : số do CHÍNH code app cũ tính (`mega-prompt/xuat-so-chuan.js` dán vào Console,
+// - `du-lieu/so-chuan.json` : số do CHÍNH code app cũ tính (`scripts/legacy/xuat-so-chuan.js` dán vào Console,
 //   hoặc `npm run so-chuan` chạy code app cũ trong Node trên đúng snapshot đó).
 // Hai file không nằm trong git (dữ liệu thật). Thiếu file → bỏ qua, ghi "chờ so số".
 import { existsSync, readFileSync } from 'node:fs';

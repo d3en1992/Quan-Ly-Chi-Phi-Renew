@@ -198,7 +198,7 @@ if (existsSync(soChuanFile)) {
   for (const [k, v] of Object.entries((sc.soBanGhi ?? {}) as Record<string, number>)) out.push(`| \`${k}\` | ${v} | ${rawAlive(k)} | ${mark(rawAlive(k) === v)} | ${newAlive[k] ?? '—'} |`);
   out.push('', 'So từng đồng A / B / C / Đã thu / Lợi nhuận / Giá trị HĐ / Còn phải thu của từng công trình × từng năm: `npm test` (`src/lib/calc/__tests__/so-chuan.test.ts`).', '');
 } else {
-  out.push('Chưa có `du-lieu/so-chuan.json` (anh xuất bằng `mega-prompt/xuat-so-chuan.js`) → mới so với snapshot. Có file thì chạy lại `npm run compare:legacy`.', '');
+  out.push('Chưa có `du-lieu/so-chuan.json` (anh xuất bằng `scripts/legacy/xuat-so-chuan.js`) → mới so với snapshot. Có file thì chạy lại `npm run compare:legacy`.', '');
 }
 
 // ── 6. Bản ghi bị bỏ + lý do ───────────────────────────────────────

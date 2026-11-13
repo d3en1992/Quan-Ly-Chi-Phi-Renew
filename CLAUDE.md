@@ -3,11 +3,11 @@
 App quản lý chi phí công trình (bản làm lại). App đang dùng thật vẫn là `../ban-dang-dung` — **chỉ đọc, cấm sửa**.
 
 ## Đọc trước khi làm
-1. `mega-prompt/00-QUY-TAC-CHUNG.md` — quy tắc chung mọi giai đoạn (bắt buộc).
-2. `KE-HOACH-REFACTOR.md` — chỉ đọc mục 0 (nghiệp vụ), 2 (quy tắc vàng), mục 4 liên quan, và mục GĐ đang làm.
+1. `QLCP-RENEW-INFO.md` — ngữ cảnh app, trạng thái, việc còn dở (chỉ có trên máy, không lên git). Thay đổi lớn thì cập nhật mục 6–7 của file này.
+2. `KE-HOACH-REFACTOR.md` — chỉ đọc mục 0 (nghiệp vụ), 2 (quy tắc vàng), mục 4 liên quan.
 3. `TU-DIEN.md` — tên tiếng Việt ↔ tên trong code.
-4. `thiet-ke/giao-dien-mau.html` — bản vẽ chuẩn. Tra `mega-prompt/BAN-DO-GIAO-DIEN.md` để đọc đúng đoạn.
-5. `mega-prompt/TIEN-DO.md` — đang ở giai đoạn nào.
+4. `thiet-ke/giao-dien-mau.html` — bản vẽ chuẩn. Tra `tai-lieu/BAN-DO-GIAO-DIEN.md` để đọc đúng đoạn.
+5. App cũ: tra `tai-lieu/BAN-DO-APP-CU.md` (hàm → file:dòng) rồi chỉ đọc đúng hàm; dữ liệu cũ: `tai-lieu/DU-LIEU-CU.md`.
 
 ## Quy tắc vàng (KẾ HOẠCH mục 2)
 - Không đụng app cũ, không đụng Firebase. Không sửa `../../du-lieu-goc`.
@@ -36,7 +36,8 @@ supabase/functions/   Edge Function (admin-users), _shared/ dùng chung với ap
 scripts/            seed-users.mjs (tạo tài khoản tạm), local-supabase.mjs, migrate-legacy.ts + compare-counts.ts (chuyển dữ liệu app cũ),
                     legacy/transform.ts (quy tắc chuyển, hàm thuần có test), gen-types.mjs
 src/types/db.ts     kiểu TypeScript TỰ SINH từ schema (npm run gen:types) — không sửa tay
-e2e/                test Playwright
+e2e/                test Playwright (ảnh ra anh-chup/, không lên git)
+tai-lieu/           bản đồ app cũ, dữ liệu cũ, bản đồ giao diện mẫu, đặc tả Xuất Dữ Liệu
 ```
 
 ## Kiểu viết

@@ -2,7 +2,7 @@
 //
 // Cách làm: nạp nguyên các file .js của `../ban-dang-dung` (CHỈ ĐỌC) vào một "hộp cát" (node:vm) với
 // document / window / mạng đều là đồ giả, đổ `du-lieu/snapshot.json` vào bộ nhớ của app cũ (_mem),
-// gọi `_reloadGlobals()` rồi chạy đúng nội dung `mega-prompt/xuat-so-chuan.js`.
+// gọi `_reloadGlobals()` rồi chạy đúng nội dung `scripts/legacy/xuat-so-chuan.js`.
 // → `du-lieu/so-chuan.json` = số do hàm `lnTinhCongTrinh`, `calcTongDoanhThu`, `allocateCompanyCost`
 //   của app cũ tính ra trên đúng snapshot đã chuyển sang kho mới.
 //
@@ -85,7 +85,7 @@ vm.runInContext(`
 `, sandbox, { filename: 'nap-snapshot' });
 
 // ── Chạy đúng script xuất số chuẩn của anh ──
-const exporter = readFileSync(join(ROOT, 'mega-prompt', 'xuat-so-chuan.js'), 'utf8');
+const exporter = readFileSync(join(ROOT, 'scripts', 'legacy', 'xuat-so-chuan.js'), 'utf8');
 await vm.runInContext(exporter.replace(/\}\)\(\);\s*$/, '})()'), sandbox, { filename: 'xuat-so-chuan.js' });
 if (!captured) { console.error('Không xuất được số chuẩn. Lỗi nạp file:\n' + loadErrors.join('\n')); process.exit(1); }
 

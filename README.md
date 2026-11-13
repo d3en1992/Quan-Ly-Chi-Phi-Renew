@@ -1,7 +1,7 @@
 # ban-moi — App quản lý chi phí công trình (bản làm lại)
 
 Bản làm lại của `../ban-dang-dung` bằng TypeScript + React + Supabase. App đang dùng thật vẫn là `../ban-dang-dung`.
-Kế hoạch: [KE-HOACH-REFACTOR.md](KE-HOACH-REFACTOR.md) · Tiến độ: [mega-prompt/TIEN-DO.md](mega-prompt/TIEN-DO.md) · Quy tắc cho AI: [CLAUDE.md](CLAUDE.md) · Từ điển: [TU-DIEN.md](TU-DIEN.md)
+Kế hoạch: [KE-HOACH-REFACTOR.md](KE-HOACH-REFACTOR.md) · Ngữ cảnh + tiến độ: `QLCP-RENEW-INFO.md` (chỉ có trên máy) · Quy tắc cho AI: [CLAUDE.md](CLAUDE.md) · Từ điển: [TU-DIEN.md](TU-DIEN.md)
 
 ## Cách chạy trên máy
 
