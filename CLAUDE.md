@@ -21,10 +21,11 @@ Vite + React 18 + TypeScript strict · Tailwind v4 (token màu ở `src/index.cs
 
 ## Cấu trúc
 ```
-src/app/            khung: App (đường dẫn, chặn quyền), DesktopShell (≥640), PhoneShell (<640), nav.ts (menu), auth.tsx, year.tsx
+src/app/            khung: App (đường dẫn, chặn quyền), DesktopShell (≥640), PhoneShell (<640), nav.ts (menu 9 tab + tab con, MỘT chỗ),
+                    TabbedPage (dải tab con, chặn quyền theo tab con), auth.tsx, year.tsx
 src/components/ui/  nút, ô nhập, bảng trượt (Sheet), hộp xác nhận, dropdown, thẻ, pill, trạng thái tải/trống/lỗi, toast,
                     data.tsx = dải số tổng (KpiStrip), thanh lọc, HBarList, ProfitPill, Money, Pager, MobileCard, PhoneKpis (dùng lại, đừng viết mới)
-src/features/reports/  Lợi Nhuận, Dashboard, Thống Kê CP/HĐ (chỉ xem) + api.ts `useReportData()` đọc mọi bảng cho công thức
+src/features/reports/  Lợi nhuận, Dashboard, Tra cứu chi phí (chỉ xem) + api.ts `useReportData()` đọc mọi bảng cho công thức
 src/features/cost-allocation/  Tỉ Trọng & Định Mức (công thức ở lib/calc/cost-allocation.ts; jsonb giữ tên trường app cũ: nhomTay, theoHdtp, nhomLoai…)
 src/features/equipment/  Theo Dõi TB (thêm / chuyển / sửa qua hàm kho save_equipment, transfer_equipment, edit_equipment)
 src/features/schedule/ Tiến Độ (logic.ts = lịch làm việc, trễ / chậm, mẫu giai đoạn, Gantt, báo cáo Zalo — hàm thuần có test; kế hoạch ở schedule_plans)
@@ -48,7 +49,9 @@ tai-lieu/           bản đồ app cũ, dữ liệu cũ, bản đồ giao diệ
   Mức: `none` (Ẩn) < `view` (Xem) < `add` (Nhập: thêm + sửa dòng của mình) < `full` (Toàn quyền). Quyền đặc biệt: `has_special('see_contact_ids' | 'edit_others' | 'purge_trash')`.
 - Tiền trong kho là `bigint` (đồng). Script `.ts` chạy thẳng bằng `node` (Node ≥ 23), import phải ghi đuôi `.ts`, dùng `import type` cho kiểu.
 - Mỗi màn có trạng thái đang tải / trống / lỗi (`LoadingState`, `EmptyState`, `ErrorState`).
-- Thêm tab mới: thêm mục ở `src/app/nav.ts` (đã có đủ), thêm trang vào `PAGES` trong `src/app/App.tsx`.
+- Menu 9 tab (`tai-lieu/KE-HOACH-GOP-TAB.md`). Quyền gắn với **mục quyền**, mỗi tab con 1 mục. Thêm màn mới = thêm **tab con**
+  vào tab hợp lý ở `NAV_TABS` (`src/app/nav.ts`) + trang vào `SUB_PAGES` trong `src/app/App.tsx`; hạn chế thêm tab chính.
+  Ô số của mục khác nằm trong trang thì kiểm tra quyền mục đó (`hasLevel`).
 - 3 khổ: máy tính ≥1024 (menu chữ), máy tính bảng 640–1023 (menu biểu tượng, khối 1 cột), điện thoại <640 (thẻ, thanh dưới). Không kéo ngang cả trang; bảng rộng thì cuộn trong `.tbl`.
 - Dữ liệu đọc qua TanStack Query, kiểm tra bằng Zod trong `api.ts`.
 

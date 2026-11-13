@@ -7,7 +7,7 @@ const SHOTS = 'anh-chup/GD03';
 mkdirSync(SHOTS, { recursive: true });
 
 const PAGES = [
-  { key: 'loi-nhuan', path: '/loi-nhuan', ready: '[data-testid="profit-table"]', phoneText: 'Tổng đã thu' },
+  { key: 'loi-nhuan', path: '/loi-nhuan', ready: '[data-testid="profit-table"]', phoneText: 'Lợi nhuận' },
   { key: 'dashboard', path: '/dashboard', ready: 'svg[role="img"]', phoneText: 'Chi 6 tuần gần nhất' },
   { key: 'thong-ke', path: '/thong-ke-cp-hd', ready: '[data-testid="expense-table"]', phoneText: 'Tổng tiền' },
 ];
@@ -125,13 +125,13 @@ test.describe('Quyền', () => {
       await page.goto(path);
       await expect(page.getByText('Không có quyền xem mục này')).toBeVisible();
     }
-    await expect(page.locator('aside [data-nav="loinhuan"]')).toHaveCount(0);
+    await expect(page.locator('aside [data-nav="thulai"]')).toHaveCount(0);
     await page.goto('/thong-ke-cp-hd');
-    await expect(page.locator('main').getByRole('heading', { name: 'Thống Kê CP/HĐ' })).toBeVisible();
+    await expect(page.locator('main').getByRole('heading', { name: 'Tra Cứu Chi Phí' })).toBeVisible();
   });
 });
 
-test('Thống Kê CP/HĐ: bỏ dải số, Tổng tiền góc phải, Lọc nâng cao ẩn Tháng / Người mua / Thanh toán / Nguồn (13/11/2026)', async ({ page }) => {
+test('Thống Kê CP/HĐ: bỏ dải số, Tổng tiền góc phải, Lọc nâng cao ẩn Tháng / Người mua / Thanh toán (13/11/2026; bỏ lọc Nguồn khi gộp tab)', async ({ page }) => {
   const errors = watchConsole(page);
   for (const size of [{ w: 1440, h: 900 }, { w: 820, h: 1000 }, { w: 390, h: 844 }]) {
     await page.setViewportSize({ width: size.w, height: size.h });
@@ -144,7 +144,8 @@ test('Thống Kê CP/HĐ: bỏ dải số, Tổng tiền góc phải, Lọc nân
     await expect(page.getByLabel('NCC', { exact: true })).toBeVisible();
     await expect(page.getByLabel('Tháng', { exact: true })).toHaveCount(0);
     await page.getByTestId('stats-adv').click();
-    for (const l of ['Tháng', 'Người mua', 'Thanh toán', 'Nguồn']) await expect(page.getByLabel(l, { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Nguồn', { exact: true })).toHaveCount(0);
+    for (const l of ['Tháng', 'Người mua', 'Thanh toán']) await expect(page.getByLabel(l, { exact: true })).toBeVisible();
     await page.getByLabel('Thanh toán', { exact: true }).selectOption('credit');
     await expect(page.getByTestId('stats-adv')).toContainText('Lọc nâng cao (1)');
     await page.screenshot({ path: `${SHOTS}/thong-ke-loc-nang-cao-${size.w}.png` });

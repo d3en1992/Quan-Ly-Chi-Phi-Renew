@@ -5,14 +5,14 @@ import { Button, Icon } from '@/components/ui/button';
 import { hasLevel } from '@/lib/permissions';
 import { useAccess } from './auth';
 import { CommandPalette } from './CommandPalette';
-import { findItemByPath, PHONE_CAPTURE, PHONE_HOME, PHONE_MORE_PATH } from './nav';
+import { findByPath, pathOfSub, PHONE_CAPTURE, PHONE_HOME, PHONE_MORE_PATH } from './nav';
 import { ReadOnlyBanner } from './ReadOnlyBanner';
 import { YearPicker } from './TopBarParts';
 
 const BOTTOM = [
   { key: 'home', path: PHONE_HOME.path, icon: 'home', label: 'Tổng quan' },
   { key: 'ct', path: '/cong-trinh', icon: 'construction', label: 'Công trình' },
-  { key: 'nhap', path: '/nhap-chi-phi', icon: 'add_card', label: 'Nhập' },
+  { key: 'nhap', path: pathOfSub('nhap'), icon: 'add_card', label: 'Nhập' },
   { key: 'cc', path: '/cham-cong', icon: 'calendar_month', label: 'Chấm công' },
   { key: 'more', path: PHONE_MORE_PATH, icon: 'apps', label: 'Thêm' },
 ];
@@ -21,7 +21,7 @@ const MAIN_PATHS = BOTTOM.map((b) => b.path);
 function activeBottomKey(pathname: string): string {
   if (pathname === PHONE_HOME.path) return 'home';
   if (pathname.startsWith('/cong-trinh')) return 'ct';
-  if (pathname === '/nhap-chi-phi' || pathname === PHONE_CAPTURE.path) return 'nhap';
+  if (pathname === pathOfSub('nhap') || pathname === PHONE_CAPTURE.path) return 'nhap';
   if (pathname === '/cham-cong') return 'cc';
   return 'more';
 }
@@ -32,15 +32,17 @@ export function PhoneShell() {
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
 
-  const item = findItemByPath(pathname);
-  const title = pathname === PHONE_MORE_PATH ? 'Thêm' : pathname === '/doi-mat-khau' ? 'Đổi mật khẩu' : (item?.label ?? '');
+  const found = findByPath(pathname);
+  // Tab con "Nhập" ở thanh dưới: tiêu đề là "Nhập chi phí"; các tab con khác: tên tab (dải tab con nằm ngay dưới)
+  const title = pathname === PHONE_MORE_PATH ? 'Thêm' : pathname === '/doi-mat-khau' ? 'Đổi mật khẩu'
+    : found?.sub?.key === 'nhap' ? 'Nhập chi phí' : (found?.item.label ?? '');
   // Trang Thêm: tên + vai trò; trang khác: ô chọn năm ngay trên đầu (điện thoại trước đây không đổi được năm)
   const isMore = pathname === PHONE_MORE_PATH;
   const isMain = MAIN_PATHS.includes(pathname);
   const backTo = pathname.startsWith('/cong-trinh/') ? '/cong-trinh' : pathname === PHONE_CAPTURE.path ? PHONE_HOME.path : PHONE_MORE_PATH;
   const canCapture = hasLevel(access.permissions, 'expenses', 'add');
   // Nút Chụp chỉ hiện ở màn xem số (che ít nhất); màn nhập / chấm công / danh bạ có nút riêng
-  const showFab = canCapture && (pathname === PHONE_HOME.path || pathname === '/cong-trinh' || pathname === '/thong-ke-cp-hd');
+  const showFab = canCapture && (pathname === PHONE_HOME.path || pathname === '/cong-trinh' || pathname === pathOfSub('tracuu'));
   const current = activeBottomKey(pathname);
 
   return (

@@ -79,7 +79,8 @@ for (const size of [{ name: '1440', width: 1440, height: 900 }, { name: '800', w
     await page.setViewportSize({ width: size.width, height: size.height });
     await login(page, 'e2e.gd');
     const shot = async (name: string) => { expect(await noSideScroll(page)).toBe(true); await page.screenshot({ path: `${SHOTS}/${name}-${size.name}.png`, fullPage: true }); };
-    const sub = (desktop: string, mobile: string) => (phone ? page.getByRole('button', { name: mobile, exact: true }) : page.getByRole('tab', { name: desktop }));
+    // Tab con của Thầu Phụ & NCC: cùng dải tab con ở mọi khổ (điện thoại hiện nhãn ngắn, tên đủ ở aria-label)
+    const sub = (name: string) => page.getByRole('tab', { name, exact: true });
 
     await page.goto('/chi-tra');
     await expect(page.getByTestId('pay-summary')).toBeVisible();
@@ -88,10 +89,10 @@ for (const size of [{ name: '1440', width: 1440, height: 900 }, { name: '800', w
     await page.goto('/cong-no');
     await expect(page.getByText('Tổng giá trị HĐ')).toBeVisible();
     await shot('cong-no-thau-phu');
-    await sub('NHÀ CUNG CẤP', 'Nhà cung cấp').click();
+    await sub('NHÀ CUNG CẤP').click();
     await expect(page.getByText('Còn nợ NCC')).toBeVisible();
     await shot('cong-no-ncc');
-    await sub('TẤT TOÁN', 'Tất toán').click();
+    await sub('TẤT TOÁN').click();
     await expect(page.getByText('Chờ tất toán')).toBeVisible();
     await shot('cong-no-tat-toan');
 

@@ -9,7 +9,7 @@ import { Button, Icon } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm';
 import { FilterBar, FilterSelect, HBarList, KpiStrip, PhoneKpis } from '@/components/ui/data';
 import { Checkbox, Field, Input, MoneyInput, Select } from '@/components/ui/input';
-import { Card, CardHeader, EmptyState, ErrorState, LoadingState, Note, PageHeader, Pill, SubTabs } from '@/components/ui/misc';
+import { Card, CardHeader, EmptyState, ErrorState, LoadingState, Note, PageHeader, Pill } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -26,8 +26,7 @@ import {
   type AllocRecord,
 } from './api';
 
-type Tab = 'alloc' | 'benchmark' | 'config';
-const TABS: { key: Tab; label: string }[] = [{ key: 'alloc', label: 'PHÂN BỔ CÔNG TRÌNH' }, { key: 'benchmark', label: 'ĐỊNH MỨC' }, { key: 'config', label: 'CẤU HÌNH RỔ' }];
+export type AllocTab = 'alloc' | 'benchmark' | 'config';
 const m2 = (n: number) => (Math.round((n || 0) * 100) / 100).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
 const perM2 = (money: number, area: number) => (area > 0 ? formatMoney(Math.round(money / area)) : '—');
 const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
@@ -119,7 +118,8 @@ function FloorSheet({ project, onClose }: { project: ProjectFull; onClose: () =>
   );
 }
 
-export function CostAllocationPage() {
+/** Tab con do khung Kế Hoạch chọn (Tỉ trọng / Định mức / Cấu hình rổ); onTabChange = chuyển sang tab con khác */
+export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab; onTabChange: (t: AllocTab) => void }) {
   const phone = useLayoutMode() === 'phone';
   const access = useAccess();
   const toast = useToast();
@@ -129,7 +129,6 @@ export function CostAllocationPage() {
   const saveAlloc = useSaveProjectAlloc(), saveCfg = useSaveConfig();
   const createDm = useCreateBenchmark(), updateDm = useUpdateBenchmark(), deleteDm = useDeleteBenchmark();
 
-  const [tab, setTab] = useState<Tab>('alloc');
   const [pid, setPid] = useState('');
   const [period, setPeriod] = useState<'life' | 'year'>('life');
   const [dmId, setDmId] = useState('');
@@ -452,7 +451,6 @@ export function CostAllocationPage() {
   return (
     <>
       <PageHeader title="Tỉ Trọng & Định Mức" sub="Chi phí mỗi công trình chia theo nhóm, loại, rổ; lưu thành định mức để báo giá" />
-      <SubTabs tabs={TABS} value={tab} onChange={setTab} />
       {tab === 'alloc' ? allocTab : tab === 'benchmark' ? benchmarkTab : configTab}
 
       {cell ? <LinesSheet key={`${cell.loai}|${cell.nhom}`} canEdit={canEdit} busy={saveAlloc.isPending} items={picked} onAssign={assign} onClose={() => setCell(null)}

@@ -13,12 +13,15 @@ const SIZES = [
   { name: '1536', width: 1536, height: 860 }, { name: '1440', width: 1440, height: 900 },
   { name: '820', width: 820, height: 1180 }, { name: '390', width: 390, height: 844 },
 ];
+// Menu 9 tab + tab con (gộp 13/11/2026)
 const ROUTES: [string, string][] = [
-  ['cong-trinh', '/cong-trinh'], ['nhap-chi-phi', '/nhap-chi-phi'], ['thong-ke', '/thong-ke-cp-hd'],
-  ['cham-cong', '/cham-cong'], ['chi-tra', '/chi-tra'], ['cong-no', '/cong-no'], ['ti-trong', '/ti-trong'],
-  ['thiet-bi', '/thiet-bi'], ['tien-do', '/tien-do'], ['danh-ba', '/danh-ba'], ['doanh-thu', '/doanh-thu'],
-  ['loi-nhuan', '/loi-nhuan'], ['quyet-toan', '/quyet-toan'], ['dashboard', '/dashboard'], ['xuat-du-lieu', '/xuat-du-lieu'],
-  ['danh-muc', '/danh-muc'], ['tai-khoan', '/tai-khoan'], ['thung-rac', '/thung-rac'],
+  ['cong-trinh', '/cong-trinh'], ['nhap-chi-phi', '/chi-phi/nhap'], ['tra-cuu', '/chi-phi/tra-cuu'],
+  ['cham-cong', '/cham-cong'], ['hd-thau-phu', '/thau-phu/hop-dong'], ['ncc', '/thau-phu/ncc'], ['tat-toan', '/thau-phu/tat-toan'],
+  ['phieu-chi', '/thau-phu/phieu-chi'], ['hd-chinh', '/thu-lai/hop-dong'], ['thu-tien', '/thu-lai/thu-tien'],
+  ['quyet-toan', '/thu-lai/quyet-toan'], ['loi-nhuan', '/thu-lai/loi-nhuan'], ['tien-do', '/ke-hoach/tien-do'],
+  ['ti-trong', '/ke-hoach/ti-trong'], ['dinh-muc', '/ke-hoach/dinh-muc'], ['cau-hinh', '/ke-hoach/cau-hinh'],
+  ['thiet-bi', '/thiet-bi'], ['dashboard', '/dashboard'], ['danh-ba', '/cai-dat/danh-ba'], ['danh-muc', '/cai-dat/danh-muc'],
+  ['tai-khoan', '/cai-dat/tai-khoan'], ['phan-quyen', '/cai-dat/phan-quyen'], ['xuat-du-lieu', '/cai-dat/xuat'], ['thung-rac', '/cai-dat/thung-rac'],
 ];
 const PHONE_ONLY: [string, string][] = [['tong-quan', '/tong-quan'], ['them', '/them'], ['chup', '/chup']];
 

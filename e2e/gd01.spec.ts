@@ -50,8 +50,8 @@ test.describe('Đăng nhập + menu theo vai trò', () => {
         await expect(page.locator('main')).not.toContainText('Không tìm thấy trang');
       }
       // Gõ thẳng đường dẫn bị ẩn → báo không có quyền
-      if (MOCK_HIDE[acc.mockRole]!.includes('taikhoan')) {
-        await page.goto('/tai-khoan');
+      if (acc.mockRole !== 'admin') {
+        await page.goto('/cai-dat/tai-khoan');
         await expect(page.getByText('Không có quyền xem mục này')).toBeVisible();
       }
       expect(errors).toEqual([]);
@@ -104,10 +104,10 @@ test('Admin đổi ô quyền → menu vai trò đó đổi theo', async ({ page
 
   // Admin bấm ô "Theo dõi thiết bị × Quản lý": Toàn quyền → Ẩn
   await login(page, 'e2e.admin');
-  await page.locator('aside [data-nav="taikhoan"]').click();
+  await page.goto('/cai-dat/tai-khoan');
   await expect(page.locator('[data-account="tinh"]')).toBeVisible();
   await page.screenshot({ path: `${SHOTS}/tai-khoan-1440.png` });
-  await page.getByRole('tab', { name: 'VAI TRÒ & QUYỀN' }).click();
+  await page.getByRole('tab', { name: 'PHÂN QUYỀN' }).click();
   const cell = page.locator('[data-cell="Quản lý|equipment"]');
   await expect(cell).toContainText('Toàn quyền');
   await cell.click();
@@ -129,7 +129,7 @@ test('Admin đổi ô quyền → menu vai trò đó đổi theo', async ({ page
   // Trả lại như cũ: Ẩn → Xem → Nhập → Toàn quyền
   await login(page, 'e2e.admin');
   await page.goto('/tai-khoan');
-  await page.getByRole('tab', { name: 'VAI TRÒ & QUYỀN' }).click();
+  await page.getByRole('tab', { name: 'PHÂN QUYỀN' }).click();
   for (const label of ['Xem', 'Nhập', 'Toàn quyền']) {
     await cell.click();
     await expect(cell).toContainText(label);
@@ -189,7 +189,7 @@ test.describe('3 khổ màn hình', () => {
         await page.locator('[data-bottom="more"]').click();
         await expect(page.getByTestId('phone-more')).toBeVisible();
         await page.screenshot({ path: `${SHOTS}/them-${s.name}.png` });
-        await page.locator('[data-more="taikhoan"]').click();
+        await page.locator('[data-more="caidat"]').click();
         await expect(page.locator('main')).toContainText('TÀI KHOẢN');
       } else {
         await page.goto('/tien-do'); // GĐ12 đã làm xong mọi tab — mở tab cuối cùng được làm (Tiến Độ)

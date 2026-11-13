@@ -5,7 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
 import { Button, Icon } from '@/components/ui/button';
-import { FilterBar, FilterSelect, HBar, KpiStrip, PhoneKpis, SearchBox, Segmented } from '@/components/ui/data';
+import { FilterBar, FilterSelect, HBar, SearchBox, Segmented } from '@/components/ui/data';
 import { Card, EmptyState, ErrorState, LoadingState, PageHeader, Pill } from '@/components/ui/misc';
 import { projectIdsInYear, percentOf } from '@/lib/calc';
 import { formatDate, formatShortMoney } from '@/lib/format';
@@ -150,12 +150,7 @@ function ProjectsPage() {
   if (!ready || !view) return <Card><LoadingState label="Đang tải công trình…" /></Card>;
 
   const { rows, nums } = view;
-  const sum = (f: (r: (typeof rows)[number]) => number) => rows.reduce((s, r) => s + f(r), 0);
   const active = rows.filter((r) => r.p.status === 'active').length;
-  const totalSpent = sum((r) => r.n.spent);
-  const totalReceived = sum((r) => r.n.received);
-  const totalReceivable = sum((r) => r.n.revenue.receivable);
-  const totalProfit = sum((r) => r.n.profit);
 
   const groups: [string, typeof rows][] = group === 'kind'
     ? KIND_GROUPS.map((g) => [g.label, rows.filter((r) => (r.p.kind ?? 'small_repair') === g.key)] as [string, typeof rows])
@@ -223,32 +218,18 @@ function ProjectsPage() {
 
   return (
     <>
-      {mode === 'phone' ? (
+      {/* Số tổng (đã chi, đã thu, phải thu, lãi) xem ở Dashboard — ở đây chỉ đếm công trình */}
+      {mode === 'phone' ? null : (
         <>
-          <PhoneKpis items={[
-            { label: 'Đang thi công', value: String(active) },
-            { label: 'Tổng đã chi', value: formatShortMoney(totalSpent) },
-            ...(money ? [{ label: 'Còn phải thu', value: formatShortMoney(totalReceivable), tone: 'neg' as const }, { label: 'Lãi tạm tính', value: formatShortMoney(totalProfit), tone: (totalProfit >= 0 ? 'pos' : 'neg') as 'pos' | 'neg' }] : []),
-          ]} />
-        </>
-      ) : (
-        <>
-          <PageHeader title="Công Trình" sub={`${yearLabel} · ${rows.length} công trình · ${view.customerCount} khách hàng`} actions={addButton} />
+          <PageHeader title="Công Trình" sub={<span data-testid="ct-summary">{yearLabel} · {rows.length} công trình · {active} đang thi công · {view.customerCount} khách hàng</span>} actions={addButton} />
           {filters}
-          <KpiStrip items={[
-            { label: 'Đang thi công', value: String(active), sub: 'công trình' },
-            { label: 'Tổng đã chi', value: formatShortMoney(totalSpent), sub: 'gồm phân bổ chi phí chung' },
-            money && { label: 'Tổng đã thu', value: formatShortMoney(totalReceived) },
-            money && { label: 'Còn phải thu', value: formatShortMoney(totalReceivable), tone: 'neg' },
-            money && { label: 'Lãi tạm tính', value: formatShortMoney(totalProfit), tone: totalProfit >= 0 ? 'pos' : 'neg' },
-          ]} />
         </>
       )}
       {mode === 'phone' ? (
         <>
           {phoneFilters}
           <div className="flex items-center gap-2">
-            <span className="flex-1 text-[12px] whitespace-nowrap text-muted">{rows.length} CT</span>
+            <span className="flex-1 text-[12px] whitespace-nowrap text-muted" data-testid="ct-summary">{rows.length} CT · {active} đang thi công</span>
             <Segmented<Group> value={group} onChange={setGroup} options={[{ value: 'kind', label: 'Theo loại' }, { value: 'customer', label: 'Theo khách' }]} />
             {canAdd ? <Button size="sm" variant="primary" aria-label="Thêm công trình" onClick={() => setAdding(true)}><Icon name="add" />Thêm</Button> : null}
           </div>

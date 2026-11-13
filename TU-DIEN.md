@@ -5,25 +5,29 @@ Giao diện luôn tiếng Việt. Bảng này mở rộng dần ở các giai đ
 
 ## Tab, đường dẫn, mục quyền
 
-| Tab (giao diện) | Đường dẫn | Mục quyền (`module`) | Thư mục `src/features/` |
+Menu 9 tab (gộp 13/11/2026, `tai-lieu/KE-HOACH-GOP-TAB.md`). Quyền gắn với **mục quyền**, mỗi tab con 1 mục; cấu hình ở `src/app/nav.ts`.
+Đường dẫn cũ (`/cong-no`, `/doanh-thu`, `/tien-do`…) tự chuyển sang đường dẫn mới (`LEGACY_REDIRECTS`).
+
+| Tab › tab con (giao diện) | Đường dẫn | Mục quyền (`module`) | Thư mục `src/features/` |
 |---|---|---|---|
 | Công Trình (+ Chi tiết CT) | `/cong-trinh`, `/cong-trinh/:projectId` | `projects` | `projects` |
-| Nhập Chi Phí | `/nhap-chi-phi` | `expenses` | `expenses` |
-| Thống Kê CP/HĐ | `/thong-ke-cp-hd` | `expense_stats` | `expense-stats` |
+| Chi Phí › Nhập | `/chi-phi/nhap` | `expenses` | `expenses` |
+| Chi Phí › Tra cứu (trước: Thống Kê CP/HĐ) | `/chi-phi/tra-cuu` | `expense_stats` | `reports` |
 | Chấm Công (+ Tạm ứng lương) | `/cham-cong` | `timesheets` | `timesheets` |
-| Chi Trả TP/NCC (app cũ: Ứng TP/NCC) | `/chi-tra` | `payments` | `payments` |
-| Công Nợ Phải Trả (app cũ: Công Nợ TP/NCC) | `/cong-no` | `payables` | `payables` |
-| Tỉ Trọng & Định Mức | `/ti-trong` | `cost_allocation` | `cost-allocation` |
-| Theo Dõi TB | `/thiet-bi` | `equipment` | `equipment` |
-| Tiến Độ | `/tien-do` | `schedule` | `schedule` |
-| Danh Bạ | `/danh-ba` | `contacts` | `contacts` |
-| Doanh Thu | `/doanh-thu` | `revenue` | `revenue` |
-| Lợi Nhuận | `/loi-nhuan` | `profit` | `profit` |
-| Quyết Toán | `/quyet-toan` | `settlements` | `settlements` |
-| Dashboard | `/dashboard` | `dashboard` | `dashboard` |
-| Danh Mục & Sao Lưu | `/danh-muc` | `catalog` | `catalog` |
-| Tài Khoản & Quyền | `/tai-khoan` | `accounts` | `accounts` |
-| Thùng Rác | `/thung-rac` | (thấy khi có quyền Nhập ở 1 mục) | `trash` |
+| Thầu Phụ & NCC › Hợp đồng thầu phụ / Nhà cung cấp / Tất toán (trước: Công Nợ Phải Trả) | `/thau-phu/hop-dong`, `/thau-phu/ncc`, `/thau-phu/tat-toan` | `payables` | `payments` |
+| Thầu Phụ & NCC › Phiếu chi (trước: Chi Trả TP/NCC) | `/thau-phu/phieu-chi` | `payments` | `payments` |
+| Thu & Lãi › Hợp đồng chính / Thu tiền (trước: Doanh Thu) | `/thu-lai/hop-dong`, `/thu-lai/thu-tien` | `revenue` | `revenue` |
+| Thu & Lãi › Quyết toán | `/thu-lai/quyet-toan` | `settlements` | `revenue` |
+| Thu & Lãi › Lợi nhuận | `/thu-lai/loi-nhuan` | `profit` | `reports` |
+| Kế Hoạch › Tiến độ | `/ke-hoach/tien-do` | `schedule` | `schedule` |
+| Kế Hoạch › Tỉ trọng / Định mức / Cấu hình rổ | `/ke-hoach/ti-trong`, `/ke-hoach/dinh-muc`, `/ke-hoach/cau-hinh` | `cost_allocation` | `cost-allocation` |
+| Thiết Bị (trước: Theo Dõi TB) | `/thiet-bi` | `equipment` | `equipment` |
+| Dashboard | `/dashboard` | `dashboard` | `reports` |
+| Cài Đặt › Danh bạ | `/cai-dat/danh-ba` | `contacts` | `contacts` |
+| Cài Đặt › Danh mục | `/cai-dat/danh-muc` | `catalog` | `catalog` |
+| Cài Đặt › Tài khoản / Phân quyền | `/cai-dat/tai-khoan`, `/cai-dat/phan-quyen` | `accounts` | `accounts` |
+| Cài Đặt › Xuất dữ liệu | `/cai-dat/xuat` | (thấy khi Xem được 1 mục) | `export` |
+| Cài Đặt › Thùng rác | `/cai-dat/thung-rac` | (thấy khi có quyền Nhập ở 1 mục) | `trash` |
 | Tổng quan (điện thoại) | `/tong-quan` | `projects` | — |
 | Chụp đa năng (điện thoại) | `/chup` | `expenses` | `capture` |
 | Thêm (điện thoại) | `/them` | — | — |

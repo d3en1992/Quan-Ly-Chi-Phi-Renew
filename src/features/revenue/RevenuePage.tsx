@@ -8,7 +8,7 @@ import { Button, Icon } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm';
 import { FilterSelect, HBar, MobileCard, MobileRow, Pager, SearchBox, Segmented, usePaged } from '@/components/ui/data';
 import { Field, Input, MoneyInput, Select } from '@/components/ui/input';
-import { Card, CardHeader, EmptyState, ErrorState, LoadingState, PageHeader, Pill, SubTabs } from '@/components/ui/misc';
+import { Card, CardHeader, EmptyState, ErrorState, LoadingState, PageHeader, Pill } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
 import { contractItemsTotal, inYearLoose, mainContractTotal, percentOf, projectRevenue, sumOf, toYearFilter, type ContractItem, type YearFilter } from '@/lib/calc';
@@ -21,8 +21,7 @@ import {
   type MainContract, type Receipt, type ReceiptKind, type RevData,
 } from './api';
 
-type Tab = 'contracts' | 'receipts';
-const TABS: { key: Tab; label: string }[] = [{ key: 'contracts', label: 'HỢP ĐỒNG CHÍNH' }, { key: 'receipts', label: 'THU TIỀN' }];
+export type RevenueTab = 'contracts' | 'receipts';
 type Ctx = { data: RevData; years: YearFilter; phone: boolean; canAdd: boolean; company: string };
 const Dash = () => <span className="text-faint">—</span>;
 const pct = (a: number, b: number) => percentOf(a, b) ?? 0;
@@ -317,13 +316,13 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
   );
 }
 
-export function RevenuePage() {
+/** Tab con do khung Thu & Lãi chọn (HĐ chính / Thu tiền) */
+export function RevenuePage({ tab }: { tab: RevenueTab }) {
   const phone = useLayoutMode() === 'phone';
   const access = useAccess();
   const { years: yearSel } = useYears();
   const years = useMemo(() => toYearFilter(yearSel), [yearSel]);
   const query = useRevData();
-  const [tab, setTab] = useState<Tab>(phone ? 'receipts' : 'contracts');
   const header = <PageHeader title={phone ? 'Doanh thu' : 'Doanh Thu'} sub="Hợp đồng chính và thu tiền" />;
   if (query.isPending) return <>{header}<Card><LoadingState label="Đang tải doanh thu…" /></Card></>;
   if (query.isError) return <>{header}<Card><ErrorState error={query.error} onRetry={() => void query.refetch()} /></Card></>;
@@ -334,7 +333,6 @@ export function RevenuePage() {
   return (
     <>
       {header}
-      <SubTabs tabs={TABS} value={tab} onChange={setTab} />
       {tab === 'contracts' ? <ContractsTab ctx={ctx} /> : <ReceiptsTab ctx={ctx} />}
     </>
   );

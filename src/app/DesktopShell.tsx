@@ -5,13 +5,13 @@ import { Icon } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAccess } from './auth';
 import { CommandPalette, useCommandPaletteHotkey } from './CommandPalette';
-import { canSeeItem, TRASH_ITEM, visibleGroups, type NavItem } from './nav';
+import { visibleTabs, type NavItem } from './nav';
 import { AccountMenu, YearPicker } from './TopBarParts';
 import { ReadOnlyBanner } from './ReadOnlyBanner';
 
 function SideLink({ item, compact }: { item: NavItem; compact: boolean }) {
   const { pathname } = useLocation();
-  const active = pathname === item.path || (item.key === 'congtrinh' && pathname.startsWith('/cong-trinh/'));
+  const active = pathname === item.path || pathname.startsWith(item.path + '/');
   return (
     <NavLink
       to={item.path}
@@ -26,21 +26,17 @@ function SideLink({ item, compact }: { item: NavItem; compact: boolean }) {
       )}
     >
       <Icon name={item.icon} className={cn('shrink-0', compact ? 'text-[21px]' : 'text-[19px]')} />
-      {compact ? null : (
-        <>
-          <span className="truncate">{item.label}</span>
-          {item.isNew ? (
-            <span className="ml-auto shrink-0 rounded-full bg-good-soft px-1.5 py-px text-[10px] font-bold text-good">MỚI</span>
-          ) : null}
-        </>
-      )}
+      {compact ? null : <span className="truncate">{item.label}</span>}
     </NavLink>
   );
 }
 
 export function DesktopShell({ compact }: { compact: boolean }) {
   const access = useAccess();
-  const groups = visibleGroups(access.permissions);
+  const tabs = visibleTabs(access.permissions);
+  // Cài Đặt nằm riêng ở cuối menu
+  const main = tabs.filter((t) => t.key !== 'caidat');
+  const settings = tabs.find((t) => t.key === 'caidat');
   const [searchOpen, setSearchOpen] = useState(false);
   useCommandPaletteHotkey(setSearchOpen);
   const companyShort = access.company.short_name ?? access.company.name;
@@ -68,23 +64,12 @@ export function DesktopShell({ compact }: { compact: boolean }) {
           )}
         </div>
         <nav className={cn('flex flex-col gap-0.5', compact && 'items-center')}>
-          {groups.map((g) => (
-            <div key={g.title} className={cn('flex flex-col gap-0.5', compact && 'items-center')}>
-              {compact ? (
-                <div className="mx-auto my-1.5 h-px w-8 bg-line-soft" aria-hidden="true" />
-              ) : (
-                <div className="px-2.5 pt-3 pb-1 text-[10.5px] font-semibold tracking-[.08em] text-faint uppercase">
-                  {g.title}
-                </div>
-              )}
-              {g.items.map((i) => (
-                <SideLink key={i.key} item={i} compact={compact} />
-              ))}
-            </div>
+          {main.map((i) => (
+            <SideLink key={i.key} item={i} compact={compact} />
           ))}
         </nav>
         <div className="flex-1" />
-        {canSeeItem(access.permissions, TRASH_ITEM) ? <SideLink item={TRASH_ITEM} compact={compact} /> : null}
+        {settings ? <SideLink item={settings} compact={compact} /> : null}
       </aside>
 
       <div className="flex min-w-0 flex-col overflow-hidden">

@@ -7,9 +7,9 @@ import { useYears } from '@/app/year';
 import { Button, Icon } from '@/components/ui/button';
 import { Combo } from '@/components/ui/combo';
 import { ConfirmDialog } from '@/components/ui/confirm';
-import { FilterBar, FilterSelect, HBar, KpiStrip, MiniList, MobileCard, MobileRow, SearchBox, Segmented } from '@/components/ui/data';
+import { FilterBar, FilterSelect, HBar, KpiStrip, MiniList, MobileCard, MobileRow, SearchBox } from '@/components/ui/data';
 import { Checkbox, Field, Input, MoneyInput, Select } from '@/components/ui/input';
-import { Card, CardHeader, EmptyState, ErrorState, LoadingState, Note, PageHeader, Pill, SubTabs } from '@/components/ui/misc';
+import { Card, CardHeader, EmptyState, ErrorState, LoadingState, Note, PageHeader, Pill } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -28,8 +28,7 @@ import {
 } from './api';
 import { blankPayDraft, canEditRow, ItemsEditor, PaymentSheet, usePayCalc, type PayCalc, type PayDraft } from './shared';
 
-type Tab = 'contracts' | 'suppliers' | 'closures';
-const TABS: { key: Tab; label: string }[] = [{ key: 'contracts', label: 'HỢP ĐỒNG THẦU PHỤ' }, { key: 'suppliers', label: 'NHÀ CUNG CẤP' }, { key: 'closures', label: 'TẤT TOÁN' }];
+export type PayablesTab = 'contracts' | 'suppliers' | 'closures';
 type Ctx = { data: PayData; calc: PayCalc; years: YearFilter; phone: boolean; canAdd: boolean; canPay: boolean; company: string };
 
 const pct = (a: number, b: number) => percentOf(a, b) ?? 0;
@@ -524,7 +523,8 @@ function ClosuresTab({ ctx }: { ctx: Ctx }) {
   );
 }
 
-export function PayablesPage() {
+/** Tab con do khung Thầu Phụ & NCC chọn (HĐ thầu phụ / Nhà cung cấp / Tất toán) */
+export function PayablesPage({ tab }: { tab: PayablesTab }) {
   const phone = useLayoutMode() === 'phone';
   const access = useAccess();
   const { years: yearSel } = useYears();
@@ -532,7 +532,6 @@ export function PayablesPage() {
   const query = usePayData();
   const data = query.data;
   const calc = usePayCalc(data);
-  const [tab, setTab] = useState<Tab>('contracts');
   const [pay, setPay] = useState<PayDraft | null>(null);
   const header = <PageHeader title={phone ? 'Công nợ phải trả' : 'Công Nợ Phải Trả'} sub="Công ty còn nợ thầu phụ, nhà cung cấp bao nhiêu" />;
   if (query.isPending) return <>{header}<Card><LoadingState label="Đang tải công nợ…" /></Card></>;
@@ -544,9 +543,6 @@ export function PayablesPage() {
   return (
     <>
       {header}
-      {phone
-        ? <Segmented value={tab} onChange={setTab} options={[{ value: 'contracts', label: 'Thầu phụ' }, { value: 'suppliers', label: 'Nhà cung cấp' }, { value: 'closures', label: 'Tất toán' }]} />
-        : <SubTabs tabs={TABS} value={tab} onChange={setTab} />}
       {tab === 'contracts' ? <ContractsTab ctx={ctx} /> : tab === 'suppliers'
         ? <SuppliersTab ctx={ctx} onPay={(name) => setPay(blankPayDraft({ kind: 'supplier_payment', party: name }))} />
         : <ClosuresTab ctx={ctx} />}

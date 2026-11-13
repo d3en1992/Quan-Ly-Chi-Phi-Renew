@@ -6,7 +6,7 @@ import { planView, summaryLine } from './logic';
 
 export function ScheduleLine({ projectId }: { projectId: string }) {
   const q = useSchedData();
-  const link = `/tien-do?project=${encodeURIComponent(projectId)}`;
+  const link = `/ke-hoach/tien-do?project=${encodeURIComponent(projectId)}`;
   if (q.isLoading) return <span className="text-faint">Tiến độ: đang tải…</span>;
   if (!q.data) return <Link to={link} className="font-semibold text-accent">Xem tiến độ</Link>;
   const { plan, phases, tasks } = projectSchedule(q.data, projectId);

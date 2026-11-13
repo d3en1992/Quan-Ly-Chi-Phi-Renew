@@ -144,8 +144,8 @@ export function PaymentsPage() {
   const paged = usePaged(rows, 50, `${kind}|${project}|${q}|${yearSel}`);
   const total = sumOf(rows, (r) => r.amount);
 
-  if (query.isPending) return <><PageHeader title="Chi Trả TP/NCC" /><Card><LoadingState label="Đang tải phiếu chi…" /></Card></>;
-  if (query.isError || !data || !calc) return <><PageHeader title="Chi Trả TP/NCC" /><Card><ErrorState error={query.error} onRetry={() => void query.refetch()} /></Card></>;
+  if (query.isPending) return <><PageHeader title="Phiếu Chi" /><Card><LoadingState label="Đang tải phiếu chi…" /></Card></>;
+  if (query.isError || !data || !calc) return <><PageHeader title="Phiếu Chi" /><Card><ErrorState error={query.error} onRetry={() => void query.refetch()} /></Card></>;
 
   const projOpts = data.projects.map((p) => ({ value: p.id, label: p.name }));
   const zalo = async (p: Payment) => { const ok = await copyText(paymentZalo(p, data)); toast(ok ? 'Đã chép — dán vào Zalo' : 'Trình duyệt chặn chép, thử lại', ok ? 'ok' : 'error'); };
@@ -172,7 +172,7 @@ export function PaymentsPage() {
   if (phone) {
     return (
       <>
-        <PageHeader title="Chi trả TP/NCC" sub={<span data-testid="pay-summary">{rows.length} phiếu · {formatShortMoney(total)}</span>} />
+        <PageHeader title="Phiếu chi" sub={<span data-testid="pay-summary">{rows.length} phiếu · {formatShortMoney(total)}</span>} />
         {canAdd ? <Button variant="primary" size="lg" data-testid="pay-add" onClick={() => setDraft(blankPayDraft())}><Icon name="add" />Ghi phiếu chi</Button> : null}
         {filters}
         {rows.length === 0 ? <Card><EmptyState icon="account_balance_wallet" title="Chưa có phiếu chi trong kỳ này" /></Card> : (
@@ -193,7 +193,7 @@ export function PaymentsPage() {
 
   return (
     <>
-      <PageHeader title="Chi Trả TP/NCC" sub="Phiếu chi cho thầu phụ (tạm ứng, thanh toán đợt) và trả nợ nhà cung cấp"
+      <PageHeader title="Phiếu Chi" sub="Phiếu chi cho thầu phụ (tạm ứng, thanh toán đợt) và trả nợ nhà cung cấp"
         actions={<>
           {canAdd ? <Button data-testid="pay-add" onClick={() => setDraft(blankPayDraft({ kind: 'supplier_payment', mode: 'manual' }))}><Icon name="checklist" />Trả NCC theo hóa đơn…</Button> : null}
         </>} />

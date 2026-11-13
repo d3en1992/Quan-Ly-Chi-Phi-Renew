@@ -26,7 +26,6 @@ async function login(page: Page, username: string, years: 'all' | number[] = 'al
 
 const digits = (s: string | null) => Number((s ?? '').replace(/[^\d−-]/g, '').replace('−', '-'));
 const noSideScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
-const kpi = (page: Page, label: string) => page.locator('main').getByText(label, { exact: true }).first().locator('xpath=following-sibling::b[1]');
 
 const SIZES = [{ name: '1440', width: 1440, height: 900 }, { name: '800', width: 800, height: 1000 }, { name: '390', width: 390, height: 844 }];
 
@@ -58,16 +57,11 @@ test('Số trên thẻ / chi tiết công trình = số tab Lợi Nhuận', asyn
   await page.goto('/cong-trinh');
   await expect(page.getByTestId('project-card').first()).toBeVisible();
   await page.getByLabel('Trạng thái').selectOption('');
-  const cardSpent = await kpi(page, 'Tổng đã chi').textContent();
-  const cardReceived = await kpi(page, 'Tổng đã thu').textContent();
-  const cardProfit = await kpi(page, 'Lãi tạm tính').textContent();
+  // (13/11/2026: bỏ dải số tổng ở Công Trình và Lợi nhuận — số tổng xem ở Dashboard; so từng công trình bên dưới)
   // Chọn 1 công trình có chi, đọc số chính xác ở chi tiết
   const ids = await page.getByTestId('project-card').evaluateAll((els) => els.map((e) => e.getAttribute('data-project-id')));
-  await page.goto('/loi-nhuan');
+  await page.goto('/thu-lai/loi-nhuan');
   await expect(page.getByTestId('profit-table')).toBeVisible();
-  await expect(kpi(page, 'Tổng đã chi')).toHaveText(cardSpent!);
-  await expect(kpi(page, 'Tổng đã thu')).toHaveText(cardReceived!);
-  await expect(kpi(page, 'Lợi nhuận')).toHaveText(cardProfit!);
   // Từng công trình: chi tiết = dòng Lợi Nhuận (số chính xác)
   const rows = page.locator('tr[data-project]');
   const count = Math.min(await rows.count(), 6);
@@ -75,7 +69,7 @@ test('Số trên thẻ / chi tiết công trình = số tab Lợi Nhuận', asyn
     const row = rows.nth(i);
     const id = await row.getAttribute('data-project');
     if (!ids.includes(id)) continue;
-    const spent = digits(await row.locator('td').nth(7).locator('b').textContent());
+    const spent = digits(await row.locator('td').nth(5).locator('b').textContent());
     await page.goto(`/cong-trinh/${id}`);
     await expect(page.getByTestId('detail-spent')).toBeVisible();
     expect(digits(await page.getByTestId('detail-spent').textContent()), `tổng đã chi của ${id}`).toBe(spent);

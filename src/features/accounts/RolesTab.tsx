@@ -1,6 +1,6 @@
 // Subtab VAI TRÒ & QUYỀN: bấm ô để đổi Ẩn → Xem → Nhập → Toàn quyền; quyền đặc biệt; phạm vi công trình;
 // tạo / nhân bản / đổi tên / xóa vai trò. Cột Admin luôn Toàn quyền, không sửa được.
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Button, Icon } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm';
 import { DropdownContent, DropdownItem, DropdownMenu, DropdownTrigger } from '@/components/ui/dropdown';
@@ -9,6 +9,7 @@ import { Card, CardHeader, ErrorState, LoadingState, Note, Pill } from '@/compon
 import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
 import { useAccess } from '@/app/auth';
+import { moduleGroups } from '@/app/nav';
 import { LEVEL_LABEL, nextLevel, SPECIAL_LABEL, SPECIALS, type Level, type SpecialKey } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import {
@@ -79,6 +80,20 @@ export function RolesTab() {
       { onError: (e) => toast(e.message, 'error') },
     );
   };
+  /** Đặt cả nhóm (các mục quyền cùng nằm trong 1 tab): mức chung hiện tại → mức kế tiếp; khác nhau → Xem */
+  const setGroup = (role: Role, keys: string[], same: Level | null) => {
+    if (!canEdit || role.is_admin) return;
+    const level = same ? nextLevel(same) : 'view';
+    for (const module of keys)
+      setPerm.mutate({ roleId: role.id, module, level, companyId: access.company.id }, { onError: (e) => toast(e.message, 'error') });
+  };
+  // Xếp các mục quyền theo tab trên menu (nav.ts); mục nào chưa nằm trong tab nào → nhóm "Khác"
+  const allModules = modules.data ?? [];
+  const groups = moduleGroups().map((g) => ({ title: g.title, modules: allModules.filter((m) => (g.modules as string[]).includes(m.key)) }));
+  const grouped = new Set(groups.flatMap((g) => g.modules.map((m) => m.key)));
+  const rest = allModules.filter((m) => !grouped.has(m.key));
+  if (rest.length) groups.push({ title: 'Khác', modules: rest });
+
   const toggleSpecial = (role: Role, key: SpecialKey) => {
     if (!canEdit || role.is_admin) return;
     updateRole.mutate({ id: role.id, [key]: !role[key] }, { onError: (e) => toast(e.message, 'error') });
@@ -165,28 +180,58 @@ export function RolesTab() {
               </tr>
             </thead>
             <tbody>
-              {(modules.data ?? []).map((m) => (
-                <tr key={m.key} data-module={m.key}>
-                  <td className="whitespace-nowrap">{m.label}</td>
-                  {roleList.map((r) => {
-                    const lv: Level = r.is_admin ? 'full' : levelOf(r.id, m.key);
-                    return (
-                      <td key={r.id} className="text-center">
-                        <button
-                          type="button"
-                          className={cellBtn}
-                          disabled={!canEdit || r.is_admin}
-                          data-cell={`${r.name}|${m.key}`}
-                          aria-label={`${m.label} — ${r.name}: ${LEVEL_LABEL[lv]}`}
-                          title={r.is_admin ? 'Admin luôn toàn quyền' : 'Bấm để đổi mức'}
-                          onClick={() => clickCell(r, m.key)}
-                        >
-                          <LevelBadge level={lv} />
-                        </button>
+              {groups.map((g) => (
+                <Fragment key={g.title}>
+                  {g.modules.length > 1 ? (
+                    <tr data-group={g.title} className="bg-surface-2">
+                      <td className="text-[11px] font-semibold tracking-[.06em] whitespace-nowrap text-muted uppercase">{g.title}</td>
+                      {roleList.map((r) => {
+                        const lvs = g.modules.map((m) => (r.is_admin ? 'full' : levelOf(r.id, m.key)));
+                        const same = lvs.every((l) => l === lvs[0]) ? lvs[0]! : null;
+                        return (
+                          <td key={r.id} className="text-center">
+                            {canEdit && !r.is_admin ? (
+                              <button
+                                type="button"
+                                className="rounded-md px-1.5 py-0.5 text-[11px] text-muted hover:bg-surface"
+                                data-group-cell={`${r.name}|${g.title}`}
+                                title="Đặt cùng một mức cho cả nhóm"
+                                onClick={() => setGroup(r, g.modules.map((m) => m.key), same)}
+                              >
+                                cả nhóm: {same ? LEVEL_LABEL[same] : 'khác nhau'}
+                              </button>
+                            ) : null}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ) : null}
+                  {g.modules.map((m) => (
+                    <tr key={m.key} data-module={m.key}>
+                      <td className="whitespace-nowrap">
+                        {g.modules.length > 1 ? <span className="pl-3">{m.label}</span> : <b className="font-semibold">{m.label}</b>}
                       </td>
-                    );
-                  })}
-                </tr>
+                      {roleList.map((r) => {
+                        const lv: Level = r.is_admin ? 'full' : levelOf(r.id, m.key);
+                        return (
+                          <td key={r.id} className="text-center">
+                            <button
+                              type="button"
+                              className={cellBtn}
+                              disabled={!canEdit || r.is_admin}
+                              data-cell={`${r.name}|${m.key}`}
+                              aria-label={`${m.label} — ${r.name}: ${LEVEL_LABEL[lv]}`}
+                              title={r.is_admin ? 'Admin luôn toàn quyền' : 'Bấm để đổi mức'}
+                              onClick={() => clickCell(r, m.key)}
+                            >
+                              <LevelBadge level={lv} />
+                            </button>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </Fragment>
               ))}
               <tr>
                 <td

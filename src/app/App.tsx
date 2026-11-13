@@ -3,11 +3,12 @@ import type { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '@/components/ui/toast';
-import { ErrorState, LoadingState } from '@/components/ui/misc';
+import { ErrorState, LoadingState, PageHeader } from '@/components/ui/misc';
 import { Button } from '@/components/ui/button';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { ChangePasswordPage } from '@/features/auth/ChangePasswordPage';
-import { AccountsPage } from '@/features/accounts/AccountsPage';
+import { AccountsTab } from '@/features/accounts/AccountsTab';
+import { RolesTab } from '@/features/accounts/RolesTab';
 import { ExpenseEntryPage } from '@/features/expenses/ExpenseEntryPage';
 import { DashboardPage } from '@/features/reports/DashboardPage';
 import { ExpenseStatsPage } from '@/features/reports/ExpenseStatsPage';
@@ -18,7 +19,7 @@ import { ContactsPage } from '@/features/contacts/ContactsPage';
 import { TimesheetPage } from '@/features/timesheets/TimesheetPage';
 import { PaymentsPage } from '@/features/payments/PaymentsPage';
 import { PayablesPage } from '@/features/payments/PayablesPage';
-import { CostAllocationPage } from '@/features/cost-allocation/CostAllocationPage';
+import { CostAllocationPage, type AllocTab } from '@/features/cost-allocation/CostAllocationPage';
 import { EquipmentPage } from '@/features/equipment/EquipmentPage';
 import { SchedulePage } from '@/features/schedule/SchedulePage';
 import { TrashPage } from '@/features/trash/TrashPage';
@@ -27,7 +28,6 @@ import { RevenuePage } from '@/features/revenue/RevenuePage';
 import { SettlementsPage } from '@/features/revenue/SettlementsPage';
 import {
   BlockedPage,
-  ComingSoonPage,
   NotFoundPage,
   PhoneCapturePage,
   PhoneHomePage,
@@ -36,12 +36,14 @@ import {
 import { AuthProvider, useAuth } from './auth';
 import { DesktopShell } from './DesktopShell';
 import { PhoneShell } from './PhoneShell';
+import { TabbedPage, TabIndexRedirect } from './TabbedPage';
 import { useLayoutMode } from './useLayoutMode';
 import { YearProvider } from './year';
 import {
-  ALL_ITEMS,
   canSeeItem,
   firstVisiblePath,
+  LEGACY_REDIRECTS,
+  NAV_TABS,
   PHONE_CAPTURE,
   PHONE_HOME,
   PHONE_MORE_PATH,
@@ -53,33 +55,38 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: true } },
 });
 
-/** Giai đoạn sẽ làm từng tab (hiện trên trang "Đang làm") */
-const STAGE: Record<string, string> = {
-  congtrinh: 'GĐ4', nhap: 'GĐ5', thongkecphd: 'GĐ3', chamcong: 'GĐ6', nhapung: 'GĐ7', congno: 'GĐ7',
-  tytrong: 'GĐ8', thietbi: 'GĐ8', tiendo: 'GĐ12', danhba: 'GĐ4', doanhthu: 'GĐ7', loinhuan: 'GĐ3',
-  quyettoan: 'GĐ7', dashboard: 'GĐ3', danhmuc: 'GĐ4', thungrac: 'GĐ8',
+/** Tab không có tab con */
+const PAGES: Record<string, () => ReactNode> = {
+  congtrinh: () => <ProjectsRoute />,
+  chamcong: () => <TimesheetPage />,
+  thietbi: () => <EquipmentPage />,
+  dashboard: () => <DashboardPage />,
 };
 
-/** Trang đã làm xong (thay dần trang "Đang làm" ở các GĐ sau) */
-const PAGES: Record<string, () => ReactNode> = {
-  taikhoan: () => <AccountsPage />,
-  congtrinh: () => <ProjectsRoute />,
+const ALLOC_SUB: Record<AllocTab, string> = { alloc: 'titrong', benchmark: 'dinhmuc', config: 'cauhinh' };
+
+/** Trang của từng tab con (khóa tab con ở nav.ts) */
+const SUB_PAGES: Record<string, (go: (subKey: string) => void) => ReactNode> = {
   nhap: () => <ExpenseEntryPage />,
-  chamcong: () => <TimesheetPage />,
-  nhapung: () => <PaymentsPage />,
-  congno: () => <PayablesPage />,
-  doanhthu: () => <RevenuePage />,
+  tracuu: () => <ExpenseStatsPage />,
+  hdtp: () => <PayablesPage tab="contracts" />,
+  ncc: () => <PayablesPage tab="suppliers" />,
+  tattoan: () => <PayablesPage tab="closures" />,
+  phieuchi: () => <PaymentsPage />,
+  hdchinh: () => <RevenuePage tab="contracts" />,
+  thutien: () => <RevenuePage tab="receipts" />,
   quyettoan: () => <SettlementsPage />,
+  loinhuan: () => <ProfitPage />,
+  tiendo: () => <SchedulePage />,
+  titrong: (go) => <CostAllocationPage tab="alloc" onTabChange={(t) => go(ALLOC_SUB[t])} />,
+  dinhmuc: (go) => <CostAllocationPage tab="benchmark" onTabChange={(t) => go(ALLOC_SUB[t])} />,
+  cauhinh: (go) => <CostAllocationPage tab="config" onTabChange={(t) => go(ALLOC_SUB[t])} />,
   danhba: () => <ContactsPage />,
   danhmuc: () => <CatalogPage />,
-  loinhuan: () => <ProfitPage />,
-  dashboard: () => <DashboardPage />,
-  thongkecphd: () => <ExpenseStatsPage />,
-  tytrong: () => <CostAllocationPage />,
-  thietbi: () => <EquipmentPage />,
-  tiendo: () => <SchedulePage />,
+  taikhoan: () => <><div className="hidden sm:block"><PageHeader title="Tài Khoản" sub="Tài khoản đăng nhập của mọi người" /></div><AccountsTab /></>,
+  phanquyen: () => <><div className="hidden sm:block"><PageHeader title="Phân Quyền" sub="Quyền xem / nhập từng mục, xếp theo tab trên menu" /></div><RolesTab /></>,
+  xuat: () => <ExportPage />,
   thungrac: () => <TrashPage />,
-  xuatdulieu: () => <ExportPage />,
 };
 
 function Guard({ item, children }: { item: NavItem; children: ReactNode }) {
@@ -88,9 +95,25 @@ function Guard({ item, children }: { item: NavItem; children: ReactNode }) {
   return <>{children}</>;
 }
 
-function pageFor(item: NavItem) {
-  const render = PAGES[item.key];
-  return <Guard item={item}>{render ? render() : <ComingSoonPage item={item} stage={STAGE[item.key] ?? 'giai đoạn sau'} />}</Guard>;
+function tabRoutes(item: NavItem) {
+  if (!item.subs) {
+    const render = PAGES[item.key];
+    return [<Route key={item.key} path={item.path} element={<Guard item={item}>{render ? render() : <NotFoundPage />}</Guard>} />];
+  }
+  return [
+    <Route key={item.key} path={item.path} element={<TabIndexRedirect item={item} />} />,
+    <Route
+      key={`${item.key}/sub`}
+      path={`${item.path}/:sub`}
+      element={<TabbedPage item={item} render={(k, go) => SUB_PAGES[k]?.(go) ?? <NotFoundPage />} />}
+    />,
+  ];
+}
+
+/** Đường dẫn cũ → mới, giữ ?query (link Zalo báo tiến độ có ?project=) */
+function LegacyRedirect({ to }: { to: string }) {
+  const { search } = useLocation();
+  return <Navigate to={to + search} replace />;
 }
 
 function Shell() {
@@ -138,10 +161,11 @@ function AppRoutes() {
         }
       >
         <Route index element={<HomeRedirect />} />
-        {ALL_ITEMS.map((item) => (
-          <Route key={item.key} path={item.path} element={pageFor(item)} />
+        {NAV_TABS.flatMap(tabRoutes)}
+        <Route path={PROJECT_DETAIL_PATH} element={<Guard item={NAV_TABS.find((i) => i.key === 'congtrinh')!}><ProjectsRoute /></Guard>} />
+        {Object.entries(LEGACY_REDIRECTS).map(([from, to]) => (
+          <Route key={from} path={from} element={<LegacyRedirect to={to} />} />
         ))}
-        <Route path={PROJECT_DETAIL_PATH} element={pageFor(ALL_ITEMS.find((i) => i.key === 'congtrinh')!)} />
         <Route path={PHONE_HOME.path} element={<Guard item={PHONE_HOME}><PhoneHomePage /></Guard>} />
         <Route path={PHONE_MORE_PATH} element={<PhoneMorePage />} />
         <Route path={PHONE_CAPTURE.path} element={<Guard item={PHONE_CAPTURE}><PhoneCapturePage /></Guard>} />

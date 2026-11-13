@@ -18,7 +18,6 @@ import { matchesSearch, ReportBody, useReport } from './shared';
 
 const PAGE_SIZE = 50;
 export const SOURCE_LABEL: Record<string, string> = { quick: 'Nhanh', detail: 'Chi tiết', scan: 'Ảnh', import: 'Excel', wage: 'Chấm công', retail: 'Chấm công' };
-const SOURCE_OPTIONS: Option[] = [{ value: 'quick', label: 'Nhanh' }, { value: 'detail', label: 'Chi tiết' }, { value: 'scan', label: 'Ảnh' }, { value: 'import', label: 'Excel' }, { value: 'timesheet', label: 'Chấm công' }];
 const PAID_OPTIONS: Option[] = [{ value: 'paid', label: 'Đã trả' }, { value: 'credit', label: 'Mua nợ' }];
 const WAGE_TYPE = 'Nhân Công';
 const RETAIL_TYPE = 'Hóa Đơn Lẻ';
@@ -120,7 +119,6 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
   const [supplier, setSupplier] = useState('');
   const [buyer, setBuyer] = useState('');
   const [paid, setPaid] = useState('');
-  const [source, setSource] = useState('');
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState<Row | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
@@ -144,17 +142,17 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
     () => inScope.filter((r) =>
       (!month || r.month === month) && matchFilterText(project, r.project, options.projectNames) && matchFilterText(type, r.type, options.typeNames) &&
       matchFilterText(supplier, r.supplier, options.supplierNames) && (!buyer || r.buyer === buyer) && (!paid || r.paid === (paid === 'paid')) &&
-      (!source || (source === 'timesheet' ? !r.entry.expense : r.source === source)) && matchesSearch(search, r.description, r.project, r.supplier, r.type)),
-    [inScope, options, month, project, type, supplier, buyer, paid, source, search],
+      matchesSearch(search, r.description, r.project, r.supplier, r.type)),
+    [inScope, options, month, project, type, supplier, buyer, paid, search],
   );
   const summary = useMemo(() => {
     const typeOf = new Map(rows.map((r) => [r.entry, r.type]));
     return summarizeExpenses(rows.map((r) => r.entry), (c) => typeOf.get(c) ?? '');
   }, [rows]);
-  const paged = usePaged(rows, PAGE_SIZE, `${years.join()}|${month}|${project}|${type}|${supplier}|${buyer}|${paid}|${source}|${search}`);
+  const paged = usePaged(rows, PAGE_SIZE, `${years.join()}|${month}|${project}|${type}|${supplier}|${buyer}|${paid}|${search}`);
 
   const [advOpen, setAdvOpen] = useState(false);
-  const advCount = [month, buyer, paid, source].filter(Boolean).length;
+  const advCount = [month, buyer, paid].filter(Boolean).length;
   // Điện thoại: ô lọc giãn đủ ngang trong lưới 2 cột; máy tính bảng / máy tính: một hàng
   const fill = 'max-sm:w-full max-sm:max-w-none max-sm:[&_select]:max-w-none max-sm:[&_select]:flex-1';
   const filters = (
@@ -177,8 +175,7 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
           <FilterSelect label="Tháng" value={month} onChange={setMonth} options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1).padStart(2, '0'), label: String(i + 1) }))} className={fill} />
           <FilterSelect label="Thanh toán" value={paid} onChange={setPaid} options={PAID_OPTIONS} className={fill} />
           <FilterSelect label="Người mua" value={buyer} onChange={setBuyer} options={options.buyers} className={fill} />
-          <FilterSelect label="Nguồn" value={source} onChange={setSource} options={SOURCE_OPTIONS} className={fill} />
-          {advCount ? <Button variant="ghost" className={`h-9 ${fill}`} onClick={() => { setMonth(''); setPaid(''); setBuyer(''); setSource(''); }}><Icon name="close" />Bỏ lọc nâng cao</Button> : null}
+          {advCount ? <Button variant="ghost" className={`h-9 ${fill}`} onClick={() => { setMonth(''); setPaid(''); setBuyer(''); }}><Icon name="close" />Bỏ lọc nâng cao</Button> : null}
         </div>
       ) : null}
     </div>
@@ -219,7 +216,7 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
 
   return (
     <>
-      <PageHeader title="Thống Kê CP/HĐ" sub="Tra cứu mọi khoản chi đã nhập (hóa đơn + lương chấm công)" actions={total} />
+      <PageHeader title="Tra Cứu Chi Phí" sub="Tra cứu mọi khoản chi đã nhập (hóa đơn + lương chấm công)" actions={total} />
       {filters}
       {empty ?? (
         <Card>

@@ -133,7 +133,7 @@ test('Sao lưu → tải JSON → thêm dữ liệu → khôi phục: dữ liệ
 
   // thêm 1 loại chi phí rồi khôi phục bản vừa lưu → loại đó biến mất
   const label = `Sẽ Mất ${Date.now() % 100000}`;
-  await page.getByRole('tab', { name: 'DANH MỤC' }).click();
+  await page.getByRole('tab', { name: 'DANH SÁCH' }).click();
   await page.getByRole('button', { name: 'Thêm', exact: true }).click();
   await page.getByLabel('Tên mới').fill(label);
   await page.getByRole('button', { name: 'Thêm', exact: true }).last().click();
@@ -143,7 +143,7 @@ test('Sao lưu → tải JSON → thêm dữ liệu → khôi phục: dữ liệ
   await page.getByRole('button', { name: 'Khôi phục', exact: true }).last().click();
   await expect(page.getByText('Đã khôi phục')).toBeVisible({ timeout: 60_000 });
   await expect(page.getByTestId('backup-table')).toContainText('Trước khi khôi phục');
-  await page.getByRole('tab', { name: 'DANH MỤC' }).click();
+  await page.getByRole('tab', { name: 'DANH SÁCH' }).click();
   await expect(page.getByTestId('catalog-table')).toBeVisible();
   await expect(page.locator('tr', { hasText: label })).toHaveCount(0);
   // số tổng như cũ

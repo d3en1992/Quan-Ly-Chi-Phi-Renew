@@ -6,7 +6,7 @@ import { stripVietnamese } from '@shared/username';
 import { Icon } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAccess } from './auth';
-import { ALL_ITEMS, canSeeItem, type NavItem } from './nav';
+import { allEntries, canSeeEntry, type NavEntry } from './nav';
 
 const norm = (s: string) => stripVietnamese(s).toLowerCase();
 
@@ -29,12 +29,13 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
   const items = useMemo(() => {
-    const visible = ALL_ITEMS.filter((i) => canSeeItem(access.permissions, i));
+    // Có cả tab con ("Quyết toán", "Phiếu chi", "Định mức"…) để ai quen tên cũ gõ vẫn ra
+    const visible = allEntries().filter((e) => canSeeEntry(access.permissions, e));
     const nq = norm(q.trim());
-    return nq ? visible.filter((i) => norm(i.label).includes(nq)) : visible;
+    return nq ? visible.filter((i) => norm(`${i.label} ${i.aka ?? ''}`).includes(nq)) : visible;
   }, [access.permissions, q]);
 
-  const go = (item: NavItem | undefined) => {
+  const go = (item: NavEntry | undefined) => {
     if (!item) return;
     navigate(item.path);
     onOpenChange(false);
@@ -69,7 +70,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
           <ul className="m-0 max-h-[50vh] list-none overflow-auto p-1">
             {items.length === 0 ? <li className="p-4 text-center text-[13px] text-muted">Không thấy kết quả</li> : null}
             {items.map((i, idx) => (
-              <li key={i.key}>
+              <li key={i.path}>
                 <button
                   type="button"
                   onMouseEnter={() => setActive(idx)}

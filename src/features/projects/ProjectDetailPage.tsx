@@ -143,8 +143,7 @@ function Detail({ data, project, customer }: { data: ReportData; project: Projec
     money && { label: 'Giá trị hợp đồng', value: formatMoney(n.revenue.contractValue), sub: n.revenue.hasSettlement ? 'đã gồm quyết toán' : '' },
     money && { label: 'Đã thu', value: formatMoney(n.received), sub: pct === null ? '' : `${pct}%`, tone: 'pos' as const },
     money && { label: 'Còn phải thu', value: formatMoney(n.revenue.receivable), tone: (n.revenue.receivable > 0 ? 'neg' : '') as 'neg' | '' },
-    { label: 'Tổng đã chi', value: formatMoney(n.spent), sub: money ? (percentOf(n.spent, n.received) === null ? 'A + B + C' : `${percentOf(n.spent, n.received)}% đã thu`) : 'A + B + C' },
-    { label: 'Tổng chi phí (mọi HĐ)', value: formatMoney(n.totalCost), sub: n.supplierDebt > 0 ? `còn nợ NCC ${formatMoney(n.supplierDebt)}` : 'không nợ NCC' },
+    { label: 'Tổng đã chi', value: formatMoney(n.spent), sub: [money && percentOf(n.spent, n.received) !== null ? `${percentOf(n.spent, n.received)}% đã thu` : 'A + B + C', n.supplierDebt > 0 ? `còn nợ NCC ${formatMoney(n.supplierDebt)}` : ''].filter(Boolean).join(' · ') },
     { label: 'Thầu phụ còn phải trả', value: formatMoney(subDebt) },
     money && { label: 'Lãi / lỗ', value: signedMoney(n.profit), tone: (Math.round(n.profit) >= 0 ? 'pos' : 'neg') as 'pos' | 'neg' },
   ];
@@ -164,8 +163,7 @@ function Detail({ data, project, customer }: { data: ReportData; project: Projec
       {mode === 'phone' ? (
         <PhoneKpis items={[
           ...(money ? [{ label: 'Đã thu', value: formatShortMoney(n.received), tone: 'pos' as const }, { label: 'Còn phải thu', value: formatShortMoney(n.revenue.receivable), tone: 'neg' as const }] : []),
-          { label: 'Tổng đã chi', value: formatShortMoney(n.spent) },
-          { label: 'Tổng chi (mọi HĐ)', value: formatShortMoney(n.totalCost) },
+          { label: n.supplierDebt > 0 ? `Tổng đã chi · nợ NCC ${formatShortMoney(n.supplierDebt)}` : 'Tổng đã chi', value: formatShortMoney(n.spent) },
           ...(money ? [{ label: 'Lãi / lỗ', value: signedMoney(n.profit), tone: (Math.round(n.profit) >= 0 ? 'pos' : 'neg') as 'pos' | 'neg', wide: true }] : []),
         ]} />
       ) : <KpiStrip items={kpis} />}

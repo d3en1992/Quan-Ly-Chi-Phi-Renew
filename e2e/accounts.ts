@@ -16,16 +16,13 @@ export const E2E_ACCOUNTS: {
   { username: 'e2e.moi', displayName: 'E2E MỚI', roleKey: 'accountant', mockRole: 'ketoan', mustChange: true },
 ];
 
-// Menu bị ẩn theo ACCOUNTS[...].hide của giao diện mẫu (+ 'danhmuc' cho Kế toán theo bảng quyền mẫu)
+// Menu 9 tab (gộp 13/11/2026 — tai-lieu/KE-HOACH-GOP-TAB.md): tab bị ẩn theo bảng quyền mặc định
 export const MOCK_HIDE: Record<string, string[]> = {
   admin: [],
-  giamdoc: ['taikhoan'],
-  quanly: ['taikhoan'],
-  ketoan: ['taikhoan', 'doanhthu', 'loinhuan', 'quyettoan', 'dashboard', 'tytrong', 'thietbi', 'danhmuc'],
-  chixem: ['taikhoan', 'nhap', 'chamcong', 'nhapung', 'congno', 'tytrong', 'thietbi', 'danhmuc', 'danhba', 'doanhthu', 'loinhuan', 'quyettoan', 'dashboard', 'thungrac'],
+  giamdoc: [],
+  quanly: [],
+  ketoan: ['thulai', 'thietbi', 'dashboard'],
+  chixem: ['chamcong', 'thauphu', 'thulai', 'thietbi', 'dashboard'],
 };
 
-export const ALL_NAV_KEYS = [
-  'congtrinh', 'nhap', 'thongkecphd', 'chamcong', 'nhapung', 'congno', 'tytrong', 'thietbi', 'tiendo', 'danhba',
-  'doanhthu', 'loinhuan', 'quyettoan', 'dashboard', 'xuatdulieu', 'danhmuc', 'taikhoan', 'thungrac',
-];
+export const ALL_NAV_KEYS = ['congtrinh', 'chiphi', 'chamcong', 'thauphu', 'thulai', 'kehoach', 'thietbi', 'dashboard', 'caidat'];

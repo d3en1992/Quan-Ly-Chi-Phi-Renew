@@ -30,7 +30,7 @@ export function CatalogPage() {
   return (
     <>
       {mode !== 'phone' ? <PageHeader title="Danh Mục & Sao Lưu" sub="Danh sách dùng chung khi nhập liệu, thông tin công ty, sao lưu" /> : null}
-      <SubTabs<Tab> tabs={[{ key: 'catalog', label: 'DANH MỤC' }, { key: 'company', label: 'CÔNG TY & SAO LƯU' }]} value={tab} onChange={setTab} />
+      <SubTabs<Tab> tabs={[{ key: 'catalog', label: 'DANH SÁCH' }, { key: 'company', label: 'CÔNG TY & SAO LƯU' }]} value={tab} onChange={setTab} />
       {tab === 'catalog' ? <CatalogTab canEdit={hasLevel(access.permissions, 'catalog', 'add')} /> : <CompanyTab isAdmin={access.role.is_admin} />}
     </>
   );

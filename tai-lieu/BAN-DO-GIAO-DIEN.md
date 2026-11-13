@@ -3,6 +3,9 @@
 Đọc **đúng đoạn** của màn đang làm (Read với offset = dòng, limit ≈ 60), khỏi đọc cả file ~1.100 dòng.
 `PAGES.x` = màn máy tính / máy tính bảng · `MP.x` = màn điện thoại · `PAGE_NOTES` = thay đổi đã chốt · CSS token màu ở `:root` đầu file.
 
+> **Menu đã khác bản mẫu** (13/11/2026): app gộp 18 mục → 9 tab có tab con (`tai-lieu/KE-HOACH-GOP-TAB.md`, `src/app/nav.ts`).
+> Bản mẫu giữ nguyên làm tài liệu tham khảo từng màn; thứ tự / tên menu theo `nav.ts`.
+
 | Thành phần | Dòng |
 |---|---|
 | `/* Bố cục: thanh xem mẫu → khung app (máy tính: me` | 8 |
