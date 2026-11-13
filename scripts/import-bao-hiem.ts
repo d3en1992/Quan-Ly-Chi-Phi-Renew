@@ -13,8 +13,9 @@ import { join } from 'node:path';
 import ExcelJS from 'exceljs';
 import { COMPANY_ID, localAdminClient, ONLINE } from './local-supabase.mjs';
 
-type Target = { worker?: string; sub?: string; employee?: { title?: string; account?: string }; create?: boolean; field?: string } | null;
-type Staff = { full_name: string; title?: string; account?: string; gender?: string; date_of_birth?: string; id_number?: string; hometown?: string; permanent_address?: string };
+type EmpInfo = { title?: string; account?: string; archived?: boolean; note?: string };
+type Target = { worker?: string; sub?: string; employee?: EmpInfo; create?: boolean; field?: string } | null;
+type Staff = EmpInfo & { full_name: string; gender?: string; date_of_birth?: string; id_number?: string; hometown?: string; permanent_address?: string };
 type Person = {
   fullName: string; year: string; gender: string | null; dob: string | null; idNumber: string | null; idIssuedOn: string | null;
   hometown: string | null; address: string | null;
@@ -124,6 +125,7 @@ async function main() {
   /** Ghi thông tin riêng — sửa dòng có sẵn (chỉ các ô có giá trị), chưa có thì thêm */
   const putPrivate = async (key: 'worker_id' | 'subcontractor_id' | 'employee_id', id: string, patch: Priv) => {
     const p = Object.fromEntries(Object.entries(patch).filter(([, v]) => v));
+    if (!Object.keys(p).length) return; // chưa có thông tin (vd. chú Quang) → không tạo dòng trống
     const { data: cur, error } = await sb.from('contact_private').select('id').eq(key, id).is('deleted_at', null).maybeSingle();
     if (error) throw new Error(error.message);
     const r = cur
@@ -141,7 +143,7 @@ async function main() {
     return data as { id: string; name: string };
   };
   /** Nhân viên: tìm theo họ tên, chưa có thì thêm; gắn tài khoản app theo tên đăng nhập */
-  const putEmployee = async (fullName: string, title: string | undefined, account: string | undefined) => {
+  const putEmployee = async (fullName: string, { title, account, archived, note }: EmpInfo = {}) => {
     let profileId: string | null = null;
     if (account) {
       const { data: prof } = await sb.from('profiles').select('id').eq('company_id', COMPANY_ID).eq('username', account).maybeSingle();
@@ -149,7 +151,8 @@ async function main() {
     }
     const { data: cur, error } = await sb.from('employees').select('id').eq('company_id', COMPANY_ID).ilike('full_name', fullName).is('deleted_at', null).maybeSingle();
     if (error) throw new Error(error.message);
-    const row = { full_name: fullName, title: title ?? null, profile_id: profileId };
+    // archived = đã nghỉ (vẫn giữ để tra cứu); note = ghi chú (vd. "Nghỉ từ cuối năm 2025")
+    const row = { full_name: fullName, title: title ?? null, profile_id: profileId, archived: !!archived, ...(note ? { note } : {}) };
     const r = cur ? await sb.from('employees').update(row).eq('id', (cur as { id: string }).id).select('id').single()
       : await sb.from('employees').insert({ company_id: COMPANY_ID, ...row }).select('id').single();
     if (r.error) throw new Error(r.error.message);
@@ -172,19 +175,19 @@ async function main() {
       await putPrivate('subcontractor_id', s.id, m.priv);
       done.push(`${m.fullName} → thầu phụ ${s.name}`);
     } else {
-      const e = await putEmployee(m.fullName, m.t.employee?.title, m.t.employee?.account);
+      const e = await putEmployee(m.fullName, m.t.employee);
       await putPrivate('employee_id', e.id, m.priv);
-      done.push(`${m.fullName} → nhân viên (${m.t.employee?.title ?? ''}${e.linked ? `, tài khoản ${m.t.employee?.account}` : ''})`);
+      done.push(`${m.fullName} → nhân viên (${m.t.employee?.title ?? ''}${e.linked ? `, tài khoản ${m.t.employee?.account}` : ''}${m.t.employee?.archived ? ', đã nghỉ' : ''})`);
     }
   }
 
   // Nhân viên nhập tay từ CCCD (mục _nhan_vien) — ghi sau cùng nên ưu tiên hơn số liệu trong file bảo hiểm
   for (const s of (map._nhan_vien as Staff[] | undefined) ?? []) {
-    const e = await putEmployee(s.full_name, s.title, s.account);
+    const e = await putEmployee(s.full_name, s);
     await putPrivate('employee_id', e.id, {
       id_number: s.id_number, date_of_birth: s.date_of_birth, gender: s.gender, hometown: s.hometown, permanent_address: s.permanent_address,
     });
-    done.push(`${s.full_name} → nhân viên (${s.title ?? ''}${e.linked ? `, tài khoản ${s.account}` : ''}) — từ CCCD`);
+    done.push(`${s.full_name} → nhân viên (${s.title ?? ''}${e.linked ? `, tài khoản ${s.account}` : ''}) — nhập tay`);
   }
 
   console.log(`Nhập bảo hiểm tai nạn vào ${ONLINE ? 'bản ONLINE' : 'Supabase trong máy'} — file: ${files.join(', ')}`);
