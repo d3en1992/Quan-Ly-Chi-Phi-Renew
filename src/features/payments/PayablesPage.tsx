@@ -22,7 +22,6 @@ import { copyText } from '@/lib/clipboard';
 import { subcontractZaloText, supplierZaloText } from './zalo';
 import { findByName } from '@/features/expenses/logic';
 import { matchesSearch, todayIso } from '@/features/reports/shared';
-import { downloadKhoi } from '@/lib/export/bang-don';
 import {
   MODE_LABEL, useClosePayable, useCreateParty, useCreatePayments, useDeleteSubcontract, usePayData, useSaveSubcontract, useUndoClosure,
   type Closure, type PayData, type Subcontract,
@@ -259,7 +258,6 @@ function StatementSheet({ ctx, supplierId, onClose, onPay }: { ctx: Ctx; supplie
   const byId = new Map(invoices.map((i) => [i.id, i]));
   const s = calc.supplier.get(supplierId);
   const toast = useToast();
-  const access = useAccess();
   const zalo = async () => {
     const text = supplierZaloText({
       supplier: name, today: todayIso(), creditInvoices: s?.creditInvoices ?? 0, paid: s?.paid ?? 0, debt: s?.debt ?? 0,
@@ -267,22 +265,9 @@ function StatementSheet({ ctx, supplierId, onClose, onPay }: { ctx: Ctx; supplie
     });
     { const ok = await copyText(text); toast(ok ? 'Đã chép — dán vào Zalo' : 'Trình duyệt chặn chép, thử lại', ok ? 'ok' : 'error'); }
   };
-  const xlsx = () => void downloadKhoi({
-    title: `ĐỐI CHIẾU CÔNG NỢ · ${name}`, caption: 'Hóa đơn mua nợ, tiền đã trả chia vào hóa đơn cũ nhất trước',
-    columns: [
-      { key: 'date', label: 'NGÀY', width: 11, type: 'date', sum: false }, { key: 'project', label: 'CÔNG TRÌNH', width: 30, type: 'text', sum: false },
-      { key: 'desc', label: 'NỘI DUNG', width: 34, type: 'text', sum: false }, { key: 'no', label: 'SỐ HĐ', width: 10, type: 'text', sum: false },
-      { key: 'amount', label: 'TIỀN HÀNG', width: 14, type: 'money', sum: true }, { key: 'paid', label: 'ĐÃ TRẢ', width: 14, type: 'money', sum: true },
-      { key: 'remaining', label: 'CÒN LẠI', width: 14, type: 'money', sum: true }, { key: 'running', label: 'CỘNG DỒN', width: 14, type: 'money', sum: false },
-    ],
-    rows: lines.map((l) => [l.date, data.projectName(l.project_id), byId.get(l.id)?.description ?? '', byId.get(l.id)?.invoice_no ?? '', l.amount, l.paid, l.remaining, l.running]),
-  }, `DoiChieu_${name.replace(/[^p{L}p{N}]+/gu, '-')}_${todayIso()}.xlsx`, {
-    company: ctx.company, by: access.profile.display_name, filterText: `Nhà cung cấp ${name}`,
-    notes: [`Tổng mua nợ ${formatMoney(s?.creditInvoices ?? 0)} · Đã trả ${formatMoney(s?.paid ?? 0)} · Còn nợ ${formatMoney(s?.debt ?? 0)}`],
-  }).catch((e: Error) => toast(e.message, 'error'));
   return (
     <Sheet wide open onOpenChange={(o) => { if (!o) onClose(); }} title={`Đối chiếu · ${name}`}
-      footer={<><Button onClick={xlsx}><Icon name="download" />Tải Excel đối chiếu</Button><Button data-testid="ncc-zalo" onClick={() => void zalo()}><Icon name="chat" />Copy Zalo</Button><div className="flex-1" />{ctx.canPay ? <Button variant="primary" onClick={onPay}><Icon name="payments" />Trả tiền</Button> : null}</>}>
+      footer={<><Button data-testid="ncc-zalo" onClick={() => void zalo()}><Icon name="chat" />Copy Zalo</Button><div className="flex-1" />{ctx.canPay ? <Button variant="primary" onClick={onPay}><Icon name="payments" />Trả tiền</Button> : null}</>}>
       <div className="grid grid-cols-3 gap-2 text-[13px]">
         <div><div className="text-xs text-muted">Tổng mua nợ</div><b className="num" data-testid="dc-total">{formatMoney(s?.creditInvoices ?? 0)}</b></div>
         <div><div className="text-xs text-muted">Đã trả</div><b className="num" data-testid="dc-paid">{formatMoney(s?.paid ?? 0)}</b></div>

@@ -14,7 +14,6 @@ import { useToast } from '@/components/ui/toast';
 import { contractItemsTotal, inYearLoose, mainContractTotal, percentOf, projectRevenue, sumOf, toYearFilter, type ContractItem, type YearFilter } from '@/lib/calc';
 import { formatDate, formatMoney, formatShortMoney } from '@/lib/format';
 import { hasLevel } from '@/lib/permissions';
-import { exportVoucherImage } from '@/lib/voucher';
 import { canEditRow, ItemsEditor } from '@/features/payments/shared';
 import { matchesSearch, todayIso } from '@/features/reports/shared';
 import {
@@ -155,15 +154,6 @@ type ReceiptDraft = { id: string | null; project: string; date: string; kind: Re
 const blankReceipt = (project = ''): ReceiptDraft => ({ id: null, project, date: todayIso(), kind: 'stage', amount: 0, note: '' });
 const KIND_OPTS = (['advance', 'stage', 'settlement', 'other'] as const).map((k) => ({ value: k, label: RECEIPT_KIND[k]!.label }));
 
-function receiptVoucher(r: Pick<Receipt, 'project_id' | 'date' | 'kind' | 'amount' | 'note' | 'created_by'>, data: RevData, company: string) {
-  return {
-    title: 'PHIẾU THU', company, date: r.date, amountLabel: 'SỐ TIỀN THU', amount: r.amount, signRight: 'Người nộp tiền',
-    rows: [['Công trình', data.projectName(r.project_id)], ['Chủ đầu tư', data.ownerOf(r.project_id) || '—'], ['Loại thu', RECEIPT_KIND[r.kind]?.label ?? r.kind],
-      ['Nội dung', r.note ?? '—']] as [string, string][],
-    filename: `phieu-thu_${data.projectName(r.project_id)}_${r.date}.png`,
-  };
-}
-
 function ReceiptsTab({ ctx }: { ctx: Ctx }) {
   const { data, years, phone, canAdd } = ctx;
   const toast = useToast();
@@ -176,7 +166,6 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
   const [confirm, setConfirm] = useState(false);
   const set = <K extends keyof ReceiptDraft>(k: K, v: ReceiptDraft[K]) => setDraft((d) => ({ ...d, [k]: v }));
   const reset = () => { setDraft(blankReceipt()); setFormOpen(false); };
-  const image = (r: Parameters<typeof receiptVoucher>[0]) => void exportVoucherImage(receiptVoucher(r, data, ctx.company)).then(() => toast('Đã tải ảnh phiếu thu'), (e: Error) => toast(e.message, 'error'));
 
   const of = <T extends { project_id: string }>(rows: T[], id: string) => rows.filter((r) => r.project_id === id);
   // Còn phải thu của công trình SAU phiếu đang gõ (toàn vòng đời) — thay phiếu đang sửa bằng số mới rồi tính bằng công thức chung
@@ -196,13 +185,12 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
     .sort((a, b) => b.date.localeCompare(a.date) || (b.created_at ?? '').localeCompare(a.created_at ?? '')), [data, years, project, q]);
   const paged = usePaged(ledger, 30, `${project}|${q}|${years.join()}`);
 
-  const submit = (withImage: boolean) => {
+  const submit = () => {
     if (!draft.project) { toast('Chọn công trình!', 'error'); return; }
     if (draft.amount <= 0) { toast('Nhập số tiền > 0!', 'error'); return; }
     save.mutate({ id: draft.id, projectId: draft.project, date: draft.date, amount: draft.amount, kind: draft.kind, note: draft.note }, {
       onSuccess: () => {
         toast(`${draft.id ? 'Đã cập nhật' : 'Đã lưu'} phiếu thu ${formatMoney(draft.amount)} · ${data.projectName(draft.project)}`);
-        if (withImage) image({ project_id: draft.project, date: draft.date, kind: draft.kind, amount: draft.amount, note: draft.note, created_by: access.profile.id });
         reset();
       },
       onError: (e) => toast(`Chưa lưu được: ${e.message}`, 'error'),
@@ -235,8 +223,7 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
         {draft.id ? <Button variant="ghost-danger" onClick={() => setConfirm(true)}><Icon name="delete" />Xóa</Button> : null}
         <div className="flex-1" />
         {draft.id ? <Button onClick={reset}>Hủy sửa</Button> : null}
-        <Button disabled={save.isPending} onClick={() => submit(true)}><Icon name="image" />Lưu + xuất ảnh phiếu</Button>
-        <Button variant="primary" data-testid="thu-save" disabled={save.isPending} onClick={() => submit(false)}><Icon name="save" />{save.isPending ? 'Đang lưu…' : 'Lưu phiếu thu'}</Button>
+        <Button variant="primary" data-testid="thu-save" disabled={save.isPending} onClick={submit}><Icon name="save" />{save.isPending ? 'Đang lưu…' : 'Lưu phiếu thu'}</Button>
       </div>
       <ConfirmDialog open={confirm} onOpenChange={setConfirm} title="Xóa phiếu thu?" danger busy={del.isPending} confirmLabel="Xóa"
         message={<>Xóa phiếu thu {formatMoney(draft.amount)} ngày {formatDate(draft.date)} của {data.projectName(draft.project)}. Phiếu vào Thùng rác.</>}
@@ -307,7 +294,7 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
             <>
               <div className="tbl">
                 <table data-testid="thu-ledger">
-                  <thead><tr><th>Ngày</th><th>Công trình</th><th>Loại</th><th>Ghi chú</th><th className="!text-right">Số tiền</th><th /></tr></thead>
+                  <thead><tr><th>Ngày</th><th>Công trình</th><th>Loại</th><th>Ghi chú</th><th className="!text-right">Số tiền</th></tr></thead>
                   <tbody>
                     {paged.slice.map((r) => (
                       <tr key={r.id} className="cursor-pointer" tabIndex={0} onClick={() => open(r)} onKeyDown={(e) => { if (e.key === 'Enter') open(r); }}>
@@ -316,7 +303,6 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
                         <td className="whitespace-nowrap">{kindPill(r)}</td>
                         <td className="max-w-[200px] truncate text-muted" title={r.note ?? ''}>{r.note}</td>
                         <td className="num text-right whitespace-nowrap">{formatMoney(r.amount)}</td>
-                        <td><Button size="icon" variant="ghost" aria-label="Xuất ảnh phiếu thu" onClick={(e) => { e.stopPropagation(); image(r); }}><Icon name="image" /></Button></td>
                       </tr>
                     ))}
                   </tbody>

@@ -1,5 +1,5 @@
 // Tab CHI TRẢ TP/NCC (PAGES.nhapung / MP.ung, đổi tên từ "Ứng TP/NCC" — mục 4L): nhập nhiều phiếu chi một lần
-// (Tạm ứng TP · Thanh toán đợt TP · Trả nợ NCC), hiện "còn nợ" ngay khi chọn đối tác, lịch sử phiếu chi, xuất ảnh phiếu, CSV.
+// (Tạm ứng TP · Thanh toán đợt TP · Trả nợ NCC), hiện "còn nợ" ngay khi chọn đối tác, lịch sử phiếu chi (Copy Zalo từng phiếu).
 import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
