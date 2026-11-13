@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addressForms, applyProjectGuess, buildPrompt, foldVi, guessProjectFromHistory, matchProjectByNote, normalizeScan, pickFixture, supplierRecentProjects,
-  toIsoDate, toMoney, type ExpenseHistoryRow, type ProjectMeta, type ScanContext,
+  addressForms, applyProjectGuess, buildPrompt, foldVi, guessProjectFromHistory, matchName, matchProjectByNote, normalizeScan, pickFixture, promptKinds,
+  scanExtras, supplierRecentProjects, toIsoDate, toMoney, toPhones, type ExpenseHistoryRow, type ProjectMeta, type ScanContext,
 } from '@shared/scan';
 import fxNew from '../../../supabase/functions/scan-document/fixtures/hoa-don-ncc-moi.json';
 import fxBlur from '../../../supabase/functions/scan-document/fixtures/hoa-don-chu-mo.json';
@@ -10,6 +10,7 @@ import fxContract from '../../../supabase/functions/scan-document/fixtures/hop-d
 import { printedTotalGap } from '@/lib/calc';
 import { exportFileName, sheetName, vnDate } from '@/lib/export/ten-file';
 import { checkPrintedTotal, contractCustomer, guessContactKind, idCardCandidates, invoiceFromScan, shortNameFromFull, supplierPlan } from './model';
+import { materialsText, materialsTsv, methodNote } from './shared';
 
 const ctx: ScanContext = {
   projects: ['CT A Huynh (PTH, TP)'], expense_types: ['Copha', 'Sắt Thép'], suppliers: ['SẮT THÉP AN PHÚ'], buyers: ['KS LAM'],
@@ -55,7 +56,7 @@ describe('Chụp hóa đơn → form', () => {
     expect(d.unsureCells).toHaveLength(2);
     expect(checkPrintedTotal(d.draft, d.printedTotal)).toEqual({ status: 'match', printed: 8500000 });
     const plan = supplierPlan(d.draft.supplier, r.invoice, lists.suppliers);
-    expect(plan).toEqual({ kind: 'new', name: 'CH VLXD THANH BÌNH', address: '128 Tỉnh lộ 8, Tân An Hội, Củ Chi', phone: '0908 123 456' });
+    expect(plan).toEqual({ kind: 'new', name: 'CH VLXD THANH BÌNH', address: '128 Tỉnh lộ 8, Tân An Hội, Củ Chi', phone: '0908123456' });
   });
   it('chữ mờ: NCC có sẵn (Mua nợ → bỏ tích Đã TT), thiếu địa chỉ / SĐT → hỏi bổ sung; tổng lệch số in', () => {
     const r = normalizeScan(fxBlur, ctx);
@@ -68,7 +69,7 @@ describe('Chụp hóa đơn → form', () => {
     expect(t.status).toBe('diff');
     expect(t.status === 'diff' && t.gap).toBe(600000);
     const plan = supplierPlan(d.draft.supplier, r.invoice, lists.suppliers);
-    expect(plan).toMatchObject({ kind: 'existing', id: 's1', missingAddress: '45 Nguyễn Văn Quá, Q12', missingPhone: '0283 888 999' });
+    expect(plan).toMatchObject({ kind: 'existing', id: 's1', missingAddress: '45 Nguyễn Văn Quá, Q12', missingPhone: '0283888999' });
     // người dùng đổi sang NCC khác → không gợi ý địa chỉ của cửa hàng in trên hóa đơn
     expect(supplierPlan('VLXD KHÁC', r.invoice, lists.suppliers)).toEqual({ kind: 'new', name: 'VLXD KHÁC', address: '', phone: '' });
   });
@@ -214,5 +215,99 @@ describe('_shared/scan — đoán công trình theo hóa đơn đã lưu', () =>
     const d = applyProjectGuess(scan('SC A Phượng (Cải tạo sân, Đổ giả)'), '', { ...c, recent_expenses: [] });
     expect(d.kind === 'invoice' && d.invoice.project_match).toBe('SC A Phượng (Cải tạo sân, Đổ giả)');
     expect(d.kind === 'invoice' && d.invoice.low_confidence).toContain('project_match');
+  });
+});
+
+describe('_shared/scan — nút AI: tiền ứng, thu tiền, vật tư, sổ cộng tiền', () => {
+  const c2: ScanContext = { ...ctx, subcontractors: ['HÀ ĐIỆN NƯỚC', 'ĐỎ', 'LONG CAI', 'TPDN BÉ'], customers: ['A Huynh', 'A Nhật'], today: '2026-11-13' };
+  it('số điện thoại: chỉ chữ số, tối đa 2 số, bỏ trùng', () => {
+    expect(toPhones('0903.358.289 - 0903.358.286 - 0909 111 222')).toEqual(['0903358289', '0903358286']);
+    expect(toPhones(['0903 358 289', '0903358289', '123'])).toEqual(['0903358289']);
+  });
+  it('khớp tên nói ra với danh mục (không dấu, bỏ anh/chú)', () => {
+    expect(matchName('Hà điện nước', c2.subcontractors!)).toBe('HÀ ĐIỆN NƯỚC');
+    expect(matchName('anh Nhật', c2.customers)).toBe('A Nhật');
+    expect(matchName('anh Tư', c2.customers)).toBe('');
+    expect(matchName('Bé điện nước', c2.subcontractors!)).toBe('TPDN BÉ');
+  });
+  it('tiền ứng: khớp thầu phụ bằng code khi AI không khớp, hình thức chuyển khoản', () => {
+    const r = normalizeScan({ kind: 'advance', advance: { date: '2026-11-13', amount: '5.000.000', subcontractor_text: 'Hà điện nước', method: 'transfer', pay_kind: 'xyz' } }, c2);
+    expect(r.kind).toBe('advance');
+    if (r.kind !== 'advance') return;
+    expect(r.advance).toMatchObject({ amount: 5_000_000, subcontractor_match: 'HÀ ĐIỆN NƯỚC', method: 'transfer', pay_kind: 'advance' });
+  });
+  it('thu tiền: không nói hình thức → method rỗng; công trình theo tên khách', () => {
+    const raw = { kind: 'receipt', question: 'Tiền mặt hay chuyển khoản?', receipt: { amount: 100_000_000, customer_text: 'anh Huynh', receipt_kind: 'stage' } };
+    const r = applyProjectGuess(normalizeScan(raw, c2), '', { ...c2, project_meta: [{ name: 'CT A Huynh (PTH, TP)', status: 'active', owner_name: 'A Huynh' }] });
+    expect(r.kind === 'receipt' && r.receipt).toMatchObject({ method: '', customer_match: 'A Huynh', project_match: 'CT A Huynh (PTH, TP)' });
+    expect(scanExtras(raw).question).toBe('Tiền mặt hay chuyển khoản?');
+  });
+  it('sổ cộng tiền: dòng chỉ có số tiền → SL 1 × đơn giá = số tiền, giữ ngày dòng', () => {
+    const r = normalizeScan({ kind: 'invoice', invoice: { is_summary: true, printed_total: 131_002_000, supplier_phones: ['0903358289', '0903358286', '0909'],
+      lines: [{ date: '2026-11-13', name: 'Hóa đơn ngày 13/11', amount: 73_261_000 }, { date: '2026-11-12', name: 'Hóa đơn ngày 12/11', amount: 31_321_000 }] } }, c2);
+    if (r.kind !== 'invoice') throw new Error('sai loại');
+    expect(r.invoice.is_summary).toBe(true);
+    expect(r.invoice.lines[0]).toMatchObject({ quantity: 1, unit_price: 73_261_000, amount: 73_261_000, date: '2026-11-13' });
+    expect(r.invoice.supplier_phones).toEqual(['0903358289', '0903358286']);
+    expect(r.invoice.supplier_phone).toBe('0903358289');
+  });
+  it('hợp đồng / dự toán: diện tích từng phần, bỏ dòng tổng', () => {
+    const r = normalizeScan({ kind: 'contract', contract: { value: 2_950_960_688, is_estimate: true, unit_price: 3_000_000,
+      floor_areas: [{ name: 'Móng cọc', area: 32 }, { name: 'Lầu 4 + ST', area: 39.120000000000005 }, { name: 'TỔNG CỘNG', area: 361.34 }] } }, c2);
+    if (r.kind !== 'contract') throw new Error('sai loại');
+    expect(r.contract.floor_areas).toEqual([{ name: 'Móng cọc', area: 32 }, { name: 'Lầu 4 + ST', area: 39.12 }]);
+    expect(r.contract).toMatchObject({ is_estimate: true, unit_price: 3_000_000 });
+  });
+  it('danh sách vật tư → chữ gửi Zalo + bảng Excel', () => {
+    const r = normalizeScan({ kind: 'material_list', material_list: { title: 'Ván cốp pha', delivery_note: 'Giao qua chùa',
+      items: [{ name: 'Ván cốp pha 45 cm', quantity: 8, unit: 'tấm' }, { name: 'Dây điện 1.5', quantity: 2.5, unit: 'cuộn', note: 'xanh' }, { name: '' }] } }, c2);
+    if (r.kind !== 'material_list') throw new Error('sai loại');
+    expect(r.material_list.items).toHaveLength(2);
+    expect(materialsText(r.material_list.items, { title: 'Ván cốp pha', project: 'CT A Huynh', delivery: 'qua chùa' }))
+      .toBe('VÁN CỐP PHA — CT A Huynh\n1. Ván cốp pha 45 cm: 8 tấm\n2. Dây điện 1.5: 2,5 cuộn (xanh)\nGiao: qua chùa');
+    expect(materialsTsv(r.material_list.items).split('\n')[1]).toBe('1\tVán cốp pha 45 cm\t8\ttấm\t');
+  });
+  it('phiếu chi ghi hình thức vào nội dung', () => {
+    expect(methodNote('transfer', 'Ứng tiền điện nước')).toBe('CK · Ứng tiền điện nước');
+    expect(methodNote('cash', '')).toBe('Tiền mặt');
+    expect(methodNote('', 'abc')).toBe('abc');
+  });
+  it('câu lệnh: chỉ đưa loại được phép, có quy tắc lời nói + cốp pha; CCCD không nằm trong AI tự nhận', () => {
+    expect(promptKinds('auto', { invoice: true, advance: false, receipt: true })).toEqual(['invoice', 'receipt']);
+    const p = buildPrompt('auto', '', c2, { invoice: true, advance: true, receipt: true, contract: true, material_list: true });
+    expect(p).toContain('"5 triệu" = 5000000');
+    expect(p).toContain('"45:8T"');
+    expect(p).toContain('- HÀ ĐIỆN NƯỚC');
+    expect(p).not.toContain('"id_card"');
+  });
+});
+
+describe('_shared/scan — AI trả JSON phẳng (không bọc theo loại)', () => {
+  it('vẫn đọc được các ô nằm ngoài cùng', () => {
+    const r = normalizeScan({ kind: 'material_list', title: 'Vật tư điện', delivery_note: 'Giao qua chùa', items: [{ name: 'Băng keo điện', quantity: 6, unit: 'cuộn' }] }, ctx);
+    expect(r.kind === 'material_list' && r.material_list).toMatchObject({ title: 'Vật tư điện', delivery_note: 'Giao qua chùa', items: [{ name: 'Băng keo điện', quantity: 6 }] });
+  });
+});
+
+describe('_shared/scan — lời nói "anh / chị" khớp danh mục "A / C"', () => {
+  it('"nhà anh Huynh" → CT A Huynh', () => {
+    const ps: ProjectMeta[] = [{ name: 'CT A Huynh (PTH, TP)', status: 'active', owner_name: 'A Huynh' }, { name: 'SC A Phượng', status: 'active', owner_name: 'A Phượng' }];
+    expect(matchProjectByNote('ứng Hà điện nước công trình nhà anh Huynh 5 triệu', ps)).toBe('CT A Huynh (PTH, TP)');
+    expect(matchProjectByNote('chị Phượng', ps)).toBe('');
+  });
+});
+
+describe('nút AI — chữ gửi Zalo', () => {
+  it('ghi chú giao hàng không lặp chữ "Giao"', () => {
+    expect(materialsText([], { delivery: 'Giao qua chùa' })).toBe('Giao qua chùa');
+    expect(materialsText([], { delivery: 'qua chùa' })).toBe('Giao: qua chùa');
+  });
+});
+
+describe('_shared/scan — sổ cộng tiền ghi tắt nghìn', () => {
+  it('dòng dưới 100.000 đ → nhân 1.000 và tô vàng', () => {
+    const r = normalizeScan({ kind: 'invoice', invoice: { is_summary: true, lines: [{ name: 'Hóa đơn ngày 11/11', amount: 26_430 }, { name: 'Hóa đơn ngày 12/11', amount: 31_321_000 }] } }, ctx);
+    if (r.kind !== 'invoice') throw new Error('sai loại');
+    expect(r.invoice.lines.map((l) => [l.amount, l.unit_price, l.low_confidence])).toEqual([[26_430_000, 26_430_000, ['amount']], [31_321_000, 31_321_000, []]]);
   });
 });

@@ -22,7 +22,7 @@ import type { ExpenseInput } from './schema';
 import { DuplicateDialog, toDupCandidate, today, useLists, type Lists } from './shared';
 
 type Tab = 'quick' | 'detail' | 'scan';
-const TABS: { key: Tab; label: string }[] = [{ key: 'quick', label: 'NHẬP NHANH' }, { key: 'detail', label: 'HÓA ĐƠN CHI TIẾT' }, { key: 'scan', label: 'CHỤP HÓA ĐƠN' }];
+const TABS: { key: Tab; label: string }[] = [{ key: 'quick', label: 'NHẬP NHANH' }, { key: 'detail', label: 'HÓA ĐƠN CHI TIẾT' }, { key: 'scan', label: 'TRỢ LÝ AI' }];
 const SOURCE_SHORT: Record<string, string> = { quick: 'Nhanh', detail: 'Chi tiết', scan: 'Ảnh', import: 'Excel' };
 
 /** Hóa đơn của một ngày, mới nhập đứng trên */
@@ -144,7 +144,7 @@ export function ExpenseEntryPage() {
   const expenses = expensesQuery.data;
 
   const header = mode === 'phone' ? null : (
-    <PageHeader title="Nhập Chi Phí" sub="Hóa đơn, vật tư, chi phí công trình" actions={<><Button onClick={() => setTab('scan')}><Icon name="photo_camera" />Chụp hóa đơn</Button></>} />
+    <PageHeader title="Nhập Chi Phí" sub="Hóa đơn, vật tư, chi phí công trình" actions={<><Button onClick={() => setTab('scan')}><Icon name="auto_awesome" />Trợ lý AI</Button></>} />
   );
   if (query.isPending || expensesQuery.isPending) return <>{header}<Card><LoadingState label="Đang tải danh mục…" /></Card></>;
   if (query.isError || expensesQuery.isError || !lists || !expenses) {
@@ -171,7 +171,7 @@ export function ExpenseEntryPage() {
           <DayInvoices date={activeDate} expenses={expenses} lists={lists} onOpen={setEditing} />
         </>
       ) : (
-        canAdd ? <ScanWorkspace defaultKind="invoice" /> : null
+        canAdd ? <ScanWorkspace /> : null
       )}
       {sheet}
     </>

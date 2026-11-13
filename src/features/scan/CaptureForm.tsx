@@ -1,24 +1,36 @@
-// Bước 1 của Chụp đa năng (MP.chupmenu): chụp / chọn ảnh, chọn loại giấy tờ, ghi chú cho AI (gõ hoặc bấm mic), bấm Đọc.
+// Bước 1 của nút AI (trước là Chụp đa năng — MP.chupmenu): chụp / chọn ảnh, PDF, Excel; bấm mic để NÓI (ghi âm gửi thẳng cho AI);
+// gõ lời nhắn; (không bắt buộc) chọn loại. AI tự nhận: hóa đơn, tiền ứng thầu phụ, thu tiền khách, hợp đồng / dự toán, vật tư cần mua.
 import { useEffect, useRef, useState } from 'react';
 import type { ScanRequestKind } from '@shared/scan';
 import { Button, Icon } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { speechSupported } from './api';
+import { ACCEPT_FILES, recordingSupported, type PreparedInput } from './api';
 
 export const KIND_OPTIONS: { value: ScanRequestKind; label: string }[] = [
-  { value: 'auto', label: 'AI tự nhận' }, { value: 'invoice', label: 'Hóa đơn' }, { value: 'id_card', label: 'CCCD' }, { value: 'contract', label: 'Hợp đồng' },
+  { value: 'auto', label: 'AI tự nhận' }, { value: 'invoice', label: 'Hóa đơn' }, { value: 'advance', label: 'Tiền ứng' },
+  { value: 'receipt', label: 'Thu tiền' }, { value: 'contract', label: 'Hợp đồng' }, { value: 'material_list', label: 'Vật tư cần mua' },
 ];
+/** Nút Chụp CCCD ở Danh Bạ (lockKind) */
+export const ID_CARD_OPTION = { value: 'id_card' as const, label: 'CCCD' };
+
+/** Ghi âm tối đa 90 giây (WAV 16 kHz ≈ 2,9 MB) */
+export const MAX_RECORD_SECONDS = 90;
 
 type Props = {
   kind: ScanRequestKind;
   setKind: (k: ScanRequestKind) => void;
   /** Loại được phép theo quyền */
-  allowed: Record<ScanRequestKind, boolean>;
+  allowed: Partial<Record<ScanRequestKind, boolean>>;
   note: string;
   setNote: (v: string) => void;
-  file: File | null;
-  setFile: (f: File | null) => void;
+  /** Tệp đã chọn (ảnh / PDF / Excel) — xem trước */
+  input: PreparedInput | null;
+  /** Ảnh / tệp gốc vừa chọn (đang xử lý) */
+  onPickFile: (f: File) => void;
+  onClearFile: () => void;
+  /** Ghi âm xong → gửi luôn cho AI */
+  onAudio: (blob: Blob, seconds: number) => void;
   busy: boolean;
   onRead: () => void;
   /** Chỉ cho đúng 1 loại (nút Chụp CCCD ở Danh Bạ) */
@@ -37,39 +49,53 @@ export function useObjectUrl(blob: Blob | null): string | null {
   return url;
 }
 
-export function CaptureForm({ kind, setKind, allowed, note, setNote, file, setFile, busy, onRead, lockKind }: Props) {
+export function CaptureForm({ kind, setKind, allowed, note, setNote, input, onPickFile, onClearFile, onAudio, busy, onRead, lockKind }: Props) {
   const camRef = useRef<HTMLInputElement>(null);
   const pickRef = useRef<HTMLInputElement>(null);
-  const url = useObjectUrl(file);
-  const onPick = (f: File | undefined | null) => { if (f) setFile(f); };
+  const url = useObjectUrl(input?.kind === 'image' ? input.image.blob : null);
+  const pick = (f: File | undefined | null) => { if (f) onPickFile(f); };
+  const canRead = !busy && !!allowed[kind] && (!!input || !!note.trim());
 
   return (
     <div className="grid gap-3" data-testid="capture-form">
+      {!lockKind ? <Recorder disabled={busy || !allowed[kind]} onAudio={onAudio} /> : null}
+
       <div
-        className={cn('relative grid min-h-[200px] place-items-center overflow-hidden rounded-xl border-2 border-dashed border-line bg-surface-2 text-center text-[13px] text-muted', url && 'border-solid')}
+        className={cn('relative grid min-h-[120px] place-items-center overflow-hidden rounded-xl border-2 border-dashed border-line bg-surface-2 text-center text-[13px] text-muted', input && 'border-solid')}
         onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => { e.preventDefault(); onPick(e.dataTransfer.files[0]); }}
+        onDrop={(e) => { e.preventDefault(); pick(e.dataTransfer.files[0]); }}
       >
         {url ? (
           <img src={url} alt="Ảnh vừa chọn" className="max-h-[320px] w-full object-contain" />
+        ) : input ? (
+          <div className="grid gap-1 p-4" data-testid="picked-file">
+            <Icon name={input.kind === 'pdf' ? 'picture_as_pdf' : 'table_view'} className="text-[34px] text-accent" />
+            <span className="break-all font-medium text-fg">{input.name}</span>
+            <span className="text-[12px]">{input.kind === 'sheet' ? `Excel — đã đọc ${input.text.split('\n').length} dòng` : 'Tệp PDF'}</span>
+          </div>
         ) : (
           <div className="grid gap-1 p-4">
-            <Icon name="photo_camera" className="text-[34px] text-accent" />
-            <span>Chụp ảnh hoặc chọn ảnh có sẵn</span>
-            <span className="text-[12px] text-faint">Trên máy tính có thể kéo ảnh thả vào đây</span>
+            <Icon name="add_photo_alternate" className="text-[30px] text-accent" />
+            <span>{lockKind ? 'Chụp hoặc chọn ảnh CCCD' : 'Chụp hóa đơn, ảnh chuyển khoản, tin nhắn Zalo… hoặc chọn PDF / Excel'}</span>
+            <span className="text-[12px] text-faint">Trên máy tính có thể kéo tệp thả vào đây</span>
           </div>
         )}
+        {input ? (
+          <button type="button" aria-label="Bỏ tệp" onClick={onClearFile} className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-surface/90 text-muted shadow hover:text-bad">
+            <Icon name="close" className="text-[18px]" />
+          </button>
+        ) : null}
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <Button onClick={() => camRef.current?.click()} className="justify-center"><Icon name="photo_camera" />{file ? 'Chụp lại' : 'Chụp'}</Button>
-        <Button onClick={() => pickRef.current?.click()} className="justify-center"><Icon name="upload" />{file ? 'Chọn ảnh khác' : 'Chọn ảnh'}</Button>
+        <Button onClick={() => camRef.current?.click()} className="justify-center"><Icon name="photo_camera" />{input ? 'Chụp lại' : 'Chụp'}</Button>
+        <Button onClick={() => pickRef.current?.click()} className="justify-center"><Icon name="upload" />{input ? 'Chọn tệp khác' : lockKind ? 'Chọn ảnh' : 'Ảnh / PDF / Excel'}</Button>
       </div>
-      <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" aria-label="Chụp ảnh" onChange={(e) => { onPick(e.target.files?.[0]); e.target.value = ''; }} />
-      <input ref={pickRef} type="file" accept="image/*" className="hidden" data-testid="scan-file" aria-label="Chọn ảnh" onChange={(e) => { onPick(e.target.files?.[0]); e.target.value = ''; }} />
+      <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" aria-label="Chụp ảnh" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
+      <input ref={pickRef} type="file" accept={lockKind ? 'image/*' : ACCEPT_FILES} className="hidden" data-testid="scan-file" aria-label="Chọn tệp" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
 
       {lockKind ? null : (
         <div className="grid gap-1 text-xs font-medium text-muted">
-          <span>Đây là</span>
+          <span>Loại (không bắt buộc — AI tự nhận)</span>
           <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Loại giấy tờ">
             {KIND_OPTIONS.map((o) => (
               <button
@@ -83,46 +109,80 @@ export function CaptureForm({ kind, setKind, allowed, note, setNote, file, setFi
       )}
 
       <label className="grid gap-1 text-xs font-medium text-muted">
-        <span>Ghi chú cho AI (gõ hoặc bấm mic để nói)</span>
-        <span className="flex gap-1.5">
-          <Input aria-label="Ghi chú cho AI" value={note} maxLength={500} placeholder={kind === 'id_card' ? 'ví dụ: CCCD thợ Hiền' : 'ví dụ: hóa đơn copha, công trình A Huynh, Lam mua'} onChange={(e) => setNote(e.target.value)} />
-          <VoiceButton onText={(t) => setNote(note ? `${note} ${t}` : t)} />
-        </span>
+        <span>{lockKind ? 'Ghi chú cho AI' : 'Lời nhắn cho AI (gõ, hoặc dán tin nhắn Zalo)'}</span>
+        <Textarea
+          aria-label="Ghi chú cho AI" value={note} maxLength={4000} rows={lockKind ? 2 : 3}
+          placeholder={lockKind ? 'ví dụ: CCCD thợ Hiền' : 'ví dụ: ứng Hà điện nước 5 triệu công trình A Huynh · hóa đơn copha CT A Huynh · cốp pha anh Long đưa'}
+          onChange={(e) => setNote(e.target.value)}
+        />
       </label>
-      <p className="m-0 text-[12px] text-muted">AI dùng ghi chú để chọn sẵn công trình, loại chi phí, người mua. Anh luôn kiểm tra lại trước khi lưu — app không tự lưu.</p>
+      <p className="m-0 text-[12px] text-muted">AI đọc rồi điền sẵn để anh kiểm tra — app không tự lưu.</p>
 
-      <Button variant="primary" size="lg" data-testid="scan-read" disabled={!file || busy || !allowed[kind]} onClick={onRead} className="justify-center">
-        <Icon name={busy ? 'hourglass_top' : 'auto_awesome'} />{busy ? 'AI đang đọc…' : 'Đọc ảnh bằng AI'}
+      <Button variant="primary" size="lg" data-testid="scan-read" disabled={!canRead} onClick={onRead} className="justify-center">
+        <Icon name={busy ? 'hourglass_top' : 'auto_awesome'} />{busy ? 'AI đang đọc…' : 'Gửi cho AI'}
       </Button>
     </div>
   );
 }
 
-type Recognition = { lang: string; interimResults: boolean; maxAlternatives: number; start: () => void; stop: () => void; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null };
+/** Nút mic lớn: bấm để nói, bấm lần nữa để dừng → gửi luôn. Trình duyệt không cho ghi âm → ẩn. */
+function Recorder({ disabled, onAudio }: { disabled: boolean; onAudio: (blob: Blob, seconds: number) => void }) {
+  const [sec, setSec] = useState<number | null>(null);
+  const [err, setErr] = useState('');
+  const rec = useRef<{ mr: MediaRecorder; stream: MediaStream; started: number; timer: number } | null>(null);
+  useEffect(() => () => stopAll(true), []); // eslint-disable-line react-hooks/exhaustive-deps
 
-/** Nút mic (Web Speech API, tiếng Việt). Trình duyệt không hỗ trợ → không hiện nút. */
-export function VoiceButton({ onText }: { onText: (t: string) => void }) {
-  const [on, setOn] = useState(false);
-  const rec = useRef<Recognition | null>(null);
-  useEffect(() => () => rec.current?.stop(), []);
-  if (!speechSupported()) return null;
-  const toggle = () => {
-    if (on) { rec.current?.stop(); return; }
-    const w = window as unknown as Record<string, new () => Recognition>;
-    const R = w.SpeechRecognition ?? w.webkitSpeechRecognition;
-    if (!R) return;
-    const r = new R();
-    r.lang = 'vi-VN'; r.interimResults = false; r.maxAlternatives = 1;
-    r.onresult = (e) => { const t = e.results[0]?.[0]?.transcript?.trim(); if (t) onText(t); };
-    r.onend = () => setOn(false);
-    r.onerror = () => setOn(false);
-    rec.current = r;
-    setOn(true);
-    r.start();
+  function stopAll(cancel = false) {
+    const r = rec.current;
+    if (!r) return;
+    window.clearInterval(r.timer);
+    if (cancel) r.mr.ondataavailable = null;
+    if (r.mr.state !== 'inactive') r.mr.stop();
+    r.stream.getTracks().forEach((t) => t.stop());
+    rec.current = null;
+    setSec(null);
+  }
+
+  if (!recordingSupported()) return null;
+
+  const start = async () => {
+    setErr('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+      const started = Date.now();
+      mr.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+      mr.onstop = () => {
+        const seconds = Math.round((Date.now() - started) / 1000);
+        if (chunks.length && mr.ondataavailable) onAudio(new Blob(chunks, { type: mr.mimeType || 'audio/webm' }), seconds);
+      };
+      const timer = window.setInterval(() => {
+        const s = Math.round((Date.now() - started) / 1000);
+        setSec(s);
+        if (s >= MAX_RECORD_SECONDS) stopAll();
+      }, 250);
+      rec.current = { mr, stream, started, timer };
+      setSec(0);
+      mr.start();
+    } catch {
+      setErr('Không mở được micro — anh cho phép trình duyệt dùng micro rồi thử lại.');
+    }
   };
+
+  const on = sec !== null;
   return (
-    <Button size="icon" aria-label={on ? 'Dừng ghi âm' : 'Nói ghi chú'} aria-pressed={on} onClick={toggle} className={cn('shrink-0', on && '!border-bad !text-bad')}>
-      <Icon name={on ? 'stop_circle' : 'mic'} />
-    </Button>
+    <div className="grid justify-items-center gap-1.5 rounded-xl bg-accent-soft/40 p-3 text-center" data-testid="recorder">
+      <button
+        type="button" disabled={disabled && !on} onClick={() => (on ? stopAll() : void start())}
+        aria-label={on ? 'Dừng nói và gửi cho AI' : 'Bấm để nói'} aria-pressed={on}
+        className={cn('grid h-16 w-16 place-items-center rounded-full text-white shadow-md transition disabled:opacity-40', on ? 'animate-pulse bg-bad' : 'bg-accent')}
+      >
+        <Icon name={on ? 'stop' : 'mic'} className="text-[32px]" />
+      </button>
+      <span className="text-[13px] font-medium">{on ? `Đang nghe… ${sec}s — bấm lần nữa để gửi` : 'Bấm để nói'}</span>
+      {!on ? <span className="text-[12px] text-muted">vd: “Hôm nay ứng Hà điện nước 5 triệu công trình nhà anh Nhật, chuyển khoản”</span> : null}
+      {err ? <span className="text-[12px] text-bad">{err}</span> : null}
+    </div>
   );
 }

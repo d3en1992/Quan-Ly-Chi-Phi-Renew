@@ -84,7 +84,7 @@ test('Chụp hóa đơn NCC mới (giả lập) → điền sẵn, ô vàng, t�
   const errors = watchConsole(page);
   await login(page, 'e2e.admin');
   await page.goto('/nhap-chi-phi');
-  await page.getByRole('tab', { name: 'CHỤP HÓA ĐƠN' }).click();
+  await page.getByRole('tab', { name: 'TRỢ LÝ AI' }).click();
   await pickImageAndRead(page, { kind: 'Hóa đơn' });
   const form = page.getByTestId('scan-invoice');
   await expect(form).toBeVisible();
@@ -102,7 +102,7 @@ test('Chụp hóa đơn NCC mới (giả lập) → điền sẵn, ô vàng, t�
   expect(data![0]).toMatchObject({ source: 'scan', amount: 8_500_000, paid_at_purchase: true });
   expect(data![0]!.receipt_image_path).toMatch(new RegExp(`^${COMPANY}/2026/`));
   const sup = (await admin.from('suppliers').select('id, address, phone').eq('name', NEW_SUPPLIER).single()).data!;
-  expect(sup).toMatchObject({ id: data![0]!.supplier_id, address: '128 Tỉnh lộ 8, Tân An Hội, Củ Chi', phone: '0908 123 456' });
+  expect(sup).toMatchObject({ id: data![0]!.supplier_id, address: '128 Tỉnh lộ 8, Tân An Hội, Củ Chi', phone: '0908123456' });
   const img = await admin.storage.from('receipts').download(data![0]!.receipt_image_path!);
   expect(img.error).toBeNull();
   expect(errors).toEqual([]);
@@ -112,7 +112,7 @@ test('Chụp hóa đơn chữ mờ (giả lập) → tổng lệch, NCC Mua nợ
   await page.setViewportSize({ width: 1440, height: 900 });
   await login(page, 'e2e.admin');
   await page.goto('/nhap-chi-phi');
-  await page.getByRole('tab', { name: 'CHỤP HÓA ĐƠN' }).click();
+  await page.getByRole('tab', { name: 'TRỢ LÝ AI' }).click();
   await pickImageAndRead(page, { kind: 'Hóa đơn', note: 'hóa đơn sắt chữ mờ' });
   await expect(page.getByTestId('printed-total')).toContainText('lệch');
   await expect(page.getByTestId('fill-supplier')).toContainText(AN_PHU);
@@ -156,7 +156,7 @@ test('Điện thoại 390: nút Chụp → hợp đồng (giả lập) → khác
   const errors = watchConsole(page);
   await login(page, 'e2e.admin');
   await page.goto('/tong-quan');
-  await page.getByRole('button', { name: 'Chụp hóa đơn, CCCD' }).click();
+  await page.getByRole('button', { name: 'Trợ lý AI' }).click();
   await expect(page.getByTestId('capture-form')).toBeVisible();
   await page.getByTestId('scan-file').setInputFiles({ name: 'anh.png', mimeType: 'image/png', buffer: PNG });
   await page.screenshot({ path: `${SHOTS}/390-chup-menu.png`, fullPage: true });
@@ -258,7 +258,7 @@ for (const size of [{ name: '1440', width: 1440, height: 900 }, { name: '820', w
     expect(await noSideScroll(page)).toBe(true);
     await page.screenshot({ path: `${SHOTS}/${size.name}-xuat-du-lieu.png`, fullPage: true });
     await page.goto(size.width < 640 ? '/chup' : '/nhap-chi-phi');
-    if (size.width >= 640) await page.getByRole('tab', { name: 'CHỤP HÓA ĐƠN' }).click();
+    if (size.width >= 640) await page.getByRole('tab', { name: 'TRỢ LÝ AI' }).click();
     await expect(page.getByTestId('capture-form')).toBeVisible();
     expect(await noSideScroll(page)).toBe(true);
     await page.screenshot({ path: `${SHOTS}/${size.name}-chup.png`, fullPage: true });

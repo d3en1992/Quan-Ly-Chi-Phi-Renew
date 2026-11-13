@@ -76,7 +76,7 @@ export function PhoneEntry({ lists, expenses, canAdd, today, onOpen }: Props) {
     <>
       <div className="flex gap-2">
         <button type="button" className={chip} aria-pressed="true">Nhập tay</button>
-        <Link to="/chup" className={chip} aria-pressed="false">Chụp hóa đơn</Link>
+        <Link to="/chup" className={chip} aria-pressed="false">Trợ lý AI</Link>
       </div>
       {canAdd ? (
         <>

@@ -40,8 +40,8 @@ export function PhoneShell() {
   const isMore = pathname === PHONE_MORE_PATH;
   const isMain = MAIN_PATHS.includes(pathname);
   const backTo = pathname.startsWith('/cong-trinh/') ? '/cong-trinh' : pathname === PHONE_CAPTURE.path ? PHONE_HOME.path : PHONE_MORE_PATH;
-  const canCapture = hasLevel(access.permissions, 'expenses', 'add');
-  // Nút Chụp chỉ hiện ở màn xem số (che ít nhất); màn nhập / chấm công / danh bạ có nút riêng
+  const canCapture = (['expenses', 'payments', 'revenue'] as const).some((m) => hasLevel(access.permissions, m, 'add'));
+  // Nút AI chỉ hiện ở màn xem số (che ít nhất); màn nhập / chấm công / danh bạ có nút riêng
   const showFab = canCapture && (pathname === PHONE_HOME.path || pathname === '/cong-trinh' || pathname === pathOfSub('tracuu'));
   const current = activeBottomKey(pathname);
 
@@ -74,10 +74,10 @@ export function PhoneShell() {
         <button
           type="button"
           onClick={() => navigate(PHONE_CAPTURE.path)}
-          aria-label="Chụp hóa đơn, CCCD"
-          className="fixed right-3.5 bottom-[calc(76px+env(safe-area-inset-bottom))] z-30 grid size-[50px] place-items-center rounded-full bg-accent text-accent-fg shadow-card"
+          aria-label="Trợ lý AI"
+          className="fixed right-3.5 bottom-[calc(76px+env(safe-area-inset-bottom))] z-30 grid size-[54px] place-items-center rounded-full bg-accent text-accent-fg shadow-card"
         >
-          <Icon name="photo_camera" className="text-[24px]" />
+          <span className="grid place-items-center leading-none"><Icon name="auto_awesome" className="text-[22px]" /><span className="text-[10px] font-bold">AI</span></span>
         </button>
       ) : null}
 

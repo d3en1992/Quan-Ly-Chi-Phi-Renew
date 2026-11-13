@@ -1,0 +1,9 @@
+{
+  "kind": "receipt",
+  "transcript": "Hôm nay anh Huynh đưa 100 triệu",
+  "question": "Anh Huynh đưa tiền mặt hay chuyển khoản?",
+  "receipt": {
+    "date": "2026-11-13", "amount": 100000000, "customer_text": "anh Huynh", "customer_match": "",
+    "project_match": "", "receipt_kind": "stage", "method": "", "note": "", "low_confidence": []
+  }
+}

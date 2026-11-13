@@ -18,7 +18,7 @@ import { canEditRow, ItemsEditor } from '@/features/payments/shared';
 import { matchesSearch, todayIso } from '@/features/reports/shared';
 import {
   RECEIPT_KIND, useDeleteContract, useDeleteReceipt, useRevData, useSaveContract, useSaveReceipt,
-  type MainContract, type Receipt, type ReceiptKind, type RevData,
+  type MainContract, type Receipt, type ReceiptKind, type ReceiptMethod, type RevData,
 } from './api';
 
 export type RevenueTab = 'contracts' | 'receipts';
@@ -149,8 +149,10 @@ function ContractsTab({ ctx }: { ctx: Ctx }) {
 }
 
 // ───────────────────────── THU TIỀN ─────────────────────────
-type ReceiptDraft = { id: string | null; project: string; date: string; kind: ReceiptKind; amount: number; note: string };
-const blankReceipt = (project = ''): ReceiptDraft => ({ id: null, project, date: todayIso(), kind: 'stage', amount: 0, note: '' });
+type ReceiptDraft = { id: string | null; project: string; date: string; kind: ReceiptKind; amount: number; note: string; method: ReceiptMethod | null };
+const blankReceipt = (project = ''): ReceiptDraft => ({ id: null, project, date: todayIso(), kind: 'stage', amount: 0, note: '', method: null });
+const METHOD_OPTS: { value: ReceiptMethod; label: string }[] = [{ value: 'transfer', label: 'Chuyển khoản' }, { value: 'cash', label: 'Tiền mặt' }];
+const METHOD_LABEL: Record<ReceiptMethod, string> = { transfer: 'CK', cash: 'Tiền mặt' };
 const KIND_OPTS = (['advance', 'stage', 'settlement', 'other'] as const).map((k) => ({ value: k, label: RECEIPT_KIND[k]!.label }));
 
 function ReceiptsTab({ ctx }: { ctx: Ctx }) {
@@ -187,7 +189,7 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
   const submit = () => {
     if (!draft.project) { toast('Chọn công trình!', 'error'); return; }
     if (draft.amount <= 0) { toast('Nhập số tiền > 0!', 'error'); return; }
-    save.mutate({ id: draft.id, projectId: draft.project, date: draft.date, amount: draft.amount, kind: draft.kind, note: draft.note }, {
+    save.mutate({ id: draft.id, projectId: draft.project, date: draft.date, amount: draft.amount, kind: draft.kind, note: draft.note, method: draft.method }, {
       onSuccess: () => {
         toast(`${draft.id ? 'Đã cập nhật' : 'Đã lưu'} phiếu thu ${formatMoney(draft.amount)} · ${data.projectName(draft.project)}`);
         reset();
@@ -198,7 +200,7 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
   const open = (r: Receipt) => {
     if (r.is_auto) { toast('Phiếu thu tự động từ quyết toán: sửa / xóa ở tab Quyết Toán.', 'error'); return; }
     if (!canEditRow(access, 'revenue', r.created_by)) { toast('Phiếu do người khác nhập — bạn chỉ xem được.', 'error'); return; }
-    setDraft({ id: r.id, project: r.project_id, date: r.date, kind: r.kind as ReceiptKind, amount: r.amount, note: r.note ?? '' });
+    setDraft({ id: r.id, project: r.project_id, date: r.date, kind: r.kind as ReceiptKind, amount: r.amount, note: r.note ?? '', method: r.method ?? null });
     setFormOpen(true);
     if (!phone) window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -214,6 +216,7 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
         </Field>
         <Field label="Ngày"><Input type="date" aria-label="Ngày thu" value={draft.date} onChange={(e) => set('date', e.target.value)} /></Field>
         <div className="col-span-2 grid gap-1 text-xs font-medium text-muted"><span>Loại thu</span><div><Segmented value={draft.kind} onChange={(k) => set('kind', k)} options={KIND_OPTS} /></div></div>
+        <div className="col-span-2 grid gap-1 text-xs font-medium text-muted"><span>Hình thức</span><div><Segmented value={draft.method ?? ('' as ReceiptMethod)} onChange={(m) => set('method', m)} options={METHOD_OPTS} /></div></div>
         <Field label="Số tiền" className="col-span-2"><MoneyInput aria-label="Số tiền thu" value={draft.amount} onChange={(v) => set('amount', v)} /></Field>
         <Field label="Ghi chú" className="col-span-2"><Input aria-label="Ghi chú" value={draft.note} onChange={(e) => set('note', e.target.value)} placeholder="Đợt 3 — xong sàn tầng 2" /></Field>
         {after ? <div className="col-span-2 text-[13px] text-muted">Còn phải thu công trình này sau phiếu: <b className={`num ${after.receivable < 0 ? 'text-warn' : 'text-fg'}`} data-testid="thu-after">{formatMoney(after.receivable)}</b>{after.receivable < 0 ? ' (thu vượt giá trị hợp đồng)' : ''}</div> : null}
@@ -229,7 +232,7 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
         onConfirm={() => { if (!draft.id) return; del.mutate({ id: draft.id, is_auto: false }, { onSuccess: () => { setConfirm(false); toast('Đã xóa phiếu thu'); reset(); }, onError: (e) => { setConfirm(false); toast(`Chưa xóa được: ${e.message}`, 'error'); } }); }} />
     </>
   );
-  const kindPill = (r: Receipt) => <><Pill tone={RECEIPT_KIND[r.kind]?.tone ?? 'neutral'}>{RECEIPT_KIND[r.kind]?.label ?? r.kind}</Pill>{r.is_auto ? <> <Pill>Tự động</Pill></> : null}</>;
+  const kindPill = (r: Receipt) => <><Pill tone={RECEIPT_KIND[r.kind]?.tone ?? 'neutral'}>{RECEIPT_KIND[r.kind]?.label ?? r.kind}</Pill>{r.method ? <> <Pill>{METHOD_LABEL[r.method]}</Pill></> : null}{r.is_auto ? <> <Pill>Tự động</Pill></> : null}</>;
   const pick = (id: string) => { if (!canAdd) return; setDraft({ ...blankReceipt(id), date: draft.date }); setFormOpen(true); };
 
   if (phone) {

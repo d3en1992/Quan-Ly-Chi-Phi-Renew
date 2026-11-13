@@ -1,4 +1,4 @@
-import { forwardRef, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react';
+import { forwardRef, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/format';
 import { parseMoneyDigits } from '@/lib/calc';
@@ -10,6 +10,12 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
   ({ className, ...props }, ref) => <input ref={ref} className={cn(base, className)} {...props} />,
 );
 Input.displayName = 'Input';
+
+/** Ô chữ nhiều dòng (lời nhắn cho AI, dán tin nhắn Zalo) */
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
+  ({ className, ...props }, ref) => <textarea ref={ref} className={cn(base, 'h-auto min-h-[72px] resize-y py-2 leading-snug', className)} {...props} />,
+);
+Textarea.displayName = 'Textarea';
 
 export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(
   ({ className, ...props }, ref) => <select ref={ref} className={cn(base, 'pr-7', className)} {...props} />,
@@ -74,7 +80,8 @@ export function Checkbox({
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
       />
-      {label}
+      {/* Bọc chữ trong 1 khối: nhãn có chữ đậm / nhiều đoạn không bị tách thành nhiều cột khi xuống dòng */}
+      <span className="min-w-0">{label}</span>
     </label>
   );
 }

@@ -1,0 +1,9 @@
+{
+  "kind": "advance",
+  "transcript": "Hôm nay ứng cho Hà điện nước công trình nhà anh Huynh 5 triệu chuyển khoản",
+  "question": "",
+  "advance": {
+    "date": "2026-11-13", "amount": 5000000, "subcontractor_text": "Hà điện nước", "subcontractor_match": "",
+    "project_match": "", "pay_kind": "advance", "method": "transfer", "note": "Ứng tiền điện nước", "low_confidence": []
+  }
+}

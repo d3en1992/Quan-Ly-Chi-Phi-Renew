@@ -12,7 +12,7 @@ import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { useCreateExpenses, useEntryExpenses, useLineHistory } from '@/features/expenses/api';
 import { InvoiceFields, useLineSuggestions } from '@/features/expenses/InvoiceForm';
-import { checkInvoice, type InvoiceDraft, type InvoiceField } from '@/features/expenses/invoice-model';
+import { blankLine, checkInvoice, invoiceDescription, invoiceTotal, type InvoiceDraft, type InvoiceField } from '@/features/expenses/invoice-model';
 import { findDuplicates, historySuggest, type DupHit } from '@/features/expenses/logic';
 import type { ExpenseInput } from '@/features/expenses/schema';
 import { DuplicateDialog, toDupCandidate, today, type Lists } from '@/features/expenses/shared';
@@ -33,6 +33,13 @@ export function ScanInvoice({ scan, image, lists, compact = false, onDone, onRet
   const descriptions = useMemo(() => historySuggest((expenses.data ?? []).map((e) => ({ text: e.description, date: e.date }))).map((n) => ({ id: n, name: n })), [expenses.data]);
   const init = useMemo(() => invoiceFromScan(scan, { ...lists, projects: lists.projectOptions }, today()), [scan]); // eslint-disable-line react-hooks/exhaustive-deps
   const [draft, setDraft] = useState<InvoiceDraft>(init.draft);
+  // Chuyển hóa đơn nhanh ↔ chi tiết: giữ lại các dòng vật tư để chuyển ngược không mất
+  const [keptLines, setKeptLines] = useState<InvoiceDraft['lines']>(null);
+  const toQuick = () => {
+    setKeptLines(draft.lines);
+    setDraft((d) => ({ ...d, amount: invoiceTotal(d), description: invoiceDescription(d), lines: null }));
+  };
+  const toDetail = () => setDraft((d) => ({ ...d, lines: keptLines?.length ? keptLines : [blankLine()] }));
   const [bad, setBad] = useState<InvoiceField[]>([]);
   const [dups, setDups] = useState<{ hits: DupHit[]; input: ExpenseInput } | null>(null);
   const [keepImage, setKeepImage] = useState(true);
@@ -42,8 +49,29 @@ export function ScanInvoice({ scan, image, lists, compact = false, onDone, onRet
   // NCC: mới / có sẵn thiếu thông tin — người dùng sửa được Tên / Địa chỉ / SĐT trước khi lưu
   const plan = supplierPlan(draft.supplier, scan, lists.suppliers);
   const [addNew, setAddNew] = useState(true);
-  const [newInfo, setNewInfo] = useState({ address: scan.supplier_address, phone: scan.supplier_phone });
+  const [newInfo, setNewInfo] = useState({ address: scan.supplier_address, phone: (scan.supplier_phones?.length ? scan.supplier_phones : [scan.supplier_phone]).filter(Boolean).join(' - ') });
   const [fillMissing, setFillMissing] = useState(true);
+  const [savingSupplier, setSavingSupplier] = useState(false);
+  /** Lưu NCC mới / bổ sung thông tin NCC ngay (không cần lưu hóa đơn) */
+  const saveSupplierNow = async () => {
+    if (savingSupplier) return;
+    setSavingSupplier(true);
+    try {
+      if (plan.kind === 'new') {
+        const s = await supplierChange.mutateAsync({ kind: 'new', name: plan.name, address: newInfo.address, phone: newInfo.phone });
+        setDraft((d) => ({ ...d, supplier: s.name }));
+        toast(`Đã lưu nhà cung cấp “${s.name}”`);
+      } else if (plan.kind === 'existing') {
+        await supplierChange.mutateAsync({ kind: 'patch', id: plan.id, address: plan.missingAddress, phone: plan.missingPhone });
+        setFillMissing(false);
+        toast(`Đã bổ sung thông tin cho “${plan.name}”`);
+      }
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e), 'error');
+    } finally {
+      setSavingSupplier(false);
+    }
+  };
   const total = checkPrintedTotal(draft, init.printedTotal);
   const unsureCount = init.unsureHead.length + init.unsureCells.length;
 
@@ -116,6 +144,19 @@ export function ScanInvoice({ scan, image, lists, compact = false, onDone, onRet
           <small className="text-muted">Ô tô vàng = AI không chắc</small>
         </header>
         <div className="grid gap-3 p-4">
+          {scan.is_summary ? (
+            <div className="flex gap-2 rounded-lg border border-warn/50 bg-warn-soft p-3 text-[13px]" data-testid="summary-warning">
+              <Icon name="warning" className="text-warn" />
+              <span>Đây có thể là <b>SỔ CỘNG TIỀN</b> (bảng tổng hợp nhiều hóa đơn), không phải hóa đơn lẻ. AI vẫn ghi từng dòng ngày + số tiền ở dưới.
+                Nếu các hóa đơn lẻ đã nhập rồi thì <b>đừng lưu</b> để khỏi tính chi phí 2 lần — anh xem ảnh rồi quyết định.</span>
+            </div>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-2 text-[13px]">
+            <span className="text-muted">{draft.lines ? 'Hóa đơn chi tiết (từng dòng vật tư)' : 'Hóa đơn nhanh (1 dòng, 1 số tiền)'}</span>
+            {draft.lines
+              ? <Button size="sm" data-testid="to-quick" onClick={toQuick}><Icon name="bolt" />Chuyển thành hóa đơn nhanh</Button>
+              : <Button size="sm" data-testid="to-detail" onClick={toDetail}><Icon name="list" />Chuyển lại hóa đơn chi tiết</Button>}
+          </div>
           {plan.kind === 'new' ? (
             <div className="grid gap-2 rounded-lg border border-accent/40 bg-accent-soft/50 p-3" data-testid="new-supplier">
               <div className="flex flex-wrap items-center gap-2.5">
@@ -126,7 +167,10 @@ export function ScanInvoice({ scan, image, lists, compact = false, onDone, onRet
                 <div className="grid gap-2 sm:grid-cols-2">
                   <Field label="Tên (AI đọc từ chữ in trên hóa đơn)" className="sm:col-span-2"><Input aria-label="Tên NCC mới" value={draft.supplier} onChange={(e) => setDraft((d) => ({ ...d, supplier: e.target.value }))} /></Field>
                   <Field label="Địa chỉ"><Input aria-label="Địa chỉ NCC mới" value={newInfo.address} onChange={(e) => setNewInfo((x) => ({ ...x, address: e.target.value }))} /></Field>
-                  <Field label="Số điện thoại"><Input aria-label="SĐT NCC mới" className={scan.low_confidence.includes('supplier_phone') ? '!border-warn !bg-warn-soft' : undefined} value={newInfo.phone} onChange={(e) => setNewInfo((x) => ({ ...x, phone: e.target.value }))} /></Field>
+                  <Field label="Số điện thoại (tối đa 2 số)"><Input aria-label="SĐT NCC mới" className={scan.low_confidence.includes('supplier_phone') ? '!border-warn !bg-warn-soft' : undefined} value={newInfo.phone} onChange={(e) => setNewInfo((x) => ({ ...x, phone: e.target.value }))} /></Field>
+                  <div className="sm:col-span-2 flex justify-end">
+                    <Button size="sm" data-testid="supplier-save-now" disabled={savingSupplier} onClick={() => void saveSupplierNow()}><Icon name="add_business" />{savingSupplier ? 'Đang lưu…' : 'Lưu nhà cung cấp ngay'}</Button>
+                  </div>
                 </div>
               ) : null}
             </div>
@@ -135,6 +179,7 @@ export function ScanInvoice({ scan, image, lists, compact = false, onDone, onRet
               <Checkbox checked={fillMissing} onChange={setFillMissing} label={<>Bổ sung cho <b>{plan.name}</b> (danh mục đang thiếu)</>} />
               {plan.missingAddress ? <span className="text-muted"><Icon name="location_on" className="text-[15px]" /> {plan.missingAddress}</span> : null}
               {plan.missingPhone ? <span className="text-muted"><Icon name="call" className="text-[15px]" /> {plan.missingPhone}</span> : null}
+              {fillMissing ? <div><Button size="sm" disabled={savingSupplier} onClick={() => void saveSupplierNow()}><Icon name="save" />Bổ sung ngay</Button></div> : null}
             </div>
           ) : null}
 

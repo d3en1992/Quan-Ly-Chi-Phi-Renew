@@ -179,10 +179,10 @@ export function InvoiceFields({ draft, setDraft, lists, suggestions, description
       {draft.lines ? (
         <div className={cn('tbl rounded-lg border', bad.includes('lines') ? 'border-bad' : 'border-line')}>
           {/* Kẻ dọc giữa các cột để phân biệt Tên / ĐVT / Số lượng / Đơn giá / Thành tiền */}
-          <table data-testid="invoice-lines" className="!w-full table-fixed [&_td]:border-r [&_td]:border-line [&_th]:border-r [&_th]:border-line [&_tr>*:last-child]:border-r-0" style={{ minWidth: compact ? 520 : 640 }}>
-            <colgroup><col style={{ width: 34 }} /><col /><col style={{ width: 70 }} /><col style={{ width: 76 }} /><col style={{ width: 112 }} /><col style={{ width: 112 }} /><col style={{ width: 36 }} /></colgroup>
+          <table data-testid="invoice-lines" className="!w-full table-fixed [&_td]:border-r [&_td]:border-line [&_th]:border-r [&_th]:border-line [&_tr>*:last-child]:border-r-0" style={{ minWidth: compact ? 600 : 680 }}>
+            <colgroup><col style={{ width: 34 }} /><col style={{ minWidth: 160 }} /><col style={{ width: 70 }} /><col style={{ width: 76 }} /><col style={{ width: 112 }} /><col style={{ width: 112 }} /><col style={{ width: 36 }} /></colgroup>
             <thead>
-              <tr><th className="!px-0 !text-center">#</th><th>Tên vật tư / nội dung</th><th>ĐVT</th><th className="!text-right">Số lượng</th><th className="!text-right">Đơn giá</th><th className="!text-right">Thành tiền</th><th /></tr>
+              <tr><th className="!px-0 !text-center">#</th><th>Tên vật tư</th><th>ĐVT</th><th className="!text-right">Số lượng</th><th className="!text-right">Đơn giá</th><th className="!text-right">Thành tiền</th><th /></tr>
             </thead>
             <tbody>
               {draft.lines.map((l, i) => (
@@ -200,7 +200,7 @@ export function InvoiceFields({ draft, setDraft, lists, suggestions, description
             <tfoot>
               <tr className="font-bold [&>td]:bg-surface-2">
                 <td />
-                <td colSpan={4} className="!whitespace-normal">Tổng hóa đơn{autoDescription ? <span className="font-normal text-muted"> · nội dung tự ghép: “{autoDescription.length > 70 ? `${autoDescription.slice(0, 70)}…` : autoDescription}”</span> : null}</td>
+                <td colSpan={4}>Tổng hóa đơn</td>
                 <td className="num text-right" data-testid="invoice-total">{formatMoney(total)}</td>
                 <td />
               </tr>

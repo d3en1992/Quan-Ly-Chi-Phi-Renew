@@ -550,14 +550,14 @@ isOneToOne: false
                   ]
                 },"receipts": {
                   Row: {
-                    "amount": number,"company_id": string,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"deleted_by": string | null,"id": string,"is_auto": boolean,"kind": string,"note": string | null,"project_id": string,"settlement_id": string | null,"updated_at": string
+                    "amount": number,"company_id": string,"created_at": string,"created_by": string | null,"date": string,"deleted_at": string | null,"deleted_by": string | null,"id": string,"is_auto": boolean,"kind": string,"method": string | null,"note": string | null,"project_id": string,"settlement_id": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount": number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date": string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"is_auto"?: boolean,"kind"?: string,"note"?: string | null,"project_id": string,"settlement_id"?: string | null,"updated_at"?: string
+                    "amount": number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date": string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"is_auto"?: boolean,"kind"?: string,"method"?: string | null,"note"?: string | null,"project_id": string,"settlement_id"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "amount"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"is_auto"?: boolean,"kind"?: string,"note"?: string | null,"project_id"?: string,"settlement_id"?: string | null,"updated_at"?: string
+                    "amount"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"is_auto"?: boolean,"kind"?: string,"method"?: string | null,"note"?: string | null,"project_id"?: string,"settlement_id"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {

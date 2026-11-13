@@ -1,9 +1,41 @@
 {
   "kind": "contract",
   "contract": {
-    "customer_name": "A Bình", "customer_full_name": "TRẦN VĂN BÌNH", "customer_address": "12 Lê Văn Sỹ, P.13, Q.3, TP.HCM",
-    "customer_phone": "0912 345 678", "value": 1850000000, "date": "2026-11-05",
+    "customer_name": "A Bình",
+    "customer_full_name": "TRẦN VĂN BÌNH",
+    "customer_address": "12 Lê Văn Sỹ, P.13, Q.3, TP.HCM",
+    "customer_phone": "0912 345 678",
+    "value": 1850000000,
+    "date": "2026-11-05",
     "description": "Thi công xây dựng nhà ở 1 trệt 2 lầu, phần thô + hoàn thiện",
-    "customer_match": "", "project_match": "", "low_confidence": ["customer_phone"]
+    "customer_match": "",
+    "project_match": "",
+    "low_confidence": [
+      "customer_phone"
+    ],
+    "floor_areas": [
+      {
+        "name": "Móng cọc",
+        "area": 32
+      },
+      {
+        "name": "Trệt + sân",
+        "area": 60
+      },
+      {
+        "name": "Lầu 1",
+        "area": 56
+      },
+      {
+        "name": "Lầu 2",
+        "area": 56
+      },
+      {
+        "name": "Mái",
+        "area": 11.12
+      }
+    ],
+    "unit_price": 3000000,
+    "is_estimate": false
   }
 }

@@ -18,6 +18,8 @@ const contractSchema = z.object({
 const receiptSchema = z.object({
   id: z.string(), project_id: z.string(), date: z.string(), amount: money, kind: z.string(), is_auto: z.boolean(), settlement_id: z.string().nullable(),
   note: z.string().nullable(), created_by: z.string().nullable(), created_at: z.string().nullable(),
+  /** Hình thức thu: transfer = chuyển khoản, cash = tiền mặt, null = chưa ghi (migration …017) */
+  method: z.enum(['transfer', 'cash']).nullable().optional(),
 });
 const settlementSchema = z.object({
   id: z.string(), project_id: z.string(), date: z.string(), kind: z.string(), amount: money, is_final: z.boolean(), note: z.string().nullable(),
@@ -137,7 +139,9 @@ export function useDeleteContract() {
   return useMutation({ mutationFn: (id: string) => softDelete('main_contracts', id, 'hợp đồng'), onSuccess: done });
 }
 
-export type ReceiptInput = { id: string | null; projectId: string; date: string; amount: number; kind: ReceiptKind; note: string };
+export type ReceiptMethod = 'transfer' | 'cash';
+/** method: undefined = không đụng (sửa phiếu cũ), null = chưa ghi */
+export type ReceiptInput = { id: string | null; projectId: string; date: string; amount: number; kind: ReceiptKind; note: string; method?: ReceiptMethod | null };
 const receiptInputSchema = z.object({
   projectId: z.string().uuid('Chọn công trình'), date: isoDate, amount: z.number().int().positive('Nhập số tiền > 0'), kind: z.enum(['advance', 'stage', 'settlement', 'other']),
 });
@@ -148,7 +152,10 @@ export function useSaveReceipt() {
     mutationFn: async (v: ReceiptInput): Promise<string> => {
       const r = receiptInputSchema.safeParse(v);
       if (!r.success) throw firstIssue(r.error);
-      const row = { project_id: v.projectId, date: v.date, amount: v.amount, kind: v.kind, note: v.note.trim() || null };
+      const row = {
+        project_id: v.projectId, date: v.date, amount: v.amount, kind: v.kind, note: v.note.trim() || null,
+        ...(v.method !== undefined ? { method: v.method } : {}),
+      };
       if (v.id) {
         // Phiếu tự động từ quyết toán không sửa tay được (điều kiện is_auto = false)
         const { data, error } = await sb.from('receipts').update(row).eq('id', v.id).eq('is_auto', false).select('id');

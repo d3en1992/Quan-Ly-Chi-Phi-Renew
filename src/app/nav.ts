@@ -85,7 +85,8 @@ export const PROJECT_DETAIL_PATH = '/cong-trinh/:projectId';
 
 /** Trang chỉ có trên điện thoại */
 export const PHONE_HOME: NavItem = { key: 'home', path: '/tong-quan', icon: 'home', label: 'Tổng quan', module: 'projects' };
-export const PHONE_CAPTURE: NavItem = { key: 'chupmenu', path: '/chup', icon: 'photo_camera', label: 'Chụp', module: 'expenses' };
+/** Nút AI (trước là Chụp): ảnh hóa đơn, ảnh chuyển khoản, giọng nói, PDF / Excel hợp đồng, danh sách vật tư — đường dẫn giữ /chup */
+export const PHONE_CAPTURE: NavItem = { key: 'chupmenu', path: '/chup', icon: 'auto_awesome', label: 'Trợ lý AI', module: 'expenses' };
 export const PHONE_MORE_PATH = '/them';
 
 export function canSeeModule(perms: PermissionMap, module: NavModule): boolean {

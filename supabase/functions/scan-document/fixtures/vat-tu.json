@@ -1,0 +1,16 @@
+{
+  "kind": "material_list",
+  "transcript": "",
+  "question": "",
+  "material_list": {
+    "title": "Ván cốp pha", "supplier_match": "", "project_match": "", "delivery_note": "",
+    "items": [
+      { "name": "Ván cốp pha 45 cm", "quantity": 8, "unit": "tấm", "note": "" },
+      { "name": "Ván cốp pha 25 cm", "quantity": 10, "unit": "tấm", "note": "" },
+      { "name": "Ván cốp pha 40 cm", "quantity": 4, "unit": "tấm", "note": "" },
+      { "name": "Ván cốp pha 35 cm", "quantity": 4, "unit": "tấm", "note": "" },
+      { "name": "Ván cốp pha 20 cm", "quantity": 10, "unit": "tấm", "note": "" },
+      { "name": "Ván cốp pha 30 cm", "quantity": 10, "unit": "tấm", "note": "" }
+    ]
+  }
+}
