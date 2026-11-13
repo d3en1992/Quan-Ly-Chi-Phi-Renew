@@ -11,6 +11,8 @@ export default defineConfig({
     // PWA: cài được lên màn hình chính. Chỉ cache vỏ app (js/css/icon); KHÔNG cache dữ liệu nghiệp vụ (app chạy online).
     VitePWA({
       registerType: 'autoUpdate',
+      // Tự đăng ký ở src/app/pwa-update.ts (kiểm tra bản mới + tự tải lại), không chèn script mặc định
+      injectRegister: false,
       includeAssets: ['favicon-32x32.png', 'favicon-16x16.png', 'apple-icon-180x180.png'],
       manifest: {
         name: 'QLCP Nguyễn Hữu',
