@@ -113,7 +113,7 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
       ) : r!.kind === 'invoice' ? (
         allowedKinds.invoice ? needLists(<ScanInvoice scan={r!.invoice} image={result.image} lists={lists!} compact={compact} onDone={done} onRetake={reset} />) : noAccess('hóa đơn')
       ) : r!.kind === 'advance' ? (
-        allowedKinds.advance ? <ScanAdvance scan={r!.advance} onDone={done} onRetake={reset} /> : noAccess('tiền ứng thầu phụ')
+        allowedKinds.advance ? <ScanAdvance scan={r!.advance} onDone={done} onRetake={reset} /> : noAccess('tiền ứng thầu phụ / trả nhà cung cấp')
       ) : r!.kind === 'receipt' ? (
         allowedKinds.receipt ? <ScanReceipt scan={r!.receipt} onDone={done} onRetake={reset} /> : noAccess('phiếu thu tiền khách')
       ) : r!.kind === 'material_list' ? (

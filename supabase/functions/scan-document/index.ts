@@ -50,7 +50,7 @@ const KINDS: ScanRequestKind[] = ['auto', 'invoice', 'advance', 'receipt', 'cont
 /** Loại tệp Gemini đọc được: ảnh, PDF, âm thanh (app đổi ghi âm sang WAV) */
 const MIME_OK = /^(image\/(jpeg|png|webp)|application\/pdf|audio\/(wav|x-wav|webm|ogg|mp4|mpeg|aac|flac))$/;
 const KIND_LABEL: Record<ScanKind, string> = {
-  invoice: 'hóa đơn', advance: 'tiền ứng thầu phụ', receipt: 'thu tiền khách', contract: 'hợp đồng', material_list: 'danh sách vật tư', id_card: 'CCCD',
+  invoice: 'hóa đơn', advance: 'tiền ứng thầu phụ / trả nhà cung cấp', receipt: 'thu tiền khách', contract: 'hợp đồng', material_list: 'danh sách vật tư', id_card: 'CCCD',
 };
 /** Thứ tự xoay tua mặc định — model đầu đọc tốt nhất; mỗi model gói miễn phí có lượt riêng (≈ 5 lần/phút, 20 lần/ngày) */
 // Model lite lên đầu (anh Tình chốt 13/11/2026: nhanh, đọc đủ chính xác, nhiều lượt/phút); bản 2.5 đã ngừng cho key mới

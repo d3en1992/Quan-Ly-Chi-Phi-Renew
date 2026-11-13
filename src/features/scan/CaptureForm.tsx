@@ -14,8 +14,8 @@ export const KIND_OPTIONS: { value: ScanRequestKind; label: string }[] = [
 /** Nút Chụp CCCD ở Danh Bạ (lockKind) */
 export const ID_CARD_OPTION = { value: 'id_card' as const, label: 'CCCD' };
 
-/** Ghi âm tối đa 90 giây (WAV 16 kHz ≈ 2,9 MB) */
-export const MAX_RECORD_SECONDS = 90;
+/** Ghi âm tối đa 120 giây (WAV 16 kHz ≈ 3,8 MB, base64 ≈ 5,1 MB — dưới giới hạn 7 MB của hàm máy chủ) */
+export const MAX_RECORD_SECONDS = 120;
 
 type Props = {
   kind: ScanRequestKind;
@@ -125,22 +125,31 @@ export function CaptureForm({ kind, setKind, allowed, note, setNote, input, onPi
   );
 }
 
-/** Nút mic lớn: bấm để nói, bấm lần nữa để dừng → gửi luôn. Trình duyệt không cho ghi âm → ẩn. */
+/**
+ * Nút mic lớn: bấm để nói. Đang ghi có 3 nút: Tạm dừng / Ghi tiếp (các đoạn ghép vào 1 bản ghi), Hủy (bỏ hết), Gửi (gửi cho AI).
+ * Trình duyệt không cho ghi âm → ẩn.
+ */
 function Recorder({ disabled, onAudio }: { disabled: boolean; onAudio: (blob: Blob, seconds: number) => void }) {
+  type Rec = { mr: MediaRecorder; stream: MediaStream; chunks: Blob[]; timer: number; /** giây đã ghi của các đoạn trước */ before: number; segStart: number | null; send: boolean };
   const [sec, setSec] = useState<number | null>(null);
+  const [paused, setPaused] = useState(false);
   const [err, setErr] = useState('');
-  const rec = useRef<{ mr: MediaRecorder; stream: MediaStream; started: number; timer: number } | null>(null);
-  useEffect(() => () => stopAll(true), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const rec = useRef<Rec | null>(null);
+  useEffect(() => () => finish(false), []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function stopAll(cancel = false) {
+  const elapsed = (r: Rec) => r.before + (r.segStart ? (Date.now() - r.segStart) / 1000 : 0);
+
+  /** Dừng hẳn: send = true → gửi cho AI; false → bỏ */
+  function finish(send: boolean) {
     const r = rec.current;
     if (!r) return;
     window.clearInterval(r.timer);
-    if (cancel) r.mr.ondataavailable = null;
+    r.send = send;
+    r.before = elapsed(r); r.segStart = null;
     if (r.mr.state !== 'inactive') r.mr.stop();
     r.stream.getTracks().forEach((t) => t.stop());
     rec.current = null;
-    setSec(null);
+    setSec(null); setPaused(false);
   }
 
   if (!recordingSupported()) return null;
@@ -150,38 +159,62 @@ function Recorder({ disabled, onAudio }: { disabled: boolean; onAudio: (blob: Bl
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mr = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-      const started = Date.now();
-      mr.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+      const r: Rec = { mr, stream, chunks: [], timer: 0, before: 0, segStart: Date.now(), send: false };
+      mr.ondataavailable = (e) => { if (e.data.size) r.chunks.push(e.data); };
       mr.onstop = () => {
-        const seconds = Math.round((Date.now() - started) / 1000);
-        if (chunks.length && mr.ondataavailable) onAudio(new Blob(chunks, { type: mr.mimeType || 'audio/webm' }), seconds);
+        if (r.send && r.chunks.length) onAudio(new Blob(r.chunks, { type: mr.mimeType || 'audio/webm' }), Math.round(r.before));
       };
-      const timer = window.setInterval(() => {
-        const s = Math.round((Date.now() - started) / 1000);
-        setSec(s);
-        if (s >= MAX_RECORD_SECONDS) stopAll();
+      r.timer = window.setInterval(() => {
+        const s = elapsed(r);
+        setSec(Math.round(s));
+        if (s >= MAX_RECORD_SECONDS) finish(true);
       }, 250);
-      rec.current = { mr, stream, started, timer };
-      setSec(0);
+      rec.current = r;
+      setSec(0); setPaused(false);
       mr.start();
     } catch {
       setErr('Không mở được micro — anh cho phép trình duyệt dùng micro rồi thử lại.');
     }
   };
 
+  const togglePause = () => {
+    const r = rec.current;
+    if (!r) return;
+    if (r.mr.state === 'recording') { r.before = elapsed(r); r.segStart = null; r.mr.pause(); setPaused(true); }
+    else if (r.mr.state === 'paused') { r.segStart = Date.now(); r.mr.resume(); setPaused(false); }
+  };
+
   const on = sec !== null;
+  const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   return (
     <div className="grid justify-items-center gap-1.5 rounded-xl bg-accent-soft/40 p-3 text-center" data-testid="recorder">
-      <button
-        type="button" disabled={disabled && !on} onClick={() => (on ? stopAll() : void start())}
-        aria-label={on ? 'Dừng nói và gửi cho AI' : 'Bấm để nói'} aria-pressed={on}
-        className={cn('grid h-16 w-16 place-items-center rounded-full text-white shadow-md transition disabled:opacity-40', on ? 'animate-pulse bg-bad' : 'bg-accent')}
-      >
-        <Icon name={on ? 'stop' : 'mic'} className="text-[32px]" />
-      </button>
-      <span className="text-[13px] font-medium">{on ? `Đang nghe… ${sec}s — bấm lần nữa để gửi` : 'Bấm để nói'}</span>
-      {!on ? <span className="text-[12px] text-muted">vd: “Hôm nay ứng Hà điện nước 5 triệu công trình nhà anh Nhật, chuyển khoản”</span> : null}
+      {!on ? (
+        <>
+          <button
+            type="button" disabled={disabled} onClick={() => void start()} aria-label="Bấm để nói"
+            className="grid h-16 w-16 place-items-center rounded-full bg-accent text-white shadow-md transition disabled:opacity-40"
+          >
+            <Icon name="mic" className="text-[32px]" />
+          </button>
+          <span className="text-[13px] font-medium">Bấm để nói</span>
+          <span className="text-[12px] text-muted">vd: “Hôm nay ứng Hà điện nước 5 triệu công trình nhà anh Nhật, chuyển khoản”</span>
+        </>
+      ) : (
+        <>
+          <div className="flex items-center gap-2 text-[14px] font-semibold" aria-live="polite">
+            <span className={paused ? 'size-2.5 rounded-full bg-muted' : 'size-2.5 animate-pulse rounded-full bg-bad'} />
+            {paused ? 'Đã tạm dừng' : 'Đang nghe…'} <span className="num">{mmss(sec)}</span>
+          </div>
+          <div className="grid w-full grid-cols-3 gap-2">
+            <Button onClick={() => finish(false)} className="justify-center" aria-label="Hủy ghi âm"><Icon name="delete" />Hủy</Button>
+            <Button onClick={togglePause} className="justify-center" aria-label={paused ? 'Ghi tiếp' : 'Tạm dừng'}>
+              <Icon name={paused ? 'mic' : 'pause'} />{paused ? 'Ghi tiếp' : 'Tạm dừng'}
+            </Button>
+            <Button variant="primary" onClick={() => finish(true)} className="justify-center" aria-label="Gửi ghi âm cho AI"><Icon name="send" />Gửi</Button>
+          </div>
+          <span className="text-[12px] text-muted">Tạm dừng rồi Ghi tiếp để nói thêm — các đoạn tự ghép lại. Tối đa {MAX_RECORD_SECONDS} giây.</span>
+        </>
+      )}
       {err ? <span className="text-[12px] text-bad">{err}</span> : null}
     </div>
   );

@@ -44,12 +44,16 @@ export type InvoiceScan = {
   /** Ô đầu phiếu AI không chắc: date, invoice_no, supplier_name, supplier_address, supplier_phone, printed_total, project_match, expense_type_match */
   low_confidence: string[];
 };
-/** Tiền ứng / thanh toán cho THẦU PHỤ (giọng nói hoặc ảnh chuyển khoản) */
+/** Tiền ứng / thanh toán cho THẦU PHỤ hoặc NHÀ CUNG CẤP (giọng nói hoặc ảnh chuyển khoản) */
 export type AdvanceScan = {
   date: string; amount: number;
-  /** Tên người nhận như nghe / đọc được (vd "Hà điện nước") */
+  /** Người nhận là thầu phụ (phiếu Tạm ứng / Thanh toán đợt TP) hay nhà cung cấp (phiếu Trả nợ NCC) */
+  party: 'subcontractor' | 'supplier';
+  /** Tên người nhận như nghe / đọc được (vd "Hà điện nước", "sắt thép An Phú") */
   subcontractor_text: string;
   subcontractor_match: string;
+  /** NCC trong danh mục khi party = 'supplier' */
+  supplier_match: string;
   project_match: string;
   /** 'advance' = tạm ứng · 'progress' = thanh toán đợt */
   pay_kind: 'advance' | 'progress';
@@ -158,7 +162,7 @@ const KIND_TEXT: Record<ScanRequestKind, string> = {
 /** Cách nhận ra từng loại (chỉ đưa các loại được phép) */
 const KIND_RULES: Record<Exclude<ScanKind, 'id_card'>, string> = {
   invoice: '- "invoice": hóa đơn / phiếu giao hàng / biên nhận của cửa hàng có tên hàng, số lượng, đơn giá, hoặc SỔ CỘNG TIỀN (chỉ có các dòng ngày + số tiền rồi cộng tổng). Nói "mua …" có số tiền cũng là invoice.',
-  advance: '- "advance": tiền ỨNG / trả cho THẦU PHỤ (người trong danh mục Thầu phụ, vd "ứng Hà điện nước 5 triệu", "ứng Đỏ 6tr"), hoặc ẢNH CHUYỂN KHOẢN ngân hàng mà người NHẬN là thầu phụ.',
+  advance: '- "advance": tiền ỨNG / TRẢ cho THẦU PHỤ hoặc NHÀ CUNG CẤP (vd "ứng Hà điện nước 5 triệu", "ứng Đỏ 6tr", "trả sắt thép An Phú 50 triệu", "nhà cung cấp An Phú ứng 50 triệu"), hoặc ẢNH CHUYỂN KHOẢN ngân hàng mà người NHẬN là thầu phụ / cửa hàng. KHÔNG phải hóa đơn mua hàng (không có tên hàng, số lượng).',
   receipt: '- "receipt": KHÁCH HÀNG / chủ nhà đưa tiền / chuyển tiền cho công ty (vd "anh Nhật đưa 100 triệu", "khách chuyển 200tr"), hoặc ảnh chuyển khoản mà người GỬI là khách hàng.',
   contract: '- "contract": hợp đồng thi công với chủ nhà, hoặc bảng DỰ TOÁN công trình (có diện tích Móng, Trệt, Lầu, Mái… và đơn giá / m²).',
   material_list: '- "material_list": danh sách vật tư CẦN MUA do thợ / cai gửi (tin nhắn Zalo, chữ viết trên ván, giấy), chưa có giá tiền.',
@@ -184,8 +188,10 @@ const TPL: Record<ScanKind, string> = {
   advance: ` "advance": {
   "date": "YYYY-MM-DD",
   "amount": 0,                 // đồng
-  "subcontractor_text": "",    // tên người nhận như nghe / đọc được
-  "subcontractor_match": "",   // tên trong DANH MỤC Thầu phụ
+  "party": "subcontractor",    // "subcontractor" = thầu phụ, "supplier" = nhà cung cấp / cửa hàng vật tư
+  "subcontractor_text": "",    // LUÔN chép tên người nhận như nghe / đọc được (thầu phụ hay NCC đều ghi ở đây)
+  "subcontractor_match": "",   // party = subcontractor: tên trong DANH MỤC Thầu phụ
+  "supplier_match": "",        // party = supplier: tên trong DANH MỤC Nhà cung cấp
   "project_match": "",         // tên công trình trong DANH MỤC
   "pay_kind": "advance",       // "advance" = tạm ứng, "progress" = thanh toán đợt / trả theo hợp đồng
   "method": "",                // "transfer" = chuyển khoản, "cash" = tiền mặt, "" = không nói
@@ -269,6 +275,7 @@ const MONEY_RULES = [
   '- Ảnh chuyển khoản: amount = số tiền chuyển, date = ngày giao dịch, method = "transfer", note = nội dung chuyển khoản (ngắn). Người NHẬN là thầu phụ → advance; người GỬI là khách hàng / chuyển cho công ty → receipt.',
   '- Lời nói có "chuyển khoản" / "CK" → method = "transfer"; "tiền mặt" → "cash"; không nói → "" và hỏi lại trong "question" (vd "Anh Nhật đưa tiền mặt hay chuyển khoản?").',
   '- Thầu phụ hay được gọi kèm lĩnh vực: "Hà điện nước" = thầu phụ Hà (điện nước). Khớp theo danh mục Thầu phụ (tên + lĩnh vực trong ngoặc).',
+  '- Người nhận là NHÀ CUNG CẤP / cửa hàng vật tư (nói "nhà cung cấp", "cửa hàng", tên có trong danh mục Nhà cung cấp, vd "sắt thép An Phú", "VLXD Bá Hòa") → party = "supplier", ghi supplier_match. Thợ / tổ đội / cai trong danh mục Thầu phụ → party = "subcontractor".',
   '- Công trình theo tên chủ nhà: "công trình nhà anh Nhật" = công trình có chủ đầu tư / tên gọi Nhật.',
 ];
 
@@ -320,7 +327,7 @@ export function buildPrompt(kind: ScanRequestKind, note: string, ctx: ScanContex
     'DANH MỤC',
     list('Công trình', ctx.projects, ctx.project_hints),
     has('invoice') || has('material_list') ? list('Loại chi phí', ctx.expense_types) : '',
-    has('invoice') || has('material_list') ? list('Nhà cung cấp', ctx.suppliers, ctx.supplier_hints) : '',
+    has('invoice') || has('material_list') || has('advance') ? list('Nhà cung cấp', ctx.suppliers, ctx.supplier_hints) : '',
     has('invoice') ? list('Người mua', ctx.buyers) : '',
     has('advance') ? list('Thầu phụ', ctx.subcontractors, ctx.subcontractor_hints) : '',
     has('receipt') || has('contract') || has('id_card') ? list('Khách hàng', ctx.customers) : '',
@@ -404,6 +411,19 @@ export function matchName(text: string, names: readonly string[]): string {
   return hits.length === 1 ? hits[0]! : '';
 }
 
+/**
+ * Giữ tên AI khớp chỉ khi có ít nhất 1 chữ "thật" (≥ 2 ký tự, có nguyên âm, không phải từ chung như vlxd / cửa hàng / sắt thép)
+ * trùng với tên người dùng nói / phiếu ghi. Không có tên để so (text rỗng) → giữ nguyên.
+ */
+export function keepIfSimilar(match: string, text: string): string {
+  if (!match || !text.trim()) return match;
+  const common = /^(vlxd|vat|lieu|xay|dung|cua|hang|ch|cty|cong|ty|tnhh|sat|thep|nha|cung|cap|dien|nuoc|kho|gach|tp|tpdn)$/;
+  const words = (s: string) => foldVi(s.replace(/\(.*?\)/g, ' ')).split(' ').filter((w) => w.length >= 2 && /[aeiouy]/.test(w) && !common.test(w));
+  const said = new Set(words(text));
+  const own = words(match);
+  return !own.length || own.some((w) => said.has(w)) ? match : '';
+}
+
 function normInvoice(i: Obj, ctx: ScanContext): InvoiceScan {
   const lines = Array.isArray(i.lines) ? i.lines.filter(isObj) : [];
   const phones = toPhones(i.supplier_phones ?? i.supplier_phone);
@@ -478,10 +498,16 @@ export function normalizeScan(raw: unknown, ctx: ScanContext, fallbackKind: Scan
     const a = part('advance');
     const subs = ctx.subcontractors ?? [];
     const text = str(a.subcontractor_text);
+    // AI chọn tên trong danh mục mà không có chữ nào trùng tên người nói ("VLXD Bá Hòa" → "VLXD ĐẠI HUY LONG") → bỏ,
+    // để màn hình hiện "Thêm … mới" thay vì ghi nhầm người
+    const subMatch = keepIfSimilar(pick(a.subcontractor_match, subs), text) || matchName(text, subs);
+    const supMatch = keepIfSimilar(pick(a.supplier_match, ctx.suppliers), text) || matchName(text, ctx.suppliers);
+    // AI nói NCC, hoặc tên chỉ khớp danh mục NCC (không khớp thầu phụ) → phiếu trả NCC
+    const party: AdvanceScan['party'] = str(a.party) === 'supplier' || (supMatch && !subMatch) ? 'supplier' : 'subcontractor';
     return {
       kind, advance: {
-        date: toIsoDate(a.date), amount: toMoney(a.amount), subcontractor_text: text,
-        subcontractor_match: pick(a.subcontractor_match, subs) || matchName(text, subs),
+        date: toIsoDate(a.date), amount: toMoney(a.amount), party, subcontractor_text: text,
+        subcontractor_match: party === 'subcontractor' ? subMatch : '', supplier_match: party === 'supplier' ? supMatch : '',
         project_match: pick(a.project_match, ctx.projects), pay_kind: str(a.pay_kind) === 'progress' ? 'progress' : 'advance',
         method: toMethod(a.method), note: str(a.note).slice(0, 300), low_confidence: strs(a.low_confidence),
       },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addressForms, applyProjectGuess, buildPrompt, foldVi, guessProjectFromHistory, matchName, matchProjectByNote, normalizeScan, pickFixture, promptKinds,
+  addressForms, applyProjectGuess, buildPrompt, foldVi, guessProjectFromHistory, keepIfSimilar, matchName, matchProjectByNote, normalizeScan, pickFixture, promptKinds,
   scanExtras, supplierRecentProjects, toIsoDate, toMoney, toPhones, type ExpenseHistoryRow, type ProjectMeta, type ScanContext,
 } from '@shared/scan';
 import fxNew from '../../../supabase/functions/scan-document/fixtures/hoa-don-ncc-moi.json';
@@ -309,5 +309,35 @@ describe('_shared/scan — sổ cộng tiền ghi tắt nghìn', () => {
     const r = normalizeScan({ kind: 'invoice', invoice: { is_summary: true, lines: [{ name: 'Hóa đơn ngày 11/11', amount: 26_430 }, { name: 'Hóa đơn ngày 12/11', amount: 31_321_000 }] } }, ctx);
     if (r.kind !== 'invoice') throw new Error('sai loại');
     expect(r.invoice.lines.map((l) => [l.amount, l.unit_price, l.low_confidence])).toEqual([[26_430_000, 26_430_000, ['amount']], [31_321_000, 31_321_000, []]]);
+  });
+});
+
+describe('_shared/scan — ứng / trả tiền nhà cung cấp', () => {
+  const c3: ScanContext = { ...ctx, subcontractors: ['TPDN HÀ', 'ĐỎ'], suppliers: ['SẮT THÉP AN PHÚ', 'VLXD BÁ HÒA'] };
+  it('AI nói party = supplier → phiếu trả NCC, khớp NCC', () => {
+    const r = normalizeScan({ kind: 'advance', advance: { party: 'supplier', amount: 50_000_000, subcontractor_text: 'sắt thép An Phú', supplier_match: 'SẮT THÉP AN PHÚ' } }, c3);
+    expect(r.kind === 'advance' && r.advance).toMatchObject({ party: 'supplier', supplier_match: 'SẮT THÉP AN PHÚ', subcontractor_match: '' });
+  });
+  it('AI quên party nhưng tên chỉ có trong danh mục NCC → vẫn là NCC', () => {
+    const r = normalizeScan({ kind: 'advance', advance: { amount: 50_000_000, subcontractor_text: 'Sắt thép An Phú' } }, c3);
+    expect(r.kind === 'advance' && r.advance).toMatchObject({ party: 'supplier', supplier_match: 'SẮT THÉP AN PHÚ' });
+  });
+  it('thầu phụ giữ nguyên', () => {
+    const r = normalizeScan({ kind: 'advance', advance: { amount: 5_000_000, subcontractor_text: 'Hà điện nước' } }, c3);
+    expect(r.kind === 'advance' && r.advance).toMatchObject({ party: 'subcontractor', subcontractor_match: 'TPDN HÀ', supplier_match: '' });
+  });
+});
+
+describe('_shared/scan — AI khớp nhầm người', () => {
+  it('tên không có chữ nào trùng → bỏ; có chữ trùng → giữ', () => {
+    expect(keepIfSimilar('VLXD ĐẠI HUY LONG', 'VLXD Bá Hòa')).toBe('');
+    expect(keepIfSimilar('SẮT THÉP AN PHÚ', 'sắt thép An Phú')).toBe('SẮT THÉP AN PHÚ');
+    expect(keepIfSimilar('TPDN HÀ', 'Hà điện nước')).toBe('TPDN HÀ');
+    expect(keepIfSimilar('VLXD ĐẠI HUY LONG', '')).toBe('VLXD ĐẠI HUY LONG');
+  });
+  it('phiếu trả NCC với tên lạ → để trống cho "Thêm NCC mới"', () => {
+    const r = normalizeScan({ kind: 'advance', advance: { party: 'supplier', amount: 12_000_000, subcontractor_text: 'VLXD Bá Hòa', supplier_match: 'VLXD ĐẠI HUY LONG' } },
+      { ...ctx, suppliers: ['VLXD ĐẠI HUY LONG', 'SẮT THÉP AN PHÚ'] });
+    expect(r.kind === 'advance' && r.advance).toMatchObject({ party: 'supplier', supplier_match: '' });
   });
 });
