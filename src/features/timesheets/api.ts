@@ -79,7 +79,8 @@ function friendly(e: { message: string; code?: string }): Error {
 
 function useRefresh() {
   const qc = useQueryClient();
-  return () => Promise.all([qc.invalidateQueries({ queryKey: TIMESHEET_KEY }), qc.invalidateQueries({ queryKey: REPORT_DATA_KEY })]);
+  return () => Promise.all([qc.invalidateQueries({ queryKey: TIMESHEET_KEY }), qc.invalidateQueries({ queryKey: REPORT_DATA_KEY }),
+    qc.invalidateQueries({ queryKey: ['trash'] })]);
 }
 
 export type SaveLine = {

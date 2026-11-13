@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Icon } from '@/components/ui/button';
 import { Combo } from '@/components/ui/combo';
 import { ConfirmDialog } from '@/components/ui/confirm';
-import { FilterBar, FilterSelect, KpiStrip, MobileCard, MobileRow, Money, SearchBox } from '@/components/ui/data';
+import { FilterBar, FilterSelect, KpiStrip, MiniList, MobileCard, MobileRow, Money, SearchBox } from '@/components/ui/data';
+import { useLayoutMode } from '@/app/useLayoutMode';
 import { Checkbox, Field, Input, MoneyInput, Select } from '@/components/ui/input';
 import { Card, EmptyState, Note, Pill } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
@@ -91,13 +92,33 @@ function AdvanceSheet({ open, draft, setDraft, data, ix, onClose }: { open: bool
 
 function HistorySheet({ workerId, data, ix, onClose, onEdit }: { workerId: string | null; data: TimesheetData; ix: PayrollIndex; onClose: () => void; onEdit: (a: TsAdvance) => void }) {
   const toast = useToast();
+  const phone = useLayoutMode() === 'phone';
   const del = useDeleteAdvance();
   const [confirm, setConfirm] = useState<TsAdvance | null>(null);
   const items = useMemo(() => (workerId ? workerLedger(ix, workerId).reverse() : []), [ix, workerId]);
   return (
     <Sheet wide open={!!workerId} onOpenChange={(o) => { if (!o) onClose(); }} title={`Lịch sử nợ · ${workerId ? data.workerName(workerId) : ''}`}>
       {workerId ? <div className="text-[13px] text-muted">Tổng nợ hiện tại: <DebtCell v={currentDebt(ix, workerId)} /></div> : null}
-      {items.length === 0 ? <EmptyState icon="history" title="Chưa có giao dịch" /> : (
+      {items.length === 0 ? <EmptyState icon="history" title="Chưa có giao dịch" /> : phone ? (
+        <MiniList testId="adv-history" items={items.map((it, i) => {
+          const a = it.advance as TsAdvance | undefined;
+          const fromSheet = !!a?.source_week_id;
+          const kind = it.kind === 'advance' ? <Pill tone="warn">Ứng</Pill> : it.kind === 'repay' ? <Pill tone="good">{fromSheet ? 'Trừ nợ CC' : 'Trả'}</Pill> : <Pill>Chấm công cũ</Pill>;
+          return {
+            key: a?.id ?? `l${i}`,
+            title: <span className="flex flex-wrap items-center gap-1.5"><span className="num">{vn(it.date)}</span>{kind}</span>,
+            sub: [it.projectId ? data.projectName(it.projectId) : '', it.note].filter(Boolean).join(' · ') || undefined,
+            value: `${it.amount > 0 ? '+' : '−'}${formatMoney(Math.abs(it.amount))}`,
+            valueSub: <>còn nợ <DebtCell v={it.balance} /></>,
+            trail: a && !fromSheet ? (
+              <>
+                <Button size="icon" variant="ghost" aria-label="Sửa" onClick={() => onEdit(a)}><Icon name="edit" /></Button>
+                <Button size="icon" variant="ghost-danger" aria-label="Xóa" onClick={() => setConfirm(a)}><Icon name="delete" /></Button>
+              </>
+            ) : undefined,
+          };
+        })} />
+      ) : (
         <div className="tbl">
           <table>
             <thead><tr><th>Ngày</th><th>Loại</th><th>Công trình</th><th className="!text-right">Số tiền</th><th className="!text-right">Còn nợ</th><th>Nội dung</th><th /></tr></thead>

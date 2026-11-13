@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
 import { Button, Icon } from '@/components/ui/button';
-import { FilterBar, FilterSelect, PhoneFilters, KpiStrip, MobileCard, MobileRow, Money, Pager, PhoneKpis, SearchBox, usePaged, type Option } from '@/components/ui/data';
+import { FilterBar, FilterSelect, PhoneFilters, KpiStrip, MiniList, MobileCard, MobileRow, Money, Pager, PhoneKpis, SearchBox, usePaged, type Option } from '@/components/ui/data';
 import { Card, EmptyState, ErrorState, LoadingState, PageHeader, Pill } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
 import { buildCostEntries, inYear, summarizeExpenses, type CostEntry } from '@/lib/calc';
@@ -60,6 +60,7 @@ export function PaidPill({ paid }: { paid: boolean }) {
 export function DetailSheet({ row, onClose, onEdit }: { row: Row | null; onClose: () => void; onEdit?: (expenseId: string) => void }) {
   const expenseId = row?.entry.expense ? row.id : null;
   const lines = useExpenseLines(expenseId);
+  const phone = useLayoutMode() === 'phone';
   return (
     <Sheet open={!!row} onOpenChange={(o) => { if (!o) onClose(); }} title="Chi tiết khoản chi"
       footer={expenseId && onEdit ? <Button variant="primary" data-testid="stats-edit" onClick={() => onEdit(expenseId)}><Icon name="edit" />Sửa hóa đơn</Button> : undefined}>
@@ -81,7 +82,12 @@ export function DetailSheet({ row, onClose, onEdit }: { row: Row | null; onClose
             lines.isPending ? <LoadingState label="Đang tải dòng vật tư…" />
             : lines.isError ? <ErrorState error={lines.error} onRetry={() => void lines.refetch()} />
             : lines.data.length === 0 ? <div className="rounded-lg bg-surface-2 px-3 py-2.5 text-[12.5px] text-muted">Hóa đơn nhập nhanh, không có dòng vật tư. Ảnh hóa đơn (nếu chụp) sẽ hiện ở đây từ GĐ9.</div>
-            : (
+            : phone ? (
+              <MiniList testId="expense-lines-list" items={lines.data.map((l) => ({
+                key: l.id, title: l.name, value: formatMoney(l.amount),
+                sub: [l.quantity === null ? '' : `${l.quantity.toLocaleString('vi-VN')} ${l.unit ?? ''}`.trim(), l.unit_price === null ? '' : `× ${formatMoney(l.unit_price)}`, l.note].filter(Boolean).join(' ') || undefined,
+              }))} />
+            ) : (
               <div className="tbl rounded-lg border border-line">
                 <table>
                   <thead><tr><th>Vật tư</th><th className="!text-right">SL</th><th className="!text-right">Đơn giá</th><th className="!text-right">Thành tiền</th></tr></thead>

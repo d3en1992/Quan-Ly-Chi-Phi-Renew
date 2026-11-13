@@ -1,6 +1,7 @@
 // Mảnh giao diện dùng chung cho các màn có số liệu (chốt ở GĐ3, các giai đoạn sau chỉ dùng lại):
 // dải số tổng (KpiStrip), thanh lọc (FilterBar + FilterSelect + SearchBox), thanh ngang (HBar),
-// nhãn lãi / lỗ (ProfitPill), ô tiền (Money), phân trang (Pager), thẻ dòng trên điện thoại (MobileCard), cặp số lớn (PhoneKpis).
+// nhãn lãi / lỗ (ProfitPill), ô tiền (Money), phân trang (Pager), thẻ dòng trên điện thoại (MobileCard), cặp số lớn (PhoneKpis),
+// bảng con trên điện thoại (MiniList — thay bảng nhiều cột bị bó).
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { formatMoney, formatShortMoney } from '@/lib/format';
@@ -156,6 +157,66 @@ export function MobileCard({ children, onClick }: { children: ReactNode; onClick
 }
 export function MobileRow({ children, meta = false }: { children: ReactNode; meta?: boolean }) {
   return <div className={cn('flex min-w-0 items-center justify-between gap-3', meta && 'text-[12px] text-muted')}>{children}</div>;
+}
+
+export type MiniItem = {
+  key: string;
+  /** Dòng chính bên trái (đậm): ngày, tên… */
+  title: ReactNode;
+  /** Dòng phụ bên trái (nhỏ, xám, tối đa 2 dòng): nội dung, công trình… */
+  sub?: ReactNode;
+  /** Số bên phải (đậm) */
+  value?: ReactNode;
+  /** Dòng phụ bên phải (nhỏ): "còn nợ …", nhãn… */
+  valueSub?: ReactNode;
+  /** Ô đầu dòng (ô tích) */
+  lead?: ReactNode;
+  /** Nút cuối dòng (sửa / xóa) */
+  trail?: ReactNode;
+  onClick?: () => void;
+};
+
+/**
+ * BẢNG CON TRÊN ĐIỆN THOẠI: thay cho <table> nhiều cột (bị bó, phải kéo ngang) bằng danh sách 2 cột —
+ * trái là tên / ngày + dòng phụ, phải là số tiền. Luôn giãn đủ chiều ngang, chữ dài tự xuống dòng.
+ * Dùng: `phone ? <MiniList items={…} /> : <div className="tbl"><table>…`.
+ */
+export function MiniList({ items, footer, className, testId }: {
+  items: MiniItem[]; footer?: { label: ReactNode; value: ReactNode }; className?: string; testId?: string;
+}) {
+  return (
+    <div data-testid={testId} className={cn('w-full min-w-0 overflow-hidden rounded-lg border border-line-soft bg-surface', className)}>
+      {items.map((it) => (
+        <div
+          key={it.key}
+          data-mini-row=""
+          className={cn('flex items-center gap-2.5 border-b border-line-soft px-3 py-2 last:border-b-0', it.onClick && 'cursor-pointer active:bg-surface-2')}
+          onClick={it.onClick}
+          role={it.onClick ? 'button' : undefined}
+          tabIndex={it.onClick ? 0 : undefined}
+          onKeyDown={it.onClick ? (e) => { if (e.key === 'Enter') it.onClick!(); } : undefined}
+        >
+          {it.lead ? <div className="shrink-0">{it.lead}</div> : null}
+          <div className="min-w-0 flex-1">
+            <div className="text-[13.5px] leading-snug font-semibold break-words">{it.title}</div>
+            {it.sub ? <div className="line-clamp-2 text-[12px] leading-snug break-words text-muted">{it.sub}</div> : null}
+          </div>
+          {it.value !== undefined || it.valueSub ? (
+            <div className="shrink-0 text-right">
+              {it.value !== undefined ? <div className="num text-[13.5px] leading-snug font-semibold whitespace-nowrap">{it.value}</div> : null}
+              {it.valueSub ? <div className="text-[11.5px] leading-snug whitespace-nowrap text-muted">{it.valueSub}</div> : null}
+            </div>
+          ) : null}
+          {it.trail ? <div className="flex shrink-0 items-center">{it.trail}</div> : null}
+        </div>
+      ))}
+      {footer ? (
+        <div className="flex items-center justify-between gap-3 border-t border-line bg-surface-2 px-3 py-2 text-[13px] font-bold">
+          <span className="min-w-0">{footer.label}</span><span className="num shrink-0">{footer.value}</span>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 /** Số lớn đầu màn điện thoại (.pk của mẫu): một dải liền, 2 cột, gọn để còn chỗ cho danh sách; `wide` = chiếm cả hàng */

@@ -86,3 +86,32 @@ test('PWA: manifest đúng tên + icon, có service worker khi build', async ({ 
   const html = await (await request.get('/')).text();
   expect(html).toContain('apple-touch-icon');
 });
+
+test('Điện thoại: nút Lưu chi phí đủ to, bảng con là danh sách gọn (13/11/2026)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const errors = watchConsole(page);
+  await login(page);
+  // Nút Lưu không bị khung cuộn bóp lại (từng chỉ cao ~21px)
+  await page.goto('/nhap-chi-phi');
+  const save = page.getByTestId('phone-save');
+  await save.waitFor();
+  expect((await save.boundingBox())!.height).toBeGreaterThanOrEqual(52);
+
+  // Công nợ → thẻ HĐ thầu phụ có lịch sử trả: hiện danh sách giãn đủ ngang, không còn <table>
+  await page.goto('/cong-no');
+  await page.waitForLoadState('networkidle').catch(() => {});
+  const cards = page.locator('main [role="button"]');
+  const n = Math.min(await cards.count(), 20);
+  for (let i = 0; i < n; i++) {
+    await cards.nth(i).click();
+    if (await page.getByTestId('hdtp-history').isVisible().catch(() => false)) break;
+    await cards.nth(i).click();
+  }
+  const hist = page.getByTestId('hdtp-history');
+  await expect(hist).toBeVisible();
+  const box = (await hist.boundingBox())!;
+  expect(box.width).toBeGreaterThan(300);
+  await hist.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await page.screenshot({ path: `${SHOTS}/cong-no-lich-su-tra-390.png` });
+  expect(errors).toEqual([]);
+});

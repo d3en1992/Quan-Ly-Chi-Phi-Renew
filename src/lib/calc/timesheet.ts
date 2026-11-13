@@ -16,9 +16,10 @@ export function round2(n: number): number {
 /**
  * Tiền công = số công × lương ngày, tính trên phần trăm công (số nguyên) để 2,05 × 400.000 ra đúng 820.000
  * (nhân số thực trực tiếp ra 819.999,99…). Số công bội số của 0,5 (dữ liệu cũ) cho đúng kết quả cũ.
+ * Làm tròn về đồng nguyên (tiền trong kho là bigint): 1,25 công × 350.050 = 437.562,5 → 437.563.
  */
 export function dayWage(dayUnits: number, dailyWage: number): number {
-  return (Math.round(dayUnits * 100) * (dailyWage || 0)) / 100;
+  return Math.round((Math.round(dayUnits * 100) * (dailyWage || 0)) / 100);
 }
 
 /**

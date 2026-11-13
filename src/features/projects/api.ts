@@ -89,6 +89,7 @@ function useInvalidate() {
   return () => Promise.all([
     qc.invalidateQueries({ queryKey: PROJECTS_KEY }),
     qc.invalidateQueries({ queryKey: REPORT_DATA_KEY }),
+    qc.invalidateQueries({ queryKey: ['trash'] }),
   ]);
 }
 

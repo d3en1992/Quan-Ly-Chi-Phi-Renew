@@ -5,7 +5,8 @@ import type { MyAccess } from '@/app/auth';
 import { Button, Icon } from '@/components/ui/button';
 import { Combo } from '@/components/ui/combo';
 import { ConfirmDialog } from '@/components/ui/confirm';
-import { Segmented } from '@/components/ui/data';
+import { MiniList, Segmented } from '@/components/ui/data';
+import { useLayoutMode } from '@/app/useLayoutMode';
 import { Field, Input, MoneyInput, Select } from '@/components/ui/input';
 import { Note } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
@@ -76,6 +77,7 @@ const KL_KEY = 'klct_clipboard';
 
 export function ItemsEditor({ items, onChange, disabled }: { items: ContractItem[]; onChange: (v: ContractItem[]) => void; disabled?: boolean }) {
   const toast = useToast();
+  const phone = useLayoutMode() === 'phone';
   const [askPaste, setAskPaste] = useState<ContractItem[] | null>(null);
   const set = (i: number, patch: Partial<ContractItem>) => onChange(items.map((it, j) => (j === i ? { ...it, ...patch } : it)));
   const copy = () => {
@@ -107,7 +109,26 @@ export function ItemsEditor({ items, onChange, disabled }: { items: ContractItem
           </>
         )}
       </div>
-      {items.length ? (
+      {items.length && phone ? (
+        <div className="grid gap-2" data-testid="items-list">
+          {items.map((it, i) => (
+            <div key={i} className="grid gap-1.5 rounded-lg border border-line-soft bg-surface p-2">
+              <div className="flex items-center gap-1.5">
+                <Input aria-label={`Hạng mục ${i + 1}`} placeholder="Hạng mục" disabled={disabled} value={it.name} onChange={(e) => set(i, { name: e.target.value })} />
+                {disabled ? null : <Button size="icon" variant="ghost-danger" aria-label={`Xóa hạng mục ${i + 1}`} onClick={() => onChange(items.filter((_, j) => j !== i))}><Icon name="close" /></Button>}
+              </div>
+              <div className="grid grid-cols-[64px_minmax(0,1fr)_minmax(0,1.4fr)] gap-1.5">
+                <Input aria-label={`ĐVT ${i + 1}`} placeholder="ĐVT" disabled={disabled} value={it.donVi} onChange={(e) => set(i, { donVi: e.target.value })} />
+                <Input aria-label={`Khối lượng ${i + 1}`} placeholder="KL" disabled={disabled} inputMode="decimal" className="num text-right" value={it.sl ? String(it.sl).replace('.', ',') : ''}
+                  onChange={(e) => set(i, { sl: Number(e.target.value.replace(/[^\d.,]/g, '').replace(',', '.')) || 0 })} />
+                <MoneyInput aria-label={`Đơn giá ${i + 1}`} disabled={disabled} value={it.donGia} onChange={(v) => set(i, { donGia: v })} />
+              </div>
+              <div className="text-right text-[12.5px] text-muted">Thành tiền <b className="num text-fg">{formatMoney(contractItemsTotal([it]))}</b></div>
+            </div>
+          ))}
+          <div className="flex justify-between rounded-lg bg-surface-2 px-3 py-2 text-[13px] font-bold"><span>Tổng hạng mục</span><span className="num" data-testid="items-total">{formatMoney(contractItemsTotal(items))}</span></div>
+        </div>
+      ) : items.length ? (
         <div className="tbl">
           <table data-testid="items-table">
             <thead><tr><th>Hạng mục</th><th style={{ width: 70 }}>ĐVT</th><th style={{ width: 90 }} className="!text-right">Khối lượng</th><th style={{ width: 130 }} className="!text-right">Đơn giá</th><th className="!text-right">Thành tiền</th><th style={{ width: 36 }} /></tr></thead>
@@ -162,6 +183,7 @@ export function PaymentSheet({ draft, setDraft, data, calc, readOnly, onClose }:
   draft: PayDraft; setDraft: (d: PayDraft) => void; data: PayData; calc: PayCalc; readOnly?: boolean; onClose: () => void;
 }) {
   const toast = useToast();
+  const phone = useLayoutMode() === 'phone';
   const create = useCreatePayments(), update = useUpdatePayment(), del = useDeletePayment(), createParty = useCreateParty();
   const [confirmDel, setConfirmDel] = useState(false);
   const busy = create.isPending || update.isPending || del.isPending;
@@ -258,7 +280,17 @@ export function PaymentSheet({ draft, setDraft, data, calc, readOnly, onClose }:
                   <span>Đã tích: <b className="num text-fg" data-testid="pay-picked">{formatMoney(pickedTotal)}</b></span>
                   <Button size="sm" disabled={!pickedTotal} onClick={() => set('amount', pickedTotal)}>Lấy làm số tiền</Button>
                 </div>
-                {openInvoices.length === 0 ? <Note>{party ? 'NCC này không còn hóa đơn mua nợ nào chưa trả.' : 'Chọn nhà cung cấp trước.'}</Note> : (
+                {openInvoices.length === 0 ? <Note>{party ? 'NCC này không còn hóa đơn mua nợ nào chưa trả.' : 'Chọn nhà cung cấp trước.'}</Note> : phone ? (
+                  <MiniList className="max-h-[320px] overflow-y-auto" items={openInvoices.map((c) => {
+                    const on = draft.picks.includes(c.id);
+                    return {
+                      key: c.id, title: data.projectName(c.project_id), value: formatMoney(c.remaining),
+                      sub: [formatDate(c.date), c.description].filter(Boolean).join(' · '),
+                      lead: <input type="checkbox" className="size-5 accent-[var(--accent)]" aria-label={`Tích hóa đơn ${formatDate(c.date)} ${formatMoney(c.remaining)}`} checked={on} readOnly />,
+                      onClick: () => set('picks', on ? draft.picks.filter((x) => x !== c.id) : [...draft.picks, c.id]),
+                    };
+                  })} />
+                ) : (
                   <div className="tbl max-h-[280px] overflow-y-auto rounded-lg border border-line-soft">
                     <table>
                       <thead><tr><th style={{ width: 32 }} /><th>Ngày</th><th>Công trình</th><th>Nội dung</th><th className="!text-right">Còn lại</th></tr></thead>

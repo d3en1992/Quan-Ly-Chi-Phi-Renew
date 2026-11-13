@@ -121,7 +121,8 @@ function HomeRedirect() {
   const { access } = useAuth();
   const mode = useLayoutMode();
   if (!access) return null;
-  if (mode === 'phone') return <Navigate to={PHONE_HOME.path} replace />;
+  // Điện thoại vào Tổng quan nếu được xem Công trình; không thì như máy tính: tab đầu tiên được xem
+  if (mode === 'phone' && canSeeItem(access.permissions, PHONE_HOME)) return <Navigate to={PHONE_HOME.path} replace />;
   return <Navigate to={firstVisiblePath(access.permissions)} replace />;
 }
 
@@ -141,7 +142,7 @@ function AppRoutes() {
           <Route key={item.key} path={item.path} element={pageFor(item)} />
         ))}
         <Route path={PROJECT_DETAIL_PATH} element={pageFor(ALL_ITEMS.find((i) => i.key === 'congtrinh')!)} />
-        <Route path={PHONE_HOME.path} element={<PhoneHomePage />} />
+        <Route path={PHONE_HOME.path} element={<Guard item={PHONE_HOME}><PhoneHomePage /></Guard>} />
         <Route path={PHONE_MORE_PATH} element={<PhoneMorePage />} />
         <Route path={PHONE_CAPTURE.path} element={<Guard item={PHONE_CAPTURE}><PhoneCapturePage /></Guard>} />
         <Route path="/doi-mat-khau" element={<ChangePasswordPage forced={false} />} />

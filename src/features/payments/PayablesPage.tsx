@@ -8,7 +8,7 @@ import { useYears } from '@/app/year';
 import { Button, Icon } from '@/components/ui/button';
 import { Combo } from '@/components/ui/combo';
 import { ConfirmDialog } from '@/components/ui/confirm';
-import { FilterBar, FilterSelect, HBar, KpiStrip, MobileCard, MobileRow, SearchBox, Segmented } from '@/components/ui/data';
+import { FilterBar, FilterSelect, HBar, KpiStrip, MiniList, MobileCard, MobileRow, SearchBox, Segmented } from '@/components/ui/data';
 import { Checkbox, Field, Input, MoneyInput, Select } from '@/components/ui/input';
 import { Card, CardHeader, EmptyState, ErrorState, LoadingState, Note, PageHeader, Pill, SubTabs } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
@@ -126,7 +126,12 @@ function ContractDetail({ ctx, h, debt, onEdit }: { ctx: Ctx; h: Subcontract; de
     <div className="grid gap-4 bg-surface-2 p-3 md:grid-cols-[minmax(0,1fr)_280px]">
       <div className="min-w-0">
         <div className="mb-1.5 text-xs font-semibold text-muted">Lịch sử trả</div>
-        {list.length ? (
+        {list.length && ctx.phone ? (
+          <MiniList testId="hdtp-history" items={list.map((p) => ({
+            key: p.id, title: formatDate(p.date), value: formatMoney(p.amount),
+            sub: <>{p.note}{!p.subcontract_id ? <span className="text-faint"> · chung cặp</span> : null}</>,
+          }))} footer={list.length > 1 ? { label: `${list.length} lần trả`, value: formatMoney(sumOf(list, (p) => p.amount)) } : undefined} />
+        ) : list.length ? (
           <table><thead><tr><th>Ngày</th><th>Nội dung</th><th className="!text-right">Số tiền</th></tr></thead>
             <tbody>{list.map((p) => <tr key={p.id}><td className="num whitespace-nowrap">{formatDate(p.date)}</td><td className="text-muted">{p.note}{!p.subcontract_id ? <small className="ml-1 text-faint">(chung cặp)</small> : null}</td><td className="num text-right">{formatMoney(p.amount)}</td></tr>)}</tbody></table>
         ) : <span className="text-[13px] text-muted">Chưa trả lần nào</span>}
@@ -278,7 +283,14 @@ function StatementSheet({ ctx, supplierId, onClose, onPay }: { ctx: Ctx; supplie
         <div><div className="text-xs text-muted">Còn nợ</div><b className={`num ${(s?.debt ?? 0) > 0 ? 'text-bad' : 'text-good'}`} data-testid="dc-debt">{formatMoney(s?.debt ?? 0)}</b></div>
       </div>
       <div className="text-xs font-semibold text-muted">Hóa đơn mua nợ theo ngày ({lines.length})</div>
-      {lines.length === 0 ? <EmptyState icon="receipt_long" title="Chưa có hóa đơn mua nợ" /> : (
+      {lines.length === 0 ? <EmptyState icon="receipt_long" title="Chưa có hóa đơn mua nợ" /> : ctx.phone ? (
+        <MiniList testId="dc-list" items={lines.map((l) => ({
+          key: l.id, title: data.projectName(l.project_id),
+          sub: <>{formatDate(l.date)}{byId.get(l.id)?.description ? ` · ${byId.get(l.id)?.description}` : ''}</>,
+          value: l.remaining > 0 ? <span className="text-bad">{formatMoney(l.remaining)}</span> : <Pill tone="good">Đã trả</Pill>,
+          valueSub: l.paid ? `${formatMoney(l.paid)} / ${formatMoney(l.amount)}` : formatMoney(l.amount),
+        }))} />
+      ) : (
         <div className="tbl">
           <table data-testid="dc-table">
             <thead><tr><th>Ngày</th><th>Công trình</th><th>Nội dung</th><th className="!text-right">Tiền hàng</th><th className="!text-right">Đã trả</th><th className="!text-right">Còn lại</th></tr></thead>
@@ -298,7 +310,16 @@ function StatementSheet({ ctx, supplierId, onClose, onPay }: { ctx: Ctx; supplie
         </div>
       )}
       <div className="text-xs font-semibold text-muted">Các lần trả tiền ({payments.length})</div>
-      {payments.length === 0 ? <span className="text-[13px] text-muted">Chưa trả lần nào</span> : (
+      {payments.length === 0 ? <span className="text-[13px] text-muted">Chưa trả lần nào</span> : ctx.phone ? (
+        <MiniList items={payments.map((p) => {
+          const rest = p.amount - (allocated.get(p.id) ?? 0);
+          return {
+            key: p.id, title: formatDate(p.date), value: formatMoney(p.amount),
+            sub: [p.allocation_mode === 'project' ? data.projectName(p.project_id) : MODE_LABEL[p.allocation_mode], p.note].filter(Boolean).join(' · '),
+            valueSub: rest > 0 ? <span className="text-warn">chưa chia {formatMoney(rest)}</span> : undefined,
+          };
+        })} />
+      ) : (
         <div className="tbl">
           <table>
             <thead><tr><th>Ngày</th><th>Cách chia</th><th>Nội dung</th><th className="!text-right">Số tiền</th><th className="!text-right">Chưa chia</th></tr></thead>

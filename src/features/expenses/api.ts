@@ -113,6 +113,8 @@ function useRefresh() {
     qc.invalidateQueries({ queryKey: ENTRY_EXPENSES_KEY }), qc.invalidateQueries({ queryKey: REPORT_DATA_KEY }),
     qc.invalidateQueries({ queryKey: ['expense-lines'] }), qc.invalidateQueries({ queryKey: ['expense-line-history'] }),
     qc.invalidateQueries({ queryKey: PAY_KEY }),
+    // Thùng rác + dòng vật tư của Tỉ trọng cập nhật ngay (không chờ hết hạn cache)
+    qc.invalidateQueries({ queryKey: ['trash'] }), qc.invalidateQueries({ queryKey: ['cost-allocation-lines'] }),
   ]);
 }
 

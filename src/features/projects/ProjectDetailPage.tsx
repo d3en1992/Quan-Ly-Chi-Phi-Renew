@@ -8,7 +8,7 @@ import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
 import { Button, Icon } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm';
-import { Money, HBarList, KpiStrip, PhoneKpis, signedMoney } from '@/components/ui/data';
+import { Money, HBarList, KpiStrip, MiniList, PhoneKpis, signedMoney } from '@/components/ui/data';
 import { DropdownContent, DropdownItem, DropdownMenu, DropdownTrigger } from '@/components/ui/dropdown';
 import { Field, Input } from '@/components/ui/input';
 import { Card, CardHeader, EmptyState, ErrorState, LoadingState, Note, PageHeader, Pill, SubTabs } from '@/components/ui/misc';
@@ -233,7 +233,15 @@ function InvoicesTab({ data, projectId, years, onOpen }: { data: ReportData; pro
     [data, projectId, years],
   );
   const total = rows.reduce((s, r) => s + r.amount, 0);
+  const phone = useLayoutMode() === 'phone';
   if (rows.length === 0) return <Card><EmptyState icon="receipt_long" title="Chưa có hóa đơn nào" /></Card>;
+  if (phone) return (
+    <MiniList testId="detail-invoices-list" items={rows.map((r) => ({
+      key: r.id, title: r.type || 'Chưa phân loại', onClick: () => onOpen(r), value: formatMoney(r.amount),
+      sub: [formatDate(r.date), r.description, r.supplier].filter(Boolean).join(' · '),
+      valueSub: r.paid ? undefined : <span className="text-warn">mua nợ</span>,
+    }))} footer={{ label: `Tổng ${rows.length} hóa đơn`, value: formatMoney(total) }} />
+  );
   return (
     <Card>
       <div className="tbl">
@@ -259,9 +267,18 @@ function InvoicesTab({ data, projectId, years, onOpen }: { data: ReportData; pro
 
 function PayrollTab({ data, projectId, years }: { data: ReportData; projectId: string; years: YearFilter }) {
   const weeks = useMemo(() => projectPayroll(projectId, data, years), [data, projectId, years]);
+  const phone = useLayoutMode() === 'phone';
   if (weeks.length === 0) return <Card><EmptyState icon="calendar_month" title="Chưa có chấm công" /></Card>;
   const dm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
   const sum = (f: (w: (typeof weeks)[number]) => number) => weeks.reduce((s, w) => s + f(w), 0);
+  const days = (n: number) => n.toLocaleString('vi-VN', { maximumFractionDigits: 1 });
+  if (phone) return (
+    <MiniList items={weeks.map((w) => ({
+      key: w.weekStart, title: `CN ${dm(w.weekStart)} – T7 ${dm(w.weekEnd)}`, value: formatMoney(w.netPay),
+      sub: `${w.workers} thợ · ${days(w.dayUnits)} công`,
+      valueSub: w.extras ? `lương ${formatMoney(w.wage)} + ${formatMoney(w.extras)}` : undefined,
+    }))} footer={{ label: `Tổng ${weeks.length} tuần · ${days(sum((w) => w.dayUnits))} công`, value: formatMoney(sum((w) => w.netPay)) }} />
+  );
   return (
     <Card>
       <div className="tbl">
@@ -284,7 +301,16 @@ function PayrollTab({ data, projectId, years }: { data: ReportData; projectId: s
 }
 
 function SubsTab({ data, rows }: { data: ReportData; rows: ReturnType<typeof projectSubcontracts> }) {
+  const phone = useLayoutMode() === 'phone';
   if (rows.length === 0) return <Card><EmptyState icon="engineering" title="Chưa có hợp đồng thầu phụ" /></Card>;
+  if (phone) return (
+    <MiniList items={rows.map((r) => ({
+      key: r.id, title: data.subcontractorName.get(r.subcontractorId) ?? '—',
+      sub: `HĐ ${formatDate(r.date)} · ${formatMoney(r.total)}`,
+      value: Math.round(r.debt) > 0 ? <span className="text-bad">{formatMoney(r.debt)}</span> : <Pill tone="good">Đã tất toán</Pill>,
+      valueSub: `đã trả ${formatMoney(r.paid)}`,
+    }))} />
+  );
   return (
     <Card>
       <div className="tbl">
@@ -307,7 +333,16 @@ function SubsTab({ data, rows }: { data: ReportData; rows: ReturnType<typeof pro
 
 function SuppliersTab({ data, projectId, years }: { data: ReportData; projectId: string; years: YearFilter }) {
   const rows = useMemo(() => projectSuppliers(projectId, data, years), [data, projectId, years]);
+  const phone = useLayoutMode() === 'phone';
   if (rows.length === 0) return <Card><EmptyState icon="storefront" title="Chưa mua của nhà cung cấp nào" /></Card>;
+  if (phone) return (
+    <MiniList items={rows.map((r) => ({
+      key: r.supplierId ?? 'none', title: r.supplierId ? data.supplierName.get(r.supplierId) ?? '—' : 'Không ghi nhà cung cấp',
+      sub: `${r.invoices} hóa đơn · mua ${formatMoney(r.purchased)}`,
+      value: r.debt ? <span className="text-bad">{formatMoney(r.debt)}</span> : <span className="text-faint">—</span>,
+      valueSub: `đã trả ${formatMoney(r.paid)}`,
+    }))} />
+  );
   return (
     <Card>
       <div className="tbl">
@@ -330,11 +365,19 @@ function SuppliersTab({ data, projectId, years }: { data: ReportData; projectId:
 
 function ReceiptsTab({ projectId, data, years }: { projectId: string; data: ReportData; years: YearFilter }) {
   const q0 = useReceipts(projectId, true);
+  const phone = useLayoutMode() === 'phone';
   const q = { ...q0, data: q0.data?.filter((r) => inYearLoose(r.date, years)) ?? [] };
   if (q0.isPending) return <Card><LoadingState /></Card>;
   if (q0.isError) return <Card><ErrorState error={q0.error} onRetry={() => void q0.refetch()} /></Card>;
   if (q.data.length === 0) return <Card><EmptyState icon="attach_money" title="Chưa thu tiền lần nào" /></Card>;
   const total = q.data.reduce((s, r) => s + r.amount, 0);
+  if (phone) return (
+    <MiniList items={q.data.map((r) => ({
+      key: r.id, title: <span className="flex flex-wrap items-center gap-1.5"><span className="num">{formatDate(r.date)}</span><Pill tone={r.kind === 'advance' ? 'warn' : r.kind === 'settlement' ? 'accent' : 'good'}>{RECEIPT_KIND[r.kind] ?? r.kind}</Pill></span>,
+      sub: [r.note, (r.created_by && data.profileName.get(r.created_by)) || ''].filter(Boolean).join(' · ') || undefined,
+      value: formatMoney(r.amount),
+    }))} footer={{ label: `Tổng ${q.data.length} lần thu`, value: formatMoney(total) }} />
+  );
   return (
     <Card>
       <div className="tbl">

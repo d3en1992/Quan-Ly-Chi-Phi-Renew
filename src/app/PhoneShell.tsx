@@ -61,7 +61,9 @@ export function PhoneShell() {
         </Button>
       </header>
 
-      <main className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto px-3.5 pt-3 pb-24">
+      {/* [&>*]:shrink-0 — khung là cột co giãn có cuộn: không có dòng này thì nút / khối cao cố định (h-12…) bị bóp
+          còn bằng chiều cao chữ khi trang dài (nút "Lưu chi phí" từng bị dẹp vì vậy) */}
+      <main className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto px-3.5 pt-3 pb-24 [&>*]:shrink-0">
         <ReadOnlyBanner />
         <Outlet />
       </main>

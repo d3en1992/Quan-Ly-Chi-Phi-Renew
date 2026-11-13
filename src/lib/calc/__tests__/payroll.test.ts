@@ -255,3 +255,13 @@ describe.skipIf(!gold)('So chấm công với app cũ (ccPayslipData chạy trê
     expect(bad).toEqual([]);
   });
 });
+
+describe('dayWage — tiền công luôn là đồng nguyên', () => {
+  it('số công lẻ × lương lẻ được làm tròn', async () => {
+    const { dayWage } = await import('../timesheet');
+    expect(dayWage(1.25, 350_050)).toBe(437_563);
+    expect(dayWage(2.05, 400_000)).toBe(820_000);
+    expect(dayWage(0.5, 350_000)).toBe(175_000);
+    expect(Number.isInteger(dayWage(0.33, 333_333))).toBe(true);
+  });
+});

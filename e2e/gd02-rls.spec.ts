@@ -128,3 +128,32 @@ test('Chưa đăng nhập không đọc được gì', async () => {
     expect(data ?? [], `anon đọc ${table}`).toHaveLength(0);
   }
 });
+
+test('Kế toán (Nhập) không chèn được dòng vật tư vào hóa đơn của người khác; vào hóa đơn của mình thì được', async () => {
+  const { client: kt, userId } = await signIn('e2e.kt');
+  const { data: other } = await admin.from('expenses').select('id, project_id, expense_type_id, created_by')
+    .is('deleted_at', null).neq('created_by', userId).limit(1).single();
+  expect(other).toBeTruthy();
+
+  // Hóa đơn của người khác → kho chặn (migration 000013)
+  const { error: blocked } = await kt.from('expense_lines').insert({ expense_id: other!.id, name: 'E2E chèn lén', amount: 1 });
+  expect(blocked, 'chèn dòng vào hóa đơn người khác').not.toBeNull();
+
+  // Hóa đơn của mình → được
+  const { data: mine, error: insErr } = await kt.from('expenses')
+    .insert({ project_id: other!.project_id, expense_type_id: other!.expense_type_id, date: '2026-11-13', amount: 1, description: 'E2E 000013' })
+    .select('id').single();
+  expect(insErr).toBeNull();
+  try {
+    const { error: okErr } = await kt.from('expense_lines').insert({ expense_id: mine!.id, name: 'E2E dòng của mình', amount: 1 });
+    expect(okErr).toBeNull();
+  } finally {
+    await admin.from('expenses').delete().eq('id', mine!.id);
+  }
+});
+
+test('Người chưa đăng nhập không gọi được hàm nội bộ', async () => {
+  const anon = createClient(env.url, env.anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { error } = await anon.rpc('current_company_id');
+  expect(error, 'anon gọi current_company_id').not.toBeNull();
+});

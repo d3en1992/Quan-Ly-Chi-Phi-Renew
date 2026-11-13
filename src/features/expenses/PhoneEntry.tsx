@@ -129,7 +129,7 @@ export function PhoneEntry({ lists, expenses, userName, canAdd, today, onOpen }:
           </div>
           <div className="text-[12px] text-muted">Người TH: {userName} (tự điền theo tài khoản)</div>
           <button type="button" data-testid="phone-save" disabled={create.isPending} onClick={save}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--r)] bg-accent text-[15px] font-bold text-white disabled:opacity-60">
+            className="flex h-14 w-full shrink-0 items-center justify-center gap-2 rounded-[var(--r)] bg-accent text-[17px] font-bold text-white shadow-sm active:opacity-90 disabled:opacity-60 [&_.ms]:text-[22px]">
             <Icon name="save" />{create.isPending ? 'Đang lưu…' : 'Lưu chi phí'}
           </button>
         </>
