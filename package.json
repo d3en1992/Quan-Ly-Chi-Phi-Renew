@@ -16,7 +16,8 @@
     "compare:legacy": "node scripts/compare-counts.ts",
     "so-chuan": "node scripts/legacy/xuat-so-chuan-node.mjs",
     "gen:types": "node scripts/gen-types.mjs",
-    "backup:nightly": "node scripts/backup-nightly.ts"
+    "backup:nightly": "node scripts/backup-nightly.ts",
+    "import:bao-hiem": "node scripts/import-bao-hiem.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",

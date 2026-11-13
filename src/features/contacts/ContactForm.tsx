@@ -68,9 +68,9 @@ export function ContactForm({ open, onClose, kind, id, data, canSeeIds }: Props)
       {kind === 'worker' ? (
         <>
           {text('name', 'Tên gọi (trong sổ chấm công) *', { placeholder: 'VD: HIỀN' })}
-          <Field label="Loại (Chính / Thợ / Phụ)">
+          <Field label="Loại (Cai / Thợ / Phụ)">
             <Select aria-label="Loại công nhân" value={String(f.role ?? 'T')} onChange={(e) => set('role', e.target.value)}>
-              <option value="C">Chính (C)</option><option value="T">Thợ (T)</option><option value="P">Phụ (P)</option>
+              <option value="C">Cai (C)</option><option value="T">Thợ (T)</option><option value="P">Phụ (P)</option>
             </Select>
           </Field>
           {text('full_name', 'Họ tên theo CCCD')}

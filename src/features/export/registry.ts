@@ -90,7 +90,7 @@ const L = {
   cond: { working: 'Đang hoạt động', needs_maintenance: 'Cần bảo trì', needs_repair: 'Cần sửa chữa' } as Record<string, string>,
   pStatus: { planning: 'Chuẩn bị', active: 'Đang thi công', completed: 'Hoàn thành', closed: 'Đã quyết toán' } as Record<string, string>,
   pKind: { new_build: 'CT', renovation: 'SC', small_repair: 'SN' } as Record<string, string>,
-  role: { C: 'Chính', T: 'Thợ', P: 'Phụ' } as Record<string, string>,
+  role: { C: 'Cai', T: 'Thợ', P: 'Phụ' } as Record<string, string>,
   catKind: { expense_type: 'Loại chi phí', person: 'Người mua', equipment_name: 'Tên thiết bị', unit: 'Đơn vị tính' } as Record<string, string>,
   mode: { fifo: 'Cũ nhất trước', project: 'Trong công trình', manual: 'Chọn tay' } as Record<string, string>,
 };

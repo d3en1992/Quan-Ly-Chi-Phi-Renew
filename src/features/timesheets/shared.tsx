@@ -80,7 +80,7 @@ export function DayCell({ value, onChange, disabled, label }: { value: number; o
 export function RoleTag({ role }: { role: string | null | undefined }) {
   if (!role) return <span className="text-faint">—</span>;
   const tone = role === 'C' ? 'bg-accent-soft text-accent' : role === 'T' ? 'bg-good-soft text-good' : 'bg-surface-2 text-muted';
-  return <span className={cn('inline-block min-w-[22px] rounded-md px-1.5 py-px text-center text-[11.5px] font-bold', tone)} title={role === 'C' ? 'Chính' : role === 'T' ? 'Thợ' : 'Phụ'}>{role}</span>;
+  return <span className={cn('inline-block min-w-[22px] rounded-md px-1.5 py-px text-center text-[11.5px] font-bold', tone)} title={role === 'C' ? 'Cai' : role === 'T' ? 'Thợ' : 'Phụ'}>{role}</span>;
 }
 
 /** Sao chép chữ; trình duyệt chặn clipboard thì dùng execCommand('copy') (`_ccCopyText`) */

@@ -23,7 +23,7 @@ const TABS: { key: ContactKind; label: string; short?: string }[] = [
   { key: 'customer', label: 'KHÁCH HÀNG', short: 'KHÁCH' }, { key: 'worker', label: 'CÔNG NHÂN', short: 'THỢ' }, { key: 'employee', label: 'NHÂN VIÊN', short: 'NHÂN VIÊN' },
   { key: 'supplier', label: 'NHÀ CUNG CẤP', short: 'NCC' }, { key: 'subcontractor', label: 'THẦU PHỤ' },
 ];
-const ROLE_LABEL: Record<string, string> = { C: 'Chính', T: 'Thợ', P: 'Phụ' };
+const ROLE_LABEL: Record<string, string> = { C: 'Cai', T: 'Thợ', P: 'Phụ' };
 const dim = (t: string) => <span className="text-faint">{t}</span>;
 
 type Col = { head: string; right?: boolean; wrap?: boolean; cell: ReactNode };
@@ -61,7 +61,7 @@ export function ContactsPage() {
 
   const filtered = rows.filter((r) => matchesSearch(search, ...r.haystack) && (!filter || r.extra?.filter === filter));
   const heads = rows[0]?.cols.map((c) => ({ head: c.head, right: c.right })) ?? columnHeads(tab, money);
-  const filterOptions = tab === 'worker' ? [{ value: 'C', label: 'Chính' }, { value: 'T', label: 'Thợ' }, { value: 'P', label: 'Phụ' }]
+  const filterOptions = tab === 'worker' ? [{ value: 'C', label: 'Cai' }, { value: 'T', label: 'Thợ' }, { value: 'P', label: 'Phụ' }]
     : tab === 'supplier' ? [{ value: 'credit', label: 'Có Mua nợ' }, { value: 'cash', label: 'Không Mua nợ' }]
     : tab === 'customer' ? [{ value: 'has', label: 'Có công trình' }, { value: 'none', label: 'Chưa có công trình' }] : [];
   const filterLabel = tab === 'worker' ? 'T/P' : tab === 'supplier' ? 'Mua nợ' : 'Có công trình';
