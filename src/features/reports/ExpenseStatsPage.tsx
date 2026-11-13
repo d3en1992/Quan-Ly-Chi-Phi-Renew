@@ -4,11 +4,11 @@ import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
 import { Button, Icon } from '@/components/ui/button';
-import { FilterBar, FilterSelect, PhoneFilters, KpiStrip, MiniList, MobileCard, MobileRow, Money, Pager, PhoneKpis, SearchBox, usePaged, type Option } from '@/components/ui/data';
+import { FilterSelect, MiniList, MobileCard, MobileRow, Money, Pager, SearchBox, usePaged, type Option } from '@/components/ui/data';
 import { Card, EmptyState, ErrorState, LoadingState, PageHeader, Pill } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
 import { buildCostEntries, inYear, summarizeExpenses, type CostEntry } from '@/lib/calc';
-import { formatDate, formatMoney, formatShortMoney } from '@/lib/format';
+import { formatDate, formatMoney } from '@/lib/format';
 import { hasLevel } from '@/lib/permissions';
 import { EditExpenseById } from '@/features/expenses/EditExpenseSheet';
 import { useExpenseLines, type ReportData } from './api';
@@ -144,21 +144,41 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
     const typeOf = new Map(rows.map((r) => [r.entry, r.type]));
     return summarizeExpenses(rows.map((r) => r.entry), (c) => typeOf.get(c) ?? '');
   }, [rows]);
-  const topType = summary.topType;
   const paged = usePaged(rows, PAGE_SIZE, `${years.join()}|${month}|${project}|${type}|${supplier}|${buyer}|${paid}|${source}|${search}`);
-  const scope = month ? `tháng ${Number(month)}` : yearLabel.toLowerCase();
 
+  const [advOpen, setAdvOpen] = useState(false);
+  const advCount = [month, buyer, paid, source].filter(Boolean).length;
+  // Điện thoại: ô lọc giãn đủ ngang trong lưới 2 cột; máy tính bảng / máy tính: một hàng
+  const fill = 'max-sm:w-full max-sm:max-w-none max-sm:[&_select]:max-w-none max-sm:[&_select]:flex-1';
   const filters = (
-    <FilterBar>
-      <FilterSelect label="Tháng" value={month} onChange={setMonth} options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1).padStart(2, '0'), label: String(i + 1) }))} />
-      <FilterSelect label="Công trình" value={project} onChange={setProject} options={options.projects} />
-      <FilterSelect label="Loại" value={type} onChange={setType} options={options.types} />
-      <FilterSelect label="NCC" value={supplier} onChange={setSupplier} options={options.suppliers} />
-      <FilterSelect label="Người mua" value={buyer} onChange={setBuyer} options={options.buyers} />
-      <FilterSelect label="Thanh toán" value={paid} onChange={setPaid} options={PAID_OPTIONS} />
-      <FilterSelect label="Nguồn" value={source} onChange={setSource} options={SOURCE_OPTIONS} />
-      <SearchBox value={search} onChange={setSearch} placeholder="Tìm nội dung…" />
-    </FilterBar>
+    <div className="grid shrink-0 gap-2" data-testid="stats-filters">
+      <SearchBox value={search} onChange={setSearch} placeholder="Tìm nội dung…" className="w-full sm:max-w-none" />
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+        <FilterSelect label="Công trình" value={project} onChange={setProject} options={options.projects} className={`col-span-2 ${fill}`} />
+        <FilterSelect label="Loại chi phí" value={type} onChange={setType} options={options.types} className={fill} />
+        <FilterSelect label="NCC" value={supplier} onChange={setSupplier} options={options.suppliers} className={fill} />
+        <Button data-testid="stats-adv" aria-expanded={advOpen} onClick={() => setAdvOpen((o) => !o)}
+          className={`col-span-2 h-9 ${advCount ? 'border-accent text-accent' : ''}`}>
+          <Icon name={advOpen ? 'expand_less' : 'tune'} />Lọc nâng cao{advCount ? ` (${advCount})` : ''}
+        </Button>
+      </div>
+      {advOpen ? (
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center" data-testid="stats-adv-panel">
+          <FilterSelect label="Tháng" value={month} onChange={setMonth} options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1).padStart(2, '0'), label: String(i + 1) }))} className={fill} />
+          <FilterSelect label="Thanh toán" value={paid} onChange={setPaid} options={PAID_OPTIONS} className={fill} />
+          <FilterSelect label="Người mua" value={buyer} onChange={setBuyer} options={options.buyers} className={fill} />
+          <FilterSelect label="Nguồn" value={source} onChange={setSource} options={SOURCE_OPTIONS} className={fill} />
+          {advCount ? <Button variant="ghost" className={`h-9 ${fill}`} onClick={() => { setMonth(''); setPaid(''); setBuyer(''); setSource(''); }}><Icon name="close" />Bỏ lọc nâng cao</Button> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+  /** Tổng tiền của các khoản đang lọc — góc phải ngang tiêu đề (điện thoại: một dòng dưới thanh trên) */
+  const total = (
+    <div className="text-right" data-testid="stats-total">
+      <small className="block text-[11.5px] text-muted">Tổng tiền{month ? ` · tháng ${Number(month)}` : ''}</small>
+      <b className="num text-[22px] leading-tight font-bold">{formatMoney(summary.total)}</b> <span className="text-[13px] text-muted">đ</span>
+    </div>
   );
   const empty = inScope.length === 0
     ? <Card><EmptyState icon="receipt_long" title="Chưa có khoản chi nào">{yearLabel} chưa có hóa đơn hay chấm công. Thử chọn năm khác ở ô chọn năm phía trên.</EmptyState></Card>
@@ -167,17 +187,11 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
   if (mode === 'phone') {
     return (
       <>
-        <PhoneFilters active={[month, project, type, supplier, buyer, paid, source].filter(Boolean).length}
-          search={<SearchBox value={search} onChange={setSearch} placeholder="Tìm nội dung…" className="min-w-0" />}>
-          <FilterSelect label="Tháng" value={month} onChange={setMonth} options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1).padStart(2, '0'), label: String(i + 1) }))} />
-          <FilterSelect label="Thanh toán" value={paid} onChange={setPaid} options={PAID_OPTIONS} />
-          <FilterSelect label="Công trình" value={project} onChange={setProject} options={options.projects} className="col-span-2" />
-          <FilterSelect label="Loại" value={type} onChange={setType} options={options.types} />
-          <FilterSelect label="Nguồn" value={source} onChange={setSource} options={SOURCE_OPTIONS} />
-          <FilterSelect label="NCC" value={supplier} onChange={setSupplier} options={options.suppliers} className="col-span-2" />
-          <FilterSelect label="Người mua" value={buyer} onChange={setBuyer} options={options.buyers} className="col-span-2" />
-        </PhoneFilters>
-        <PhoneKpis items={[{ label: `Tổng tiền · ${summary.count.toLocaleString('vi-VN')} khoản${month ? ` · T${Number(month)}` : ''}`, value: formatShortMoney(summary.total) }, { label: 'Mua nợ', value: formatShortMoney(summary.creditTotal), tone: summary.creditTotal > 0 ? 'neg' : '' }]} />
+        <div className="flex shrink-0 items-baseline justify-between gap-3 rounded-[var(--r)] border border-line bg-surface px-3 py-2" data-testid="stats-total">
+          <span className="text-[12.5px] text-muted">Tổng tiền{month ? ` · tháng ${Number(month)}` : ''}</span>
+          <b className="num text-[18px] font-bold">{formatMoney(summary.total)} <span className="text-[12px] font-normal text-muted">đ</span></b>
+        </div>
+        {filters}
         {empty}
         {paged.slice.map((r) => (
           <MobileCard key={r.id} onClick={() => setOpen(r)}>
@@ -195,17 +209,8 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
 
   return (
     <>
-      <PageHeader title="Thống Kê CP/HĐ" sub="Tra cứu mọi khoản chi đã nhập (hóa đơn + lương chấm công)" />
+      <PageHeader title="Thống Kê CP/HĐ" sub="Tra cứu mọi khoản chi đã nhập (hóa đơn + lương chấm công)" actions={total} />
       {filters}
-      <KpiStrip
-        items={[
-          { label: `Số khoản chi ${scope}`, value: summary.count.toLocaleString('vi-VN') },
-          { label: 'Tổng tiền', value: formatMoney(summary.total), sub: 'đ' },
-          { label: 'Mua nợ (chưa tích Đã TT)', value: formatShortMoney(summary.creditTotal) },
-          { label: 'Nhập từ ảnh', value: summary.scanned.toLocaleString('vi-VN'), sub: 'hóa đơn' },
-          { label: 'Loại chi nhiều nhất', value: topType ? topType.label : '—', sub: topType ? formatShortMoney(topType.amount) : '' },
-        ]}
-      />
       {empty ?? (
         <Card>
           <div className="tbl tbl-tight">

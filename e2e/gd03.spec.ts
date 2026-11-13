@@ -94,7 +94,7 @@ test.describe('Thống Kê CP/HĐ', () => {
     await page.goto('/thong-ke-cp-hd');
     await expect(page.getByTestId('expense-table')).toBeVisible();
     const all = digits(await page.getByTestId('expense-total').textContent());
-    await page.getByLabel('Loại', { exact: true }).selectOption({ label: 'Nhân Công' });
+    await page.getByLabel('Loại chi phí', { exact: true }).selectOption({ label: 'Nhân Công' });
     const wage = digits(await page.getByTestId('expense-total').textContent());
     expect(wage).toBeGreaterThan(0);
     expect(wage).toBeLessThan(all);
@@ -129,4 +129,26 @@ test.describe('Quyền', () => {
     await page.goto('/thong-ke-cp-hd');
     await expect(page.locator('main').getByRole('heading', { name: 'Thống Kê CP/HĐ' })).toBeVisible();
   });
+});
+
+test('Thống Kê CP/HĐ: bỏ dải số, Tổng tiền góc phải, Lọc nâng cao ẩn Tháng / Người mua / Thanh toán / Nguồn (13/11/2026)', async ({ page }) => {
+  const errors = watchConsole(page);
+  for (const size of [{ w: 1440, h: 900 }, { w: 820, h: 1000 }, { w: 390, h: 844 }]) {
+    await page.setViewportSize({ width: size.w, height: size.h });
+    if (size.w === 1440) await login(page, 'e2e.admin');
+    await page.goto('/thong-ke-cp-hd');
+    await expect(page.getByTestId('stats-total')).toContainText('Tổng tiền');
+    for (const t of ['Số khoản chi', 'Mua nợ (chưa tích', 'Nhập từ ảnh', 'Loại chi nhiều nhất']) await expect(page.getByText(t)).toHaveCount(0);
+    await expect(page.getByLabel('Công trình', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Loại chi phí', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('NCC', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Tháng', { exact: true })).toHaveCount(0);
+    await page.getByTestId('stats-adv').click();
+    for (const l of ['Tháng', 'Người mua', 'Thanh toán', 'Nguồn']) await expect(page.getByLabel(l, { exact: true })).toBeVisible();
+    await page.getByLabel('Thanh toán', { exact: true }).selectOption('credit');
+    await expect(page.getByTestId('stats-adv')).toContainText('Lọc nâng cao (1)');
+    await page.screenshot({ path: `${SHOTS}/thong-ke-loc-nang-cao-${size.w}.png` });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
+  }
+  expect(errors).toEqual([]);
 });

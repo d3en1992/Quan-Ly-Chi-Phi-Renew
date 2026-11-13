@@ -259,6 +259,7 @@ test('Thống Kê CP/HĐ: lọc Thanh toán / Nguồn, mở dòng → Sửa hóa
   await login(page, 'e2e.kt');
   await page.goto('/thong-ke-cp-hd');
   await expect(page.getByTestId('expense-table')).toBeVisible();
+  await page.getByTestId('stats-adv').click(); // Thanh toán, Nguồn nằm trong Lọc nâng cao
   await page.getByLabel('Thanh toán').selectOption('credit');
   await page.getByLabel('Nguồn').selectOption('quick');
   await page.getByPlaceholder('Tìm nội dung…').fill(`${TAG} dòng 2`);
