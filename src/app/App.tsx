@@ -36,6 +36,7 @@ import {
 import { AuthProvider, useAuth } from './auth';
 import { DesktopShell } from './DesktopShell';
 import { PhoneShell } from './PhoneShell';
+import { useRealtimeRefresh } from './realtime';
 import { TabbedPage, TabIndexRedirect } from './TabbedPage';
 import { useLayoutMode } from './useLayoutMode';
 import { YearProvider } from './year';
@@ -118,6 +119,7 @@ function LegacyRedirect({ to }: { to: string }) {
 
 function Shell() {
   const mode = useLayoutMode();
+  useRealtimeRefresh();
   return mode === 'phone' ? <PhoneShell /> : <DesktopShell compact={mode === 'tablet'} />;
 }
 

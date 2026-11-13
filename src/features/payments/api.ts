@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
+import { fetchAllPages } from '@/lib/fetch-pages';
 import { fetchLive, REPORT_DATA_KEY } from '@/features/reports/api';
 import { reallocateSupplierPayments, type AllocationRow, type ContractItem } from '@/lib/calc';
 
@@ -70,16 +71,12 @@ export type PayData = {
 export const PAY_KEY = ['pay-data'] as const;
 const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'vi');
 
-/** Đọc hết dòng còn sống của 1 bảng có điều kiện lọc (mỗi lần tối đa 1000 dòng) */
+/** Đọc hết dòng còn sống của 1 bảng có điều kiện lọc (trang 1000 dòng, tải cùng lúc) */
 async function fetchWhere<S extends z.ZodObject<z.ZodRawShape>>(table: string, schema: S, apply: (q: any) => any): Promise<z.infer<S>[]> { // eslint-disable-line @typescript-eslint/no-explicit-any
-  const out: z.infer<S>[] = [];
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await apply(sb.from(table).select(Object.keys(schema.shape).join(',')).is('deleted_at', null)).order('id').range(from, from + 999);
-    if (error) throw new Error(`Không đọc được bảng ${table}: ${error.message}`);
-    const rows = z.array(schema).parse(data ?? []);
-    out.push(...rows);
-    if (rows.length < 1000) return out;
-  }
+  const data = await fetchAllPages<unknown>((withCount) =>
+    apply(sb.from(table).select(Object.keys(schema.shape).join(','), withCount ? { count: 'exact' } : undefined).is('deleted_at', null)).order('id'),
+  ).catch((e: Error) => { throw new Error(`Không đọc được bảng ${table}: ${e.message}`); });
+  return z.array(schema).parse(data);
 }
 const fetchCredits = async () =>
   (await fetchWhere('expenses', creditSchema, (q) => q.eq('paid_at_purchase', false).not('supplier_id', 'is', null))) as CreditExpense[];

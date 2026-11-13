@@ -4,6 +4,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
+import { fetchAllPages } from '@/lib/fetch-pages';
 import type { CalcData, CalcSubcontract } from '@/lib/calc';
 
 const money = z.coerce.number();
@@ -46,19 +47,16 @@ const cols = (s: z.ZodObject<z.ZodRawShape>) => Object.keys(s.shape).join(',');
 
 /** Đọc hết bản ghi CÒN SỐNG của 1 bảng (PostgREST trả tối đa 1000 dòng / lần), kiểm tra bằng Zod. */
 export async function fetchLive<S extends z.ZodObject<z.ZodRawShape>>(table: string, schema: S, softDelete = true): Promise<z.infer<S>[]> {
-  const out: z.infer<S>[] = [];
   const orderBy = 'id' in schema.shape ? 'id' : Object.keys(schema.shape)[0]!;
-  for (let from = 0; ; from += 1000) {
+  // Các trang 1000 dòng tải cùng lúc (lib/fetch-pages.ts)
+  const data = await fetchAllPages<unknown>((withCount) => {
     // Tên bảng là chuỗi động nên bỏ kiểm tra kiểu của supabase-js ở đây; dữ liệu trả về được Zod kiểm tra ngay bên dưới.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let q = (supabase as any).from(table).select(cols(schema));
+    let q = (supabase as any).from(table).select(cols(schema), withCount ? { count: 'exact' } : undefined);
     if (softDelete) q = q.is('deleted_at', null);
-    const { data, error } = await q.order(orderBy).range(from, from + 999);
-    if (error) throw new Error(`Không đọc được bảng ${table}: ${error.message}`);
-    const rows = z.array(schema).parse(data ?? []);
-    out.push(...rows);
-    if (rows.length < 1000) return out;
-  }
+    return q.order(orderBy);
+  }).catch((e: Error) => { throw new Error(`Không đọc được bảng ${table}: ${e.message}`); });
+  return z.array(schema).parse(data);
 }
 
 export type ReportData = CalcData & {
@@ -79,16 +77,14 @@ export type ReportData = CalcData & {
 const toMap = (rows: { id: string; name: string }[]) => new Map(rows.map((r) => [r.id, r.name]));
 
 export async function fetchReportData(): Promise<ReportData> {
-  const [projects, expenses, timesheetWeeks, payments, receipts, mainContracts, settlements, subcontracts, suppliers, catalog, customers, workers] =
-    await Promise.all([
-      fetchLive('projects', projectSchema), fetchLive('expenses', expenseSchema), fetchLive('timesheet_weeks', weekSchema),
-      fetchLive('payments', paymentSchema), fetchLive('receipts', receiptSchema), fetchLive('main_contracts', contractSchema),
-      fetchLive('settlements', settlementSchema), fetchLive('subcontracts', subcontractSchema), fetchLive('suppliers', namedSchema),
-      fetchLive('catalog_items', catalogSchema), fetchLive('customers', namedSchema), fetchLive('workers', namedSchema),
-    ]);
-  const subcontractors = await fetchLive('subcontractors', namedSchema);
-  const [timesheetLines, paymentAllocations, profiles] = await Promise.all([
-    fetchLive('timesheet_lines', lineSchema), fetchLive('payment_allocations', allocationSchema),
+  // Mọi bảng đọc CÙNG LÚC trong một lượt (trước đây 3 lượt nối đuôi)
+  const [projects, expenses, timesheetWeeks, payments, receipts, mainContracts, settlements, subcontracts, suppliers, catalog, customers, workers,
+    subcontractors, timesheetLines, paymentAllocations, profiles] = await Promise.all([
+    fetchLive('projects', projectSchema), fetchLive('expenses', expenseSchema), fetchLive('timesheet_weeks', weekSchema),
+    fetchLive('payments', paymentSchema), fetchLive('receipts', receiptSchema), fetchLive('main_contracts', contractSchema),
+    fetchLive('settlements', settlementSchema), fetchLive('subcontracts', subcontractSchema), fetchLive('suppliers', namedSchema),
+    fetchLive('catalog_items', catalogSchema), fetchLive('customers', namedSchema), fetchLive('workers', namedSchema),
+    fetchLive('subcontractors', namedSchema), fetchLive('timesheet_lines', lineSchema), fetchLive('payment_allocations', allocationSchema),
     // Tên tài khoản: tài khoản không được xem danh sách tài khoản thì bỏ trống cột này, không coi là lỗi
     fetchLive('profiles', profileSchema, false).catch(() => [] as z.infer<typeof profileSchema>[]),
   ]);

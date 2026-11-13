@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { fetchAllPages } from '@/lib/fetch-pages';
 import { calcTimesheetRow } from '@/lib/calc';
 import type { ModuleKey } from '@/lib/permissions';
 import { syncSupplierAllocations } from '@/features/payments/api';
@@ -94,13 +95,8 @@ const DEFS: Def[] = [
 
 /** Bảng không đọc được (thiếu quyền) → coi như trống, không làm hỏng cả màn */
 async function readAll(table: string, cols: string, apply: (q: any) => any = (q) => q): Promise<Record<string, unknown>[]> { // eslint-disable-line @typescript-eslint/no-explicit-any
-  const out: Record<string, unknown>[] = [];
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await apply(sb.from(table).select(cols)).order('id').range(from, from + 999);
-    if (error) return out;
-    out.push(...((data ?? []) as Record<string, unknown>[]));
-    if ((data ?? []).length < 1000) return out;
-  }
+  return fetchAllPages<Record<string, unknown>>((withCount) => apply(sb.from(table).select(cols, withCount ? { count: 'exact' } : undefined)).order('id'))
+    .catch(() => []);
 }
 
 export const TRASH_KEY = ['trash'] as const;

@@ -64,7 +64,9 @@ export function ProjectFormSheet({ open, onClose, project, presetCustomerId, onS
       setAddress('');
       setRows(emptyRows());
     }
-  }, [open, project, presetCustomerId]);
+    // Chỉ nạp lại khi mở form / đổi công trình — dữ liệu tự làm mới (máy khác vừa lưu) không xóa chữ đang gõ
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, project?.id, presetCustomerId]);
 
   const customer = useMemo(() => customers.data?.find((c) => c.id === customerId) ?? null, [customers.data, customerId]);
   const suggestion = (nm: string) => suggestProjectName(nm, customer?.name, scope);

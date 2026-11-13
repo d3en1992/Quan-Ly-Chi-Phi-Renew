@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { ACCESS_QUERY_KEY } from '@/app/auth';
 import { supabase } from '@/lib/supabase';
+import { fetchAllPages } from '@/lib/fetch-pages';
 import { normalizeName } from '@/features/projects/logic';
 import { REPORT_DATA_KEY } from '@/features/reports/api';
 
@@ -53,24 +54,16 @@ export function useCatalogGroup(kind: CatalogKind) {
       const bump = (k: string | null | undefined) => { if (k) usage.set(k, (usage.get(k) ?? 0) + 1); };
       if (kind === 'expense_type' || kind === 'person') {
         const col = kind === 'expense_type' ? 'expense_type_id' : 'buyer_id';
-        for (let from = 0; ; from += 1000) {
-          const { data: ex, error: e2 } = await sb.from('expenses').select(col).is('deleted_at', null).range(from, from + 999);
-          if (e2) throw new Error(e2.message);
-          for (const r of (ex ?? []) as unknown as Record<string, string | null>[]) bump(r[col]);
-          if ((ex ?? []).length < 1000) break;
-        }
+        const ex = await fetchAllPages<Record<string, string | null>>((c) => sb.from('expenses').select(col, c ? { count: 'exact' } : undefined).is('deleted_at', null).order('id'));
+        for (const r of ex) bump(r[col]);
       } else if (kind === 'equipment_name') {
         const { data: eq, error: e2 } = await sb.from('equipment').select('name_id').is('deleted_at', null).range(0, 4999);
         if (e2) throw new Error(e2.message);
         for (const r of (eq ?? []) as { name_id: string }[]) bump(r.name_id);
       } else {
         const byName = new Map(rows.map((r) => [normalizeName(r.name), r.id]));
-        for (let from = 0; ; from += 1000) {
-          const { data: ln, error: e2 } = await sb.from('expense_lines').select('unit').is('deleted_at', null).range(from, from + 999);
-          if (e2) throw new Error(e2.message);
-          for (const r of (ln ?? []) as { unit: string | null }[]) bump(byName.get(normalizeName(r.unit)));
-          if ((ln ?? []).length < 1000) break;
-        }
+        const ln = await fetchAllPages<{ unit: string | null }>((c) => sb.from('expense_lines').select('unit', c ? { count: 'exact' } : undefined).is('deleted_at', null).order('id'));
+        for (const r of ln) bump(byName.get(normalizeName(r.unit)));
       }
       return { rows, usage };
     },
@@ -154,12 +147,8 @@ export function useImportUnits() {
   return useMutation({
     mutationFn: async () => {
       const seen = new Map<string, string>();
-      for (let from = 0; ; from += 1000) {
-        const { data, error } = await sb.from('expense_lines').select('unit').is('deleted_at', null).range(from, from + 999);
-        if (error) throw new Error(error.message);
-        for (const r of (data ?? []) as { unit: string | null }[]) { const n = normalizeCatalogName('unit', r.unit ?? ''); if (n) seen.set(normalizeName(n), n); }
-        if ((data ?? []).length < 1000) break;
-      }
+      const lines = await fetchAllPages<{ unit: string | null }>((c) => sb.from('expense_lines').select('unit', c ? { count: 'exact' } : undefined).is('deleted_at', null).order('id'));
+      for (const r of lines) { const n = normalizeCatalogName('unit', r.unit ?? ''); if (n) seen.set(normalizeName(n), n); }
       const { data: have } = await sb.from('catalog_items').select('name').eq('kind', 'unit').is('deleted_at', null);
       const existing = new Set(((have ?? []) as { name: string }[]).map((r) => normalizeName(r.name)));
       const fresh = [...seen].filter(([k]) => !existing.has(k)).map(([, name]) => ({ kind: 'unit', name }));

@@ -70,9 +70,19 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
   const toggleExtras = () => setExtras((v) => { try { localStorage.setItem(EXTRAS_KEY, v ? '0' : '1'); } catch { /* bỏ qua */ } return !v; });
   const focusKey = useRef<string | null>(null);
 
-  // Nạp lại bảng khi đổi tuần / công trình hoặc sau khi lưu (updated_at đổi); tải lại dữ liệu y nguyên thì giữ bảng đang sửa
-  const loadKey = `${weekStart}|${projectId}|${week?.id ?? ''}|${week?.updated_at ?? ''}`;
-  useEffect(() => { setRows(saved); setBad([]); }, [loadKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Nạp lại bảng khi đổi tuần / công trình hoặc sau khi lưu (updated_at đổi); tải lại dữ liệu y nguyên thì giữ bảng đang sửa.
+  // Máy khác vừa lưu CÙNG tuần này trong lúc mình đang sửa dở (dữ liệu tự làm mới) → giữ bảng đang sửa, báo cho người dùng.
+  const sheetKey = `${weekStart}|${projectId}|${week?.id ?? ''}`;
+  const loadKey = `${sheetKey}|${week?.updated_at ?? ''}`;
+  const lastSheet = useRef(sheetKey);
+  const [otherSaved, setOtherSaved] = useState(false);
+  useEffect(() => {
+    const sameSheet = lastSheet.current === sheetKey;
+    lastSheet.current = sheetKey;
+    // Mình vừa lưu xong thì bảng đang có = dữ liệu mới → nạp bình thường; khác nhau mới là người khác lưu chen vào
+    if (sameSheet && dirtyRef.current && !sameRows(rows, saved)) { setOtherSaved(true); return; }
+    setRows(saved); setBad([]); setOtherSaved(false);
+  }, [loadKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dirty = !sameRows(rows, saved);
   useEffect(() => { dirtyRef.current = dirty; }, [dirty, dirtyRef]);
@@ -192,6 +202,7 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
       {readOnly ? <Note icon="lock">Tài khoản chỉ được xem chấm công.</Note> : null}
       {!week && saved.length === 0 && rows.length === 0 ? null : !week ? <Note icon="edit_note">Tuần này của công trình chưa lưu — bấm <b>Lưu tuần</b> để ghi.</Note> : null}
       {dirty && week ? <Note icon="edit_note">Có thay đổi chưa lưu.</Note> : null}
+      {otherSaved && dirty ? <Note icon="sync_problem">Tuần này vừa được người khác lưu trên máy khác. Bảng vẫn giữ phần đang sửa — bấm <b>Lưu tuần</b> sẽ ghi đè bản của họ; muốn xem bản mới thì đổi sang tuần khác rồi quay lại (bỏ phần đang sửa).</Note> : null}
     </>
   );
 
