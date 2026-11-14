@@ -144,7 +144,7 @@ export function ExpenseEntryPage() {
   const expenses = expensesQuery.data;
 
   const header = mode === 'phone' ? null : (
-    <PageHeader title="Nhập Chi Phí" sub="Hóa đơn, vật tư, chi phí công trình" actions={<><Button onClick={() => setTab('scan')}><Icon name="auto_awesome" />Trợ lý AI</Button></>} />
+    <PageHeader title="Nhập Chi Phí" sub="Hóa đơn, vật tư, chi phí công trình" />
   );
   if (query.isPending || expensesQuery.isPending) return <>{header}<Card><LoadingState label="Đang tải danh mục…" /></Card></>;
   if (query.isError || expensesQuery.isError || !lists || !expenses) {

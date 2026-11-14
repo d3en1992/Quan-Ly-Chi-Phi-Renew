@@ -6,10 +6,10 @@
 // hóa đơn (chi tiết, hoặc sổ cộng tiền), tiền ứng thầu phụ, thu tiền khách, hợp đồng / dự toán, danh sách vật tư cần mua.
 // CCCD chỉ còn dùng ở nút "Chụp CCCD" của Danh Bạ (kind = 'id_card'), không nằm trong nút AI.
 
-export type ScanKind = 'invoice' | 'advance' | 'receipt' | 'contract' | 'material_list' | 'id_card';
+export type ScanKind = 'invoice' | 'advance' | 'receipt' | 'contract' | 'material_list' | 'timesheet' | 'id_card';
 export type ScanRequestKind = 'auto' | ScanKind;
 /** Các loại nút AI tự nhận (không có CCCD) */
-export const AUTO_KINDS: readonly ScanKind[] = ['invoice', 'advance', 'receipt', 'contract', 'material_list'];
+export const AUTO_KINDS: readonly ScanKind[] = ['invoice', 'advance', 'receipt', 'contract', 'material_list', 'timesheet'];
 
 /** Chuyển khoản / tiền mặt / chưa rõ */
 export type PayMethod = 'transfer' | 'cash' | '';
@@ -97,6 +97,36 @@ export type MaterialListScan = {
   delivery_note: string;
   items: MaterialItem[];
 };
+/** 1 dòng công nhân trên phiếu chấm công tuần */
+export type TimesheetRowScan = {
+  /** Tên như viết trên phiếu ("Sơn", "Thanh Lé") */
+  name: string;
+  /** Tên trong danh mục Công nhân ('' = chưa khớp được) */
+  worker_match: string;
+  /** Cột T/P: 'C' cai · 'T' thợ · 'P' phụ · '' không rõ */
+  role: string;
+  /** 7 ô CN, T2 … T7 — số công (1, 0.5, 0, 1.3…) */
+  days: number[];
+  /** 'name' hoặc '0'…'6' (ô ngày thứ mấy, 0 = CN) đọc không chắc */
+  low_confidence: string[];
+};
+export type TimesheetPurchaseScan = { name: string; amount: number };
+/** Phiếu chấm công tuần viết tay (mẫu in của công ty): bảng tên + công CN..T7, phần GHI CHÚ (MUA ĐỒ) = hóa đơn mua lẻ của cai */
+export type TimesheetScan = {
+  /** Chủ nhật đầu tuần nếu phiếu có ghi ngày / tuần, không thì '' (app tự chọn tuần) */
+  week_start: string;
+  project_match: string;
+  rows: TimesheetRowScan[];
+  /** Các khoản mua lẻ ghi trên phiếu (cộng vào ô HĐ mua lẻ của người đầu phiếu — cai) */
+  purchases: TimesheetPurchaseScan[];
+  /** Số tổng mua lẻ người ta tự cộng trên phiếu (0 = không ghi) */
+  purchase_total: number;
+  /** Ghi chú khác trên phiếu ("Tăng ca bốc ngói 30 phút", "Ông Hoàng làm chủ nhật 3 công") */
+  note: string;
+  /** Căn cứ chọn công trình: 'note' ghi chú · 'crew' lịch sử chấm công của tổ · 'ai' AI đoán · '' chưa chọn */
+  project_by: 'note' | 'crew' | 'ai' | '';
+  low_confidence: string[];
+};
 export type IdCardScan = {
   full_name: string; id_number: string; date_of_birth: string; gender: string;
   hometown: string; permanent_address: string; id_issued_on: string; id_issued_place: string;
@@ -113,6 +143,7 @@ export type ScanResult =
   | { kind: 'receipt'; receipt: ReceiptScan }
   | { kind: 'contract'; contract: ContractScan }
   | { kind: 'material_list'; material_list: MaterialListScan }
+  | { kind: 'timesheet'; timesheet: TimesheetScan }
   | { kind: 'id_card'; id_card: IdCardScan };
 
 export type ScanResponse = ScanResult & {
@@ -140,6 +171,10 @@ export type ScanContext = {
   project_meta?: ProjectMeta[];
   /** Hóa đơn chi phí ~90 ngày gần nhất có NCC — để đoán công trình theo lịch sử (guessProjectFromHistory) */
   recent_expenses?: ExpenseHistoryRow[];
+  /** Mô tả thêm cho từng công nhân (gần đây chấm công ở công trình nào) */
+  worker_hints?: Record<string, string>;
+  /** Chấm công ~120 ngày gần nhất — để đoán công trình theo tổ thợ (guessProjectFromCrew) */
+  recent_timesheets?: TimesheetHistoryRow[];
   /** Hôm nay (YYYY-MM-DD, giờ VN) — để AI đoán năm khi phiếu ghi thiếu, hiểu "hôm nay / hôm qua" */
   today?: string;
 };
@@ -156,6 +191,7 @@ const KIND_TEXT: Record<ScanRequestKind, string> = {
   receipt: 'Đây là THU TIỀN của KHÁCH HÀNG (receipt).',
   contract: 'Đây là HỢP ĐỒNG thi công hoặc DỰ TOÁN công trình (contract).',
   material_list: 'Đây là DANH SÁCH VẬT TƯ CẦN MUA (material_list).',
+  timesheet: 'Đây là PHIẾU CHẤM CÔNG tuần của tổ thợ (timesheet).',
   id_card: 'Đây là CĂN CƯỚC CÔNG DÂN (id_card). Đọc cả hai mặt nếu có.',
 };
 
@@ -166,6 +202,7 @@ const KIND_RULES: Record<Exclude<ScanKind, 'id_card'>, string> = {
   receipt: '- "receipt": KHÁCH HÀNG / chủ nhà đưa tiền / chuyển tiền cho công ty (vd "anh Nhật đưa 100 triệu", "khách chuyển 200tr"), hoặc ảnh chuyển khoản mà người GỬI là khách hàng.',
   contract: '- "contract": hợp đồng thi công với chủ nhà, hoặc bảng DỰ TOÁN công trình (có diện tích Móng, Trệt, Lầu, Mái… và đơn giá / m²).',
   material_list: '- "material_list": danh sách vật tư CẦN MUA do thợ / cai gửi (tin nhắn Zalo, chữ viết trên ván, giấy), chưa có giá tiền.',
+  timesheet: '- "timesheet": PHIẾU CHẤM CÔNG tuần (mẫu in có logo NH, bảng TT | TÊN | T/P | CN | T2 … T7 | TIỀN CÔNG, viết tay tên thợ và dấu x / số 1 / số 0), có thể kèm phần GHI CHÚ (MUA ĐỒ) hoặc trang SỔ GHI NHẬT KÝ CÔNG TRÌNH ghi tiền mua lẻ. Dù có ghi tiền mua đồ vẫn là timesheet, KHÔNG phải invoice.',
 };
 
 const TPL: Record<ScanKind, string> = {
@@ -225,6 +262,21 @@ const TPL: Record<ScanKind, string> = {
   "project_match": "",
   "delivery_note": "",         // ghi chú giao hàng nếu có (vd "Giao qua chùa")
   "items": [{"name": "", "quantity": 0, "unit": "", "note": ""}]
+ }`,
+  timesheet: ` "timesheet": {
+  "week_start": "",            // YYYY-MM-DD của CHỦ NHẬT đầu tuần nếu phiếu có ghi ngày / tuần; không ghi thì ""
+  "project_match": "",         // tên công trình trong DANH MỤC (theo ghi chú, hoặc theo công trình tổ thợ này gần đây làm)
+  "rows": [{
+    "name": "",                // tên thợ chép như viết trên phiếu, có dấu
+    "worker_match": "",        // tên trong DANH MỤC Công nhân nếu cùng người, không chắc thì ""
+    "role": "",                // cột T/P: "C" = cai, "T" = thợ, "P" = phụ; chữ khác / trống thì ""
+    "days": [0, 0, 0, 0, 0, 0, 0],   // ĐÚNG 7 số theo thứ tự CN, T2, T3, T4, T5, T6, T7
+    "low_confidence": []       // "name" hoặc tên cột ngày đọc không chắc: "CN", "T2" … "T7"
+  }],
+  "purchases": [{"name": "", "amount": 0}],   // từng khoản mua đồ / mua lẻ ghi trên phiếu, tiền là đồng
+  "purchase_total": 0,         // số TỔNG mua đồ người ta tự cộng trên phiếu, không ghi thì 0
+  "note": "",                  // ghi chú khác trên phiếu (tăng ca, ai làm thêm…), không có thì ""
+  "low_confidence": []
  }`,
   id_card: ` "id_card": {
   "full_name": "IN HOA CÓ DẤU", "id_number": "12 chữ số", "date_of_birth": "YYYY-MM-DD", "gender": "Nam hoặc Nữ",
@@ -295,6 +347,18 @@ const MATERIAL_RULES = [
   '- Viết tắt điện nước: "công tắt" = công tắc, "ổ cắm đôi 2 chấu", "rcbo" = RCBO, "đèn 6 tấc" = đèn tuýp 0,6 m. Giữ nguyên thông số (24w, 32A, 2P, m36…).',
 ];
 
+const TIMESHEET_RULES = [
+  'PHIẾU CHẤM CÔNG:',
+  '- Mỗi dòng có tên = 1 công nhân, giữ đúng thứ tự trên phiếu (người ĐẦU TIÊN thường là cai). Bỏ dòng trống. Hai trang mở đôi: trang trái là bảng chấm công, trang phải (SỔ GHI NHẬT KÝ CÔNG TRÌNH) là các khoản mua đồ.',
+  '- days luôn đủ 7 số theo thứ tự CN, T2, T3, T4, T5, T6, T7. Dóng ô theo TIÊU ĐỀ CỘT in trên phiếu — nhiều phiếu bỏ trống cột CN (CN = 0), đừng dồn các dấu sang trái.',
+  '- Dấu "x", "X", dấu tích, số "1" = 1 công. Số "0", chữ "o", vòng tròn, ô TÔ ĐEN / gạch bỏ (ghi nhầm), ô trống = 0. "0,5", "1/2", dấu "/" (nửa chữ x) = 0.5. Số lẻ "1,1" "1,2" "1,3" "1,30" (1 công + tăng ca) → chép đúng số: 1.1, 1.2, 1.3, 1.3.',
+  '- Ô nào dấu mờ, viết đè, khó phân biệt x với 0 → ghi tên cột đó ("T5") vào low_confidence của dòng.',
+  '- worker_match: so tên viết tay với DANH MỤC Công nhân (không phân biệt hoa thường). Nhiều người cùng tên (vd "SƠN", "SƠN HEO") thì chọn người gần đây làm CÙNG công trình / cùng tổ với những người khác trên phiếu (xem phần trong ngoặc); vẫn không chắc thì "".',
+  '- purchases: mọi khoản MUA ĐỒ / trả tiền ghi ở phần GHI CHÚ (MUA ĐỒ), ở các dòng trống trong bảng, cột TIỀN CÔNG hoặc trang nhật ký: name = tên món (vd "Nước uống", "Đinh thép"), amount = số tiền. "42K" = 42000, "210K" = 210000, "80.000" = 80000, "190000" = 190000. Dòng TỔNG (vd "Tổng: 565K", số dưới gạch ngang) KHÔNG phải một khoản — ghi vào purchase_total. KHÔNG tự cộng.',
+  '- Câu không có tiền ("Tăng ca bốc ngói 30 phút", "Ông Hoàng quận 12 làm chủ nhật 3 công") ghi vào note.',
+  '- project_match: theo ghi chú người dùng; không có thì theo công trình mà cai / tổ thợ trên phiếu gần đây chấm công (xem phần trong ngoặc ở DANH MỤC Công nhân).',
+];
+
 /** Câu lệnh hệ thống (systemInstruction) — học theo bot Telegram n8n "Bot ghi chi phí công trình V4" (mục "Gom danh mục") */
 export function buildPrompt(kind: ScanRequestKind, note: string, ctx: ScanContext, allowed?: KindPermissions): string {
   const kinds = promptKinds(kind, allowed);
@@ -311,6 +375,7 @@ export function buildPrompt(kind: ScanRequestKind, note: string, ctx: ScanContex
     has('advance') || has('receipt') ? MONEY_RULES.join('\n') : '',
     has('contract') ? CONTRACT_RULES.join('\n') : '',
     has('material_list') ? MATERIAL_RULES.join('\n') : '',
+    has('timesheet') ? TIMESHEET_RULES.join('\n') : '',
     '',
     'QUY TẮC TÊN:',
     '- Các ô *_match PHẢI chép ĐÚNG Y một tên trong DANH MỤC bên dưới (giữ dấu, chữ hoa, ngoặc). Không chắc thì để trống. Tuyệt đối không bịa tên mới.',
@@ -331,7 +396,8 @@ export function buildPrompt(kind: ScanRequestKind, note: string, ctx: ScanContex
     has('invoice') ? list('Người mua', ctx.buyers) : '',
     has('advance') ? list('Thầu phụ', ctx.subcontractors, ctx.subcontractor_hints) : '',
     has('receipt') || has('contract') || has('id_card') ? list('Khách hàng', ctx.customers) : '',
-    has('id_card') ? [list('Công nhân', ctx.workers), list('Nhân viên', ctx.employees)].join('\n') : '',
+    has('timesheet') ? list('Công nhân', ctx.workers, ctx.worker_hints) : '',
+    has('id_card') ? [has('timesheet') ? '' : list('Công nhân', ctx.workers), list('Nhân viên', ctx.employees)].join('\n') : '',
   ].filter((x) => x !== undefined).join('\n').replace(/\n{3,}/g, '\n\n');
 }
 
@@ -455,7 +521,54 @@ function normInvoice(i: Obj, ctx: ScanContext): InvoiceScan {
   };
 }
 
-const ALL_KINDS: readonly ScanKind[] = ['invoice', 'advance', 'receipt', 'contract', 'material_list', 'id_card'];
+const ALL_KINDS: readonly ScanKind[] = ['invoice', 'advance', 'receipt', 'contract', 'material_list', 'timesheet', 'id_card'];
+
+const DAY_NAMES = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
+/** Ô ngày công AI trả: số, "x" / "1" = 1, "/" / "1/2" = 0.5, "o" / "" = 0, "1,30" = 1.3. Quá 3 công / ngày coi như đọc sai → 0 */
+export function toDayUnit(v: unknown): number {
+  if (v === true) return 1;
+  let n: number;
+  if (typeof v === 'number') n = v;
+  else {
+    const s = str(v).toLowerCase().replace(/\s/g, '');
+    if (!s || s === 'o' || s === '-' || s === '.') return 0;
+    if (s === 'x' || s === '✓' || s === '✔' || s === 'v') return 1;
+    if (s === '/' || s === '1/2' || s === '½') return 0.5;
+    n = Number(s.replace(',', '.'));
+  }
+  if (!Number.isFinite(n) || n <= 0 || n > 3) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+function normTimesheet(t: Obj, ctx: ScanContext): TimesheetScan {
+  const rows = Array.isArray(t.rows) ? t.rows.filter(isObj) : [];
+  const buys = Array.isArray(t.purchases) ? t.purchases.filter(isObj) : [];
+  return {
+    week_start: toIsoDate(t.week_start),
+    project_match: pick(t.project_match, ctx.projects),
+    rows: rows.map((r) => {
+      const name = str(r.name).replace(/\s+/g, ' ');
+      const raw = Array.isArray(r.days) ? r.days : [];
+      const role = str(r.role).toUpperCase();
+      const low = strs(r.low_confidence).map((x) => {
+        const i = DAY_NAMES.indexOf(x.toUpperCase());
+        return i >= 0 ? String(i) : x === 'name' || x === 'worker_match' ? 'name' : /^[0-6]$/.test(x) ? x : '';
+      }).filter(Boolean);
+      return {
+        name, worker_match: pick(r.worker_match, ctx.workers),
+        role: role === 'C' || role === 'T' || role === 'P' ? role : '',
+        days: [0, 1, 2, 3, 4, 5, 6].map((i) => toDayUnit(raw[i])),
+        low_confidence: [...new Set(low)],
+      };
+    }).filter((r) => r.name),
+    purchases: buys.map((b) => ({ name: str(b.name).replace(/\s+/g, ' ').slice(0, 120), amount: toMoney(b.amount) })).filter((b) => b.amount > 0),
+    purchase_total: toMoney(t.purchase_total),
+    note: str(t.note).slice(0, 300),
+    project_by: '',
+    low_confidence: strs(t.low_confidence),
+  };
+}
 
 export function normalizeScan(raw: unknown, ctx: ScanContext, fallbackKind: ScanRequestKind = 'auto'): ScanResult {
   const r = isObj(raw) ? raw : {};
@@ -527,6 +640,7 @@ export function normalizeScan(raw: unknown, ctx: ScanContext, fallbackKind: Scan
       },
     };
   }
+  if (kind === 'timesheet') return { kind, timesheet: normTimesheet(part('timesheet'), ctx) };
   if (kind === 'material_list') {
     const m = part('material_list');
     const items = Array.isArray(m.items) ? m.items.filter(isObj) : [];
@@ -712,6 +826,7 @@ export function applyProjectGuess(result: ScanResult, note: string, ctx: ScanCon
     if (byNote) result.contract.project_match = byNote;
     return result;
   }
+  if (result.kind === 'timesheet') return applyTimesheetGuess(result, byNote, ctx);
   if (result.kind === 'advance' || result.kind === 'receipt' || result.kind === 'material_list') {
     const part = result.kind === 'advance' ? result.advance : result.kind === 'receipt' ? result.receipt : result.material_list;
     // Thu tiền: tên khách → công trình có chủ đầu tư đó (khi lời nói không nhắc công trình)
@@ -736,6 +851,112 @@ export function applyProjectGuess(result: ScanResult, note: string, ctx: ScanCon
   return result;
 }
 
+// ───────────── Phiếu chấm công: khớp tên thợ + đoán công trình theo lịch sử chấm công ─────────────
+
+/** 1 dòng chấm công đã lưu: tuần (Chủ nhật), tên công trình, tên công nhân, có phải người đầu phiếu (cai) */
+export type TimesheetHistoryRow = { week_start: string; project: string; worker: string; first?: boolean };
+
+const CREW_DAYS = 120;
+
+/** Công trình (các công trình) của TUẦN GẦN NHẤT mà công nhân này được chấm, trong 120 ngày trước `date` */
+function latestProjects(worker: string, history: readonly TimesheetHistoryRow[], date: string): string[] {
+  let last = '';
+  const mine = history.filter((r) => {
+    if (r.worker !== worker || !r.project) return false;
+    const age = date ? dayDiff(date, r.week_start) : 0;
+    if (age < -7 || age > CREW_DAYS) return false;
+    if (r.week_start > last) last = r.week_start;
+    return true;
+  });
+  return [...new Set(mine.filter((r) => r.week_start === last).map((r) => r.project))];
+}
+
+/**
+ * Đoán công trình của phiếu chấm công theo tổ thợ: mỗi người trên phiếu "bỏ phiếu" cho công trình của tuần gần nhất họ được chấm
+ * (Toán đang làm nhà A Phượng, trước đó nhà Tình → tính nhà A Phượng). Người đầu phiếu (cai) nặng 3 phiếu, người khác 1 phiếu;
+ * tuần gần nhất chấm 2 công trình thì chia đều. Chỉ trả tên khi hơn công trình thứ hai ≥ 1 phiếu; không thì ''.
+ */
+export function guessProjectFromCrew(workers: readonly string[], history: readonly TimesheetHistoryRow[], date = ''): string {
+  const score = new Map<string, number>();
+  workers.forEach((w, i) => {
+    if (!w) return;
+    const ps = latestProjects(w, history, date);
+    for (const p of ps) score.set(p, (score.get(p) ?? 0) + (i === 0 ? 3 : 1) / ps.length);
+  });
+  const [best, second] = [...score].sort((a, b) => b[1] - a[1]);
+  if (!best || best[1] < 1) return '';
+  if (second && best[1] - second[1] < 1) return '';
+  return best[0];
+}
+
+/** Mỗi công nhân gần đây chấm công ở đâu — gửi kèm danh mục Công nhân cho AI */
+export function workerRecentProjects(history: readonly TimesheetHistoryRow[]): Record<string, string> {
+  const last = new Map<string, { week: string; projects: Set<string>; first: boolean }>();
+  for (const r of history) {
+    if (!r.worker || !r.project) continue;
+    const x = last.get(r.worker);
+    if (!x || r.week_start > x.week) last.set(r.worker, { week: r.week_start, projects: new Set([r.project]), first: !!r.first });
+    else if (r.week_start === x.week) { x.projects.add(r.project); x.first ||= !!r.first; }
+  }
+  const out: Record<string, string> = {};
+  for (const [w, x] of last) out[w] = `${x.first ? 'cai; ' : ''}gần đây làm: ${[...x.projects].slice(0, 2).join(', ')}, tuần ${vnShortDate(x.week)}`;
+  return out;
+}
+
+/**
+ * Khớp tên viết tay với danh mục công nhân khi AI không khớp: trùng không dấu → lấy; không thì các tên trong danh mục BẮT ĐẦU bằng
+ * tên đó ("Sơn" → "SƠN", "SƠN HEO") hoặc ngược lại — còn 1 người thì lấy, nhiều người thì ưu tiên người thuộc `crew` (tổ gần đây
+ * của công trình) nếu chỉ có 1. `taken` = tên đã dùng cho dòng khác (1 người không chấm 2 dòng).
+ */
+export function matchWorker(text: string, workers: readonly string[], crew: ReadonlySet<string>, taken: ReadonlySet<string>): string {
+  const t = foldVi(text);
+  if (!t) return '';
+  const free = workers.filter((w) => !taken.has(w));
+  const exact = free.filter((w) => foldVi(w) === t);
+  if (exact.length === 1) return exact[0]!;
+  const near = exact.length ? exact : free.filter((w) => { const f = foldVi(w); return f.startsWith(`${t} `) || t.startsWith(`${f} `); });
+  if (near.length === 1) return near[0]!;
+  const inCrew = near.filter((w) => crew.has(w));
+  return inCrew.length === 1 ? inCrew[0]! : '';
+}
+
+/**
+ * Phiếu chấm công (hàm máy chủ gọi qua applyProjectGuess): giữ tên AI khớp nếu giống tên viết trên phiếu, khớp lại bằng code;
+ * công trình: ghi chú > lịch sử chấm công của tổ (guessProjectFromCrew) > AI đoán; rồi khớp nốt tên còn mơ hồ theo tổ của công trình đó.
+ * Tên khớp nhờ đoán và công trình không theo ghi chú đều tô vàng.
+ */
+export function applyTimesheetGuess(result: Extract<ScanResult, { kind: 'timesheet' }>, byNote: string, ctx: ScanContext): ScanResult {
+  const ts = result.timesheet;
+  const history = ctx.recent_timesheets ?? [];
+  const date = ts.week_start || ctx.today || '';
+  const taken = new Set<string>();
+  const none = new Set<string>();
+  const flag = (r: TimesheetRowScan) => { if (!r.low_confidence.includes('name')) r.low_confidence.push('name'); };
+  // Lượt 1: AI khớp (phải giống tên viết) hoặc khớp chắc bằng code
+  for (const r of ts.rows) {
+    let m = keepIfSimilar(r.worker_match, r.name);
+    if (m && taken.has(m)) m = '';
+    r.worker_match = m || matchWorker(r.name, ctx.workers, none, taken);
+    if (r.worker_match) taken.add(r.worker_match);
+  }
+  const byCrew = byNote ? '' : guessProjectFromCrew(ts.rows.map((r) => r.worker_match), history, date);
+  const project = byNote || byCrew || ts.project_match;
+  ts.project_match = project;
+  ts.project_by = byNote ? 'note' : byCrew ? 'crew' : project ? 'ai' : '';
+  if (project && !byNote && !ts.low_confidence.includes('project_match')) ts.low_confidence.push('project_match');
+  // Lượt 2: tên còn mơ hồ → người trong tổ gần đây của công trình
+  if (project) {
+    const crew = new Set(history.filter((h) => h.project === project).map((h) => h.worker));
+    for (const r of ts.rows) {
+      if (r.worker_match) continue;
+      r.worker_match = matchWorker(r.name, ctx.workers, crew, taken);
+      if (r.worker_match) { taken.add(r.worker_match); flag(r); }
+    }
+  }
+  for (const r of ts.rows) if (!r.worker_match) flag(r);
+  return result;
+}
+
 /** Chế độ giả lập: chọn fixture theo loại + ghi chú (không cần key) */
 export function pickFixture(kind: ScanRequestKind, note: string): string {
   const n = foldVi(note);
@@ -744,9 +965,10 @@ export function pickFixture(kind: ScanRequestKind, note: string): string {
   if (kind === 'contract' || /hop dong|du toan/.test(n)) return 'hop-dong';
   if (kind === 'advance' || w.includes(' ung ')) return 'tien-ung';
   if (kind === 'receipt' || /thu tien|chuyen tien/.test(n) || w.includes(' dua ')) return 'thu-tien';
+  if (kind === 'timesheet' || /cham cong|ngay cong/.test(n)) return 'cham-cong';
   if (kind === 'material_list' || /vat tu|can mua|cop pha|copha/.test(n)) return 'vat-tu';
   if (w.includes(' mo ') || n.includes('blur')) return 'hoa-don-chu-mo';
   return 'hoa-don-ncc-moi';
 }
 
-export const SCAN_FIXTURES = ['hoa-don-ncc-moi', 'hoa-don-chu-mo', 'cccd', 'hop-dong', 'tien-ung', 'thu-tien', 'vat-tu'] as const;
+export const SCAN_FIXTURES = ['hoa-don-ncc-moi', 'hoa-don-chu-mo', 'cccd', 'hop-dong', 'tien-ung', 'thu-tien', 'vat-tu', 'cham-cong'] as const;

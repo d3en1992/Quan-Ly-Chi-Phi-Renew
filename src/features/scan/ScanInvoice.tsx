@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import type { InvoiceScan } from '@shared/scan';
 import { useAccess } from '@/app/auth';
 import { Button, Icon } from '@/components/ui/button';
+import { ZoomableImage } from '@/components/ui/image-zoom';
 import { Checkbox, Field, Input } from '@/components/ui/input';
 import { Card, Pill } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/toast';
@@ -131,7 +132,7 @@ export function ScanInvoice({ scan, image, lists, compact = false, onDone, onRet
   return (
     <div className={cn('grid gap-3', !compact && 'lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start')} data-testid="scan-invoice">
       <Card className="grid gap-2.5 p-3">
-        {photo ? <img src={photo} alt="Ảnh hóa đơn" className="max-h-[420px] w-full rounded-lg object-contain" /> : <div className="grid h-40 place-items-center rounded-lg bg-surface-2 text-muted">Không có ảnh</div>}
+        {photo ? <ZoomableImage src={photo} alt="Ảnh hóa đơn" className={compact ? 'max-h-[220px]' : 'max-h-[420px]'} /> : <div className="grid h-40 place-items-center rounded-lg bg-surface-2 text-muted">Không có ảnh</div>}
         <Checkbox checked={keepImage && !!image} disabled={!image} onChange={setKeepImage} label="Lưu ảnh kèm hóa đơn (để đối chiếu sau)" />
         <Button onClick={onRetake} className="justify-center"><Icon name="photo_camera" />Chụp lại / ảnh khác</Button>
       </Card>

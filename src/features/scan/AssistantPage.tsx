@@ -19,7 +19,7 @@ export function AssistantPage() {
       {phone ? <div className="flex flex-wrap gap-2">{manual}</div> : (
         <div className="flex flex-wrap items-start gap-3">
           <AiBadge size={44} />
-          <div className="min-w-0 flex-1"><PageHeader title="Trợ lý AI" sub="Nói, chụp hoặc gửi tệp — AI điền sẵn hóa đơn, tiền ứng, thu tiền, hợp đồng, vật tư cần mua để anh kiểm tra rồi lưu" actions={manual} /></div>
+          <div className="min-w-0 flex-1"><PageHeader title="Trợ lý AI" sub="Nói, chụp hoặc gửi tệp — AI điền sẵn hóa đơn, chấm công, tiền ứng, thu tiền, hợp đồng, vật tư cần mua để anh kiểm tra rồi lưu" actions={manual} /></div>
         </div>
       )}
       <ScanWorkspace compact={phone} guide={!phone} />

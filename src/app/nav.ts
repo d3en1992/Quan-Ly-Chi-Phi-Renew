@@ -5,7 +5,7 @@
 import type { ModuleKey, PermissionMap } from '@/lib/permissions';
 import { canSeeExport, canSeeTrash, hasLevel } from '@/lib/permissions';
 
-/** 'ai' = Trợ lý AI: thấy khi nhập được ít nhất 1 trong Chi phí / Phiếu chi / Doanh thu */
+/** 'ai' = Trợ lý AI: thấy khi nhập được ít nhất 1 trong Chi phí / Phiếu chi / Doanh thu / Chấm công */
 export type NavModule = ModuleKey | 'trash' | 'export' | 'ai';
 
 export type SubItem = {
@@ -98,7 +98,7 @@ export const PHONE_MORE_PATH = '/them';
 export function canSeeModule(perms: PermissionMap, module: NavModule): boolean {
   if (module === 'trash') return canSeeTrash(perms);
   if (module === 'export') return canSeeExport(perms);
-  if (module === 'ai') return (['expenses', 'payments', 'revenue'] as const).some((m) => hasLevel(perms, m, 'add'));
+  if (module === 'ai') return (['expenses', 'payments', 'revenue', 'timesheets'] as const).some((m) => hasLevel(perms, m, 'add'));
   return hasLevel(perms, module, 'view');
 }
 

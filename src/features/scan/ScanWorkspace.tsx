@@ -1,6 +1,7 @@
 // Trợ lý AI (nút AI; trước là Chụp đa năng GĐ9) — dùng ở 3 chỗ: tab con CHỤP / AI (Nhập Chi Phí, máy tính), màn AI trên điện thoại (/chup),
 // nút Chụp CCCD ở Danh Bạ. Các bước: 1. Chụp / chọn tệp / nói → 2. AI đọc → 3. Anh kiểm tra, sửa → 4. Lưu. Không bao giờ tự lưu.
-// AI tự nhận: hóa đơn (chi tiết / nhanh / sổ cộng tiền), tiền ứng thầu phụ, thu tiền khách, hợp đồng / dự toán, danh sách vật tư cần mua.
+// AI tự nhận: hóa đơn (chi tiết / nhanh / sổ cộng tiền), tiền ứng thầu phụ, thu tiền khách, hợp đồng / dự toán, danh sách vật tư cần mua,
+// phiếu chấm công tuần (tên + công + mua lẻ → Sổ chấm công).
 import { useState } from 'react';
 import type { ScanRequestKind, ScanResponse } from '@shared/scan';
 import { useAccess } from '@/app/auth';
@@ -18,6 +19,7 @@ import { ScanIdCard } from './ScanIdCard';
 import { ScanInvoice } from './ScanInvoice';
 import { ScanMaterials } from './ScanMaterials';
 import { ScanReceipt } from './ScanReceipt';
+import { ScanTimesheet } from './ScanTimesheet';
 
 type Props = {
   defaultKind?: ScanRequestKind; lockKind?: boolean; compact?: boolean; onSaved?: () => void;
@@ -33,6 +35,7 @@ const GUIDE: { kind: Exclude<ScanRequestKind, 'auto' | 'id_card'>; icon: string;
   { kind: 'advance', icon: 'payments', title: 'Tiền ứng thầu phụ / trả NCC', text: 'Nói hoặc gửi ảnh chuyển khoản → phiếu chi tạm ứng thầu phụ, hoặc trả nợ nhà cung cấp.', examples: ['hôm nay ứng Hà điện nước 5 triệu công trình anh Huynh, chuyển khoản', 'trả sắt thép An Phú 50 triệu công trình anh Huynh'] },
   { kind: 'receipt', icon: 'savings', title: 'Thu tiền khách', text: 'Khách chuyển / đưa tiền → phiếu thu, ghi rõ chuyển khoản hay tiền mặt.', examples: ['hôm nay anh Huynh chuyển khoản 100 triệu'] },
   { kind: 'contract', icon: 'description', title: 'Hợp đồng / dự toán', text: 'Gửi PDF, ảnh hoặc Excel .xlsx → khách hàng mới, giá trị hợp đồng, diện tích móng / trệt / lầu.', examples: [] },
+  { kind: 'timesheet', icon: 'calendar_month', title: 'Phiếu chấm công', text: 'Chụp phiếu chấm công tuần của cai → tên thợ, công CN – T7, tiền mua lẻ cộng cho cai; gợi ý sẵn công trình theo tổ thợ.', examples: ['chấm công công trình A Huynh'] },
   { kind: 'material_list', icon: 'checklist', title: 'Vật tư cần mua', text: 'Ảnh tin nhắn Zalo của thợ, chữ cai ghi trên ván → bảng tên vật tư + số lượng để copy gửi cửa hàng.', examples: ['cốp pha anh Long đưa'] },
 ];
 
@@ -70,10 +73,11 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
     receipt: hasLevel(perms, 'revenue', 'add'),
     contract: hasLevel(perms, 'revenue', 'add'),
     material_list: hasLevel(perms, 'expenses', 'add') || hasLevel(perms, 'payments', 'add'),
+    timesheet: hasLevel(perms, 'timesheets', 'add'),
     id_card: hasLevel(perms, 'contacts', 'add') && access.special.see_contact_ids,
     auto: false,
   };
-  allowedKinds.auto = allowedKinds.invoice || allowedKinds.advance || allowedKinds.receipt || allowedKinds.contract || allowedKinds.material_list;
+  allowedKinds.auto = allowedKinds.invoice || allowedKinds.advance || allowedKinds.receipt || allowedKinds.contract || allowedKinds.material_list || allowedKinds.timesheet;
   const [kind, setKind] = useState<ScanRequestKind>(allowedKinds[defaultKind] ? defaultKind : 'auto');
   const [note, setNote] = useState('');
   const [input, setInput] = useState<PreparedInput | null>(null);
@@ -117,7 +121,7 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
   };
 
   if (!allowedKinds.auto && !(lockKind && allowedKinds[defaultKind])) {
-    return <Card><Note icon="lock">Tài khoản chưa có quyền Nhập ở Chi Phí / Phiếu chi / Doanh Thu nên không dùng được trợ lý AI.</Note></Card>;
+    return <Card><Note icon="lock">Tài khoản chưa có quyền Nhập ở Chi Phí / Phiếu chi / Doanh Thu / Chấm Công nên không dùng được trợ lý AI.</Note></Card>;
   }
   const step = result ? 2 : busy ? 1 : 0;
   const r = result?.resp;
@@ -155,6 +159,8 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
         allowedKinds.advance ? <ScanAdvance scan={r!.advance} onDone={done} onRetake={reset} /> : noAccess('tiền ứng thầu phụ / trả nhà cung cấp')
       ) : r!.kind === 'receipt' ? (
         allowedKinds.receipt ? <ScanReceipt scan={r!.receipt} onDone={done} onRetake={reset} /> : noAccess('phiếu thu tiền khách')
+      ) : r!.kind === 'timesheet' ? (
+        allowedKinds.timesheet ? <ScanTimesheet scan={r!.timesheet} image={result.image} compact={compact} onDone={done} onRetake={reset} /> : noAccess('phiếu chấm công')
       ) : r!.kind === 'material_list' ? (
         <ScanMaterials scan={r!.material_list} onDone={done} onRetake={reset} />
       ) : r!.kind === 'id_card' ? (

@@ -12,8 +12,8 @@
 //      (cách cũ { image_base64, mime_type } vẫn nhận)
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import {
-  applyProjectGuess, buildPrompt, normalizeScan, pickFixture, promptKinds, SCAN_FIXTURES, scanExtras, supplierRecentProjects,
-  type ExpenseHistoryRow, type KindPermissions, type ScanContext, type ScanKind, type ScanRequestKind, type ScanResponse,
+  applyProjectGuess, buildPrompt, normalizeScan, pickFixture, promptKinds, SCAN_FIXTURES, scanExtras, supplierRecentProjects, workerRecentProjects,
+  type ExpenseHistoryRow, type KindPermissions, type ScanContext, type ScanKind, type ScanRequestKind, type ScanResponse, type TimesheetHistoryRow,
 } from '../_shared/scan.ts';
 import fxInvoiceNew from './fixtures/hoa-don-ncc-moi.json' with { type: 'json' };
 import fxInvoiceBlur from './fixtures/hoa-don-chu-mo.json' with { type: 'json' };
@@ -22,10 +22,11 @@ import fxContract from './fixtures/hop-dong.json' with { type: 'json' };
 import fxAdvance from './fixtures/tien-ung.json' with { type: 'json' };
 import fxReceipt from './fixtures/thu-tien.json' with { type: 'json' };
 import fxMaterials from './fixtures/vat-tu.json' with { type: 'json' };
+import fxTimesheet from './fixtures/cham-cong.json' with { type: 'json' };
 
 const FIXTURES: Record<string, unknown> = {
   'hoa-don-ncc-moi': fxInvoiceNew, 'hoa-don-chu-mo': fxInvoiceBlur, cccd: fxIdCard, 'hop-dong': fxContract,
-  'tien-ung': fxAdvance, 'thu-tien': fxReceipt, 'vat-tu': fxMaterials,
+  'tien-ung': fxAdvance, 'thu-tien': fxReceipt, 'vat-tu': fxMaterials, 'cham-cong': fxTimesheet,
 };
 
 const cors = {
@@ -46,11 +47,11 @@ const env = (...names: string[]) => {
 
 type InFile = { mime_type?: string; data?: string };
 type Body = { image_base64?: string; mime_type?: string; files?: InFile[]; text?: string; note?: string; kind?: ScanRequestKind; fixture?: string };
-const KINDS: ScanRequestKind[] = ['auto', 'invoice', 'advance', 'receipt', 'contract', 'material_list', 'id_card'];
+const KINDS: ScanRequestKind[] = ['auto', 'invoice', 'advance', 'receipt', 'contract', 'material_list', 'timesheet', 'id_card'];
 /** Loại tệp Gemini đọc được: ảnh, PDF, âm thanh (app đổi ghi âm sang WAV) */
 const MIME_OK = /^(image\/(jpeg|png|webp)|application\/pdf|audio\/(wav|x-wav|webm|ogg|mp4|mpeg|aac|flac))$/;
 const KIND_LABEL: Record<ScanKind, string> = {
-  invoice: 'hóa đơn', advance: 'tiền ứng thầu phụ / trả nhà cung cấp', receipt: 'thu tiền khách', contract: 'hợp đồng', material_list: 'danh sách vật tư', id_card: 'CCCD',
+  invoice: 'hóa đơn', advance: 'tiền ứng thầu phụ / trả nhà cung cấp', receipt: 'thu tiền khách', contract: 'hợp đồng', material_list: 'danh sách vật tư', timesheet: 'phiếu chấm công', id_card: 'CCCD',
 };
 /** Thứ tự xoay tua mặc định — model đầu đọc tốt nhất; mỗi model gói miễn phí có lượt riêng (≈ 5 lần/phút, 20 lần/ngày) */
 // Model lite lên đầu (anh Tình chốt 13/11/2026: nhanh, đọc đủ chính xác, nhiều lượt/phút); bản 2.5 đã ngừng cho key mới
@@ -78,19 +79,19 @@ Deno.serve(async (req) => {
     const note = String(body.note ?? '').slice(0, 500);
 
     // Quyền theo loại: hóa đơn = Nhập ở Chi phí; tiền ứng = Nhập ở Phiếu chi; thu tiền / hợp đồng = Nhập ở Doanh thu;
-    // danh sách vật tư = ai nhập được hóa đơn hoặc phiếu chi; CCCD = Nhập ở Danh Bạ + "Xem SĐT, số CCCD"
+    // danh sách vật tư = ai nhập được hóa đơn hoặc phiếu chi; phiếu chấm công = Nhập ở Chấm Công; CCCD = Nhập ở Danh Bạ + "Xem SĐT, số CCCD"
     const can = async (fn: 'has_permission' | 'has_special', args: Record<string, string>) => {
       const { data } = await caller.rpc(fn, args);
       return data === true;
     };
-    const [canInvoice, canPayments, canRevenue, canContacts, canSeeIds] = await Promise.all([
+    const [canInvoice, canPayments, canRevenue, canContacts, canSeeIds, canTimesheets] = await Promise.all([
       can('has_permission', { module: 'expenses', level: 'add' }), can('has_permission', { module: 'payments', level: 'add' }),
       can('has_permission', { module: 'revenue', level: 'add' }), can('has_permission', { module: 'contacts', level: 'add' }),
-      can('has_special', { flag: 'see_contact_ids' }),
+      can('has_special', { flag: 'see_contact_ids' }), can('has_permission', { module: 'timesheets', level: 'add' }),
     ]);
     const perms: KindPermissions = {
       invoice: canInvoice, advance: canPayments, receipt: canRevenue, contract: canRevenue,
-      material_list: canInvoice || canPayments, id_card: canContacts && canSeeIds,
+      material_list: canInvoice || canPayments, timesheet: canTimesheets, id_card: canContacts && canSeeIds,
     };
     const allowed = kind === 'auto' ? promptKinds('auto', perms).some((k) => perms[k]) : !!perms[kind];
     if (!allowed) return json(403, { error: 'Tài khoản không có quyền dùng chức năng này.' });
@@ -163,11 +164,12 @@ Deno.serve(async (req) => {
         continue;
       }
       const out = await res.json();
-      const text: string = (out?.candidates?.[0]?.content?.parts ?? [])
+      // Tên riêng (không trùng `text` = chữ người dùng dán): trước đây trùng tên nên JSON của AI bị coi là "ghi chú" → AI đoán công trình nào cũng thành "theo ghi chú"
+      const answer: string = (out?.candidates?.[0]?.content?.parts ?? [])
         .filter((p: { thought?: boolean }) => !p.thought).map((p: { text?: string }) => p.text ?? '').join('')
         .replace(/^\s*```(json)?/i, '').replace(/```\s*$/, '');
       let raw: unknown;
-      try { raw = JSON.parse(text); } catch {
+      try { raw = JSON.parse(answer); } catch {
         fails.push({ model, status: 422 }); // trả về không phải JSON → thử model khác
         continue;
       }
@@ -211,7 +213,8 @@ async function loadContext(sb: ReturnType<typeof createClient>): Promise<ScanCon
     (await rows(table, col, filter)).map((r) => String(r[col] ?? '')).filter(Boolean);
   const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10); // giờ Việt Nam
   const since = new Date(Date.parse(today) - 90 * 86_400_000).toISOString().slice(0, 10);
-  const [projectRows, expense_types, buyers, supplierRows, workers, customers, employees, expenseRows, subRows] = await Promise.all([
+  const sinceCrew = new Date(Date.parse(today) - 120 * 86_400_000).toISOString().slice(0, 10);
+  const [projectRows, expense_types, buyers, supplierRows, workers, customers, employees, expenseRows, subRows, weekRows] = await Promise.all([
     rows('projects', 'name, status, owner_name, address, aliases, note'), // gửi cả CT đã đóng (dữ liệu trạng thái hay chưa cập nhật) — AI ưu tiên CT đang thi công
     names('catalog_items', 'name', (q) => q.eq('kind', 'expense_type').eq('archived', false)),
     names('catalog_items', 'name', (q) => q.eq('kind', 'person').eq('archived', false)),
@@ -223,7 +226,17 @@ async function loadContext(sb: ReturnType<typeof createClient>): Promise<ScanCon
     rows('expenses', 'date, description, project:projects(name), supplier:suppliers(name)',
       (q) => q.gte('date', since).not('supplier_id', 'is', null).order('date', { ascending: false })),
     rows('subcontractors', 'name, field, contact_person', (q) => q.eq('archived', false)),
+    // Chấm công 120 ngày gần nhất — đoán công trình của phiếu theo tổ thợ (RLS: không có quyền Chấm Công thì trả rỗng)
+    rows('timesheet_weeks', 'week_start, project:projects(name), lines:timesheet_lines(position, deleted_at, worker:workers(name))',
+      (q) => q.gte('week_start', sinceCrew).order('week_start', { ascending: false })),
   ]);
+  const recent_timesheets: TimesheetHistoryRow[] = weekRows.flatMap((w) => {
+    const project = String((w.project as { name?: string } | null)?.name ?? '');
+    const lines = (Array.isArray(w.lines) ? w.lines : []) as { position?: number; deleted_at?: string | null; worker?: { name?: string } | null }[];
+    const live = lines.filter((l) => !l.deleted_at && l.worker?.name);
+    const top = Math.min(...live.map((l) => Number(l.position ?? 0)));
+    return live.map((l) => ({ week_start: String(w.week_start ?? ''), project, worker: String(l.worker!.name), first: Number(l.position ?? 0) === top }));
+  }).filter((r) => r.week_start && r.project);
   const recent_expenses: ExpenseHistoryRow[] = expenseRows.map((r) => ({
     date: String(r.date ?? ''),
     project: String((r.project as { name?: string } | null)?.name ?? ''),
@@ -266,5 +279,6 @@ async function loadContext(sb: ReturnType<typeof createClient>): Promise<ScanCon
   return {
     projects, expense_types, suppliers, buyers, workers, customers, employees, subcontractors, subcontractor_hints,
     project_hints, supplier_hints, project_meta, recent_expenses, today,
+    worker_hints: workerRecentProjects(recent_timesheets), recent_timesheets,
   };
 }

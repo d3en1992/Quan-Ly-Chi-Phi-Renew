@@ -10,6 +10,7 @@ import { ACCEPT_FILES, recordingSupported, type PreparedInput } from './api';
 export const KIND_OPTIONS: { value: ScanRequestKind; label: string }[] = [
   { value: 'auto', label: 'AI tự nhận' }, { value: 'invoice', label: 'Hóa đơn' }, { value: 'advance', label: 'Tiền ứng' },
   { value: 'receipt', label: 'Thu tiền' }, { value: 'contract', label: 'Hợp đồng' }, { value: 'material_list', label: 'Vật tư cần mua' },
+  { value: 'timesheet', label: 'Chấm công' },
 ];
 /** Nút Chụp CCCD ở Danh Bạ (lockKind) */
 export const ID_CARD_OPTION = { value: 'id_card' as const, label: 'CCCD' };
@@ -76,7 +77,7 @@ export function CaptureForm({ kind, setKind, allowed, note, setNote, input, onPi
         ) : (
           <div className="grid gap-1 p-4">
             <Icon name="add_photo_alternate" className="text-[30px] text-accent" />
-            <span>{lockKind ? 'Chụp hoặc chọn ảnh CCCD' : 'Chụp hóa đơn, ảnh chuyển khoản, tin nhắn Zalo… hoặc chọn PDF / Excel'}</span>
+            <span>{lockKind ? 'Chụp hoặc chọn ảnh CCCD' : 'Chụp hóa đơn, phiếu chấm công, ảnh chuyển khoản, tin nhắn Zalo… hoặc chọn PDF / Excel'}</span>
             <span className="text-[12px] text-faint">Trên máy tính có thể kéo tệp thả vào đây</span>
           </div>
         )}
