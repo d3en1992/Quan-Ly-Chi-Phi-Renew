@@ -348,7 +348,7 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
                   return (
                     <tr key={r.key} data-row={r.key} className={bad.includes(r.key) ? '[&>td]:bg-bad-soft' : undefined}>
                       <td className="text-faint">{i + 1}</td>
-                      <td><Combo aria-label={`Tên công nhân dòng ${i + 1}`} placeholder="Tên…" value={r.name} onChange={(v) => setName(r.key, v)} items={workers} groupLabel="Công nhân" onCreate={canAdd ? createName : undefined} disabled={readOnly} className="h-8 !text-[12.5px] !leading-[1.7]" /></td>
+                      <td><Combo aria-label={`Tên công nhân dòng ${i + 1}`} placeholder="Tên…" value={r.name} onChange={(v) => setName(r.key, v)} items={workers} groupLabel="Công nhân" onCreate={canAdd ? createName : undefined} disabled={readOnly} className="h-8" /></td>
                       <td className="text-center"><RoleTag role={r.role} /></td>
                       {r.days.map((v, d) => (
                         <td key={d} className="text-center !px-1"><DayCell value={v} disabled={readOnly} label={`${DAY_LABELS[d]} dòng ${i + 1}`} onChange={(nv) => setRow(r.key, { days: r.days.map((x, j) => (j === d ? nv : x)) })} /></td>
