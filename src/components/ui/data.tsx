@@ -17,11 +17,11 @@ const toneText = (t?: KpiTone) => (t === 'pos' ? 'text-good' : t === 'neg' ? 'te
 export function KpiStrip({ items }: { items: (Kpi | null | false)[] }) {
   const list = items.filter(Boolean) as Kpi[];
   return (
-    <div className="grid shrink-0 grid-cols-2 gap-px overflow-hidden rounded-[var(--r)] border border-line bg-line sm:grid-cols-3 lg:grid-flow-col lg:auto-cols-fr lg:grid-cols-none">
+    <div className="grid shrink-0 grid-cols-2 gap-px overflow-hidden rounded-[var(--r)] border border-line bg-line sm:grid-flow-col sm:auto-cols-fr sm:grid-cols-none">
       {list.map((k) => (
-        <div key={k.label} className="min-w-0 bg-surface px-3.5 py-3">
+        <div key={k.label} className="min-w-0 bg-surface px-3 py-3 lg:px-3.5">
           <small className="block truncate text-[11.5px] font-medium text-muted">{k.label}</small>
-          <b className={cn('num block truncate text-[19px] leading-tight font-bold', toneText(k.tone))}>{k.value}</b>
+          <b className={cn('num block truncate text-[16px] leading-tight font-bold lg:text-[19px]', toneText(k.tone))}>{k.value}</b>
           <span className="block min-h-[16px] truncate text-[11.5px] text-faint">{k.sub}</span>
         </div>
       ))}
@@ -47,7 +47,7 @@ export function FilterSelect({
         aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={cn('h-full max-w-[220px] min-w-0 cursor-pointer truncate rounded-lg bg-transparent pr-1.5 font-medium text-fg focus:outline-none', selectClassName)}
+        className={cn('h-full max-w-[220px] min-w-0 cursor-pointer sm:max-w-[150px] lg:max-w-[220px] truncate rounded-lg bg-transparent pr-1.5 font-medium text-fg focus:outline-none', selectClassName)}
       >
         {allLabel !== null ? <option value="">{allLabel}</option> : null}
         {options.map((o) => (
@@ -61,7 +61,7 @@ export function FilterSelect({
 /** Ô tìm (.f.q của mẫu) */
 export function SearchBox({ value, onChange, placeholder = 'Tìm…', className }: { value: string; onChange: (v: string) => void; placeholder?: string; className?: string }) {
   return (
-    <label className={cn('inline-flex h-9 min-w-[180px] flex-1 items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 text-[13px] sm:max-w-[320px]', className)}>
+    <label className={cn('inline-flex h-9 min-w-[180px] flex-1 items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 text-[13px] sm:max-w-[320px] sm:min-w-[140px] lg:min-w-[180px]', className)}>
       <Icon name="search" className="text-[18px] text-faint" />
       <input
         type="search"

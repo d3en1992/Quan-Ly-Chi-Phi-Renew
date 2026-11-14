@@ -67,12 +67,12 @@ export function PayrollTab({ data, ix, years, yearLabel, phone, onOpenWeek }: Pr
 
   const grand = rows.reduce((s, r) => s + r.wageWithAllowance, 0);
   const filters = (
-    <FilterBar>
+    <FilterBar className="sm:flex-nowrap">
       <FilterSelect label="Tuần" value={week} onChange={(v) => { setWeek(v); setTicked(new Set()); }} options={weekOpts} allLabel={`Tất cả tuần (${yearLabel})`} />
       <FilterSelect label="Công trình" value={project} onChange={setProject} options={projOpts} />
-      <SearchBox value={q} onChange={setQ} placeholder="Tìm tên công nhân…" />
+      <SearchBox value={q} onChange={setQ} placeholder="Tìm tên công nhân…" className="sm:min-w-[110px]" />
       <div className="flex-1" />
-      <Button onClick={slipTicked}><Icon name="chat" />Phiếu lương Zalo</Button>
+      <Button className="shrink-0" onClick={slipTicked}><Icon name="chat" />Phiếu lương Zalo</Button>
     </FilterBar>
   );
 

@@ -195,12 +195,12 @@ export function AdvancesTab({ data, ix, years, yearLabel, phone, canAdd }: { dat
 
   return (
     <>
-      <FilterBar>
+      <FilterBar className="sm:flex-nowrap">
         <FilterSelect label="Tháng" value={month} onChange={setMonth} options={monthOpts} allLabel={`Cả kỳ (${yearLabel})`} />
         <FilterSelect label="Công trình" value={project} onChange={setProject} options={projOpts} />
-        <SearchBox value={q} onChange={setQ} placeholder="Tìm công nhân…" />
+        <SearchBox value={q} onChange={setQ} placeholder="Tìm công nhân…" className="sm:min-w-[110px]" />
         <div className="flex-1" />
-        {canAdd ? <Button variant="primary" data-testid="adv-add" onClick={() => setDraft(blank())}><Icon name="add" />Ghi tạm ứng / trả</Button> : null}
+        {canAdd ? <Button variant="primary" className="shrink-0" data-testid="adv-add" onClick={() => setDraft(blank())}><Icon name="add" />Ghi tạm ứng / trả</Button> : null}
       </FilterBar>
       <KpiStrip items={[
         { label: 'Nợ cũ mang sang', value: formatMoney(T.before), sub: start === '0000-01-01' ? 'từ đầu' : `trước ${vn(start)}` },

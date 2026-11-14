@@ -300,6 +300,9 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
   }
 
   const num = 'num text-right whitespace-nowrap';
+  // Cột tiền canh giữa; mọi cột co sát nội dung (w-[1%]), phần ngang còn dư dồn cho cột Thực lãnh (14/11/2026)
+  const mid = 'num !text-center whitespace-nowrap';
+  const fit = 'w-[1%]';
   return (
     <>
       <PageHeader title="Chấm Công" sub="Sổ chấm công theo tuần, tổng lương, tạm ứng lương" actions={actions} />
@@ -307,12 +310,11 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
       <FilterBar>
         {weekNav}
         {projectSel}
-        {!readOnly ? <Button variant="ghost" onClick={addRow} data-testid="cc-add"><Icon name="person_add" />Thêm công nhân</Button> : null}
         <ReceiptPhotoButton path={week?.sheet_image_path} />
         {attachPhoto ? <AttachReceiptButton {...attachPhoto} /> : null}
         <div className="flex-1" />
         <Button variant="ghost" size="sm" aria-pressed={extras} data-testid="cc-extras" onClick={toggleExtras}>
-          <Icon name={extras ? 'visibility_off' : 'visibility'} />{extras ? 'Ẩn phụ cấp, HĐ lẻ, nội dung' : 'Hiện phụ cấp, HĐ lẻ, nội dung'}
+          <Icon name={extras ? 'visibility_off' : 'visibility'} /><span className="hidden lg:inline">{extras ? 'Ẩn phụ cấp, HĐ lẻ, nội dung' : 'Hiện phụ cấp, HĐ lẻ, nội dung'}</span><span className="lg:hidden">{extras ? 'Ẩn cột phụ' : 'Phụ cấp, HĐ lẻ'}</span>
         </Button>
         {!readOnly && week ? <Button variant="ghost-danger" onClick={() => setConfirmDelete(true)}><Icon name="delete" />Xóa tuần</Button> : null}
       </FilterBar>
@@ -332,11 +334,11 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
             <table data-testid="cc-table">
               <thead>
                 <tr>
-                  <th className="w-8">#</th><th className="min-w-[140px]">Tên CN</th><th className="!text-center">T/P</th>
-                  {DAY_LABELS.map((d) => <th key={d} className="w-11 !text-center">{d}</th>)}
-                  <th className="!text-right">TC</th><th className="!text-right">Lương/ngày</th><th className="!text-right">TC Lương</th>
-                  {extras ? <><th className="!text-right">Phụ cấp</th><th className="!text-right">HĐ mua lẻ</th><th className="min-w-[240px]">Nội dung</th></> : null}
-                  <th className="!text-right">Thực lãnh</th><th className="w-8" />
+                  <th className={fit}>#</th><th className="w-[200px] min-w-[160px]">Tên CN</th><th className={`${fit} !text-center`}>T/P</th>
+                  {DAY_LABELS.map((d) => <th key={d} className={`${fit} !text-center`}>{d}</th>)}
+                  <th className={`${fit} !text-right`}>TC</th><th className={`${fit} !text-center`}>Lương/ngày</th><th className={`${fit} !text-center`}>TC Lương</th>
+                  {extras ? <><th className={`${fit} !text-center`}>Phụ cấp</th><th className={`${fit} !text-center`}>HĐ mua lẻ</th><th className="min-w-[240px]">Nội dung</th></> : null}
+                  <th className="!text-center">Thực lãnh</th><th className={fit} />
                 </tr>
               </thead>
               <tbody>
@@ -346,22 +348,22 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
                   return (
                     <tr key={r.key} data-row={r.key} className={bad.includes(r.key) ? '[&>td]:bg-bad-soft' : undefined}>
                       <td className="text-faint">{i + 1}</td>
-                      <td><Combo aria-label={`Tên công nhân dòng ${i + 1}`} placeholder="Tên…" value={r.name} onChange={(v) => setName(r.key, v)} items={workers} groupLabel="Công nhân" onCreate={canAdd ? createName : undefined} disabled={readOnly} className="h-8" /></td>
+                      <td><Combo aria-label={`Tên công nhân dòng ${i + 1}`} placeholder="Tên…" value={r.name} onChange={(v) => setName(r.key, v)} items={workers} groupLabel="Công nhân" onCreate={canAdd ? createName : undefined} disabled={readOnly} className="h-8 !text-[12.5px] !leading-[1.7]" /></td>
                       <td className="text-center"><RoleTag role={r.role} /></td>
                       {r.days.map((v, d) => (
                         <td key={d} className="text-center !px-1"><DayCell value={v} disabled={readOnly} label={`${DAY_LABELS[d]} dòng ${i + 1}`} onChange={(nv) => setRow(r.key, { days: r.days.map((x, j) => (j === d ? nv : x)) })} /></td>
                       ))}
                       <td className={num}>{cDay(c.dayUnits)}</td>
-                      <td><MoneyInput aria-label={`Lương/ngày dòng ${i + 1}`} value={r.wage} onChange={(v) => setRow(r.key, { wage: v })} disabled={readOnly} className="h-8 w-[88px]" /></td>
-                      <td className={num}><Money value={c.wage} /></td>
+                      <td className="!px-2"><MoneyInput aria-label={`Lương/ngày dòng ${i + 1}`} value={r.wage} onChange={(v) => setRow(r.key, { wage: v })} disabled={readOnly} className="h-8 w-[88px]" /></td>
+                      <td className={mid}><Money value={c.wage} /></td>
                       {extras ? (
                         <>
-                          <td><MoneyInput aria-label={`Phụ cấp dòng ${i + 1}`} value={r.allowance} onChange={(v) => setRow(r.key, { allowance: v })} disabled={readOnly} className="h-8 w-[78px]" /></td>
-                          <td><MoneyInput aria-label={`HĐ mua lẻ dòng ${i + 1}`} value={r.retail} onChange={(v) => setRow(r.key, { retail: v })} disabled={readOnly} className="h-8 w-[78px]" /></td>
+                          <td className="!px-2"><MoneyInput aria-label={`Phụ cấp dòng ${i + 1}`} value={r.allowance} onChange={(v) => setRow(r.key, { allowance: v })} disabled={readOnly} className="h-8 w-[78px]" /></td>
+                          <td className="!px-2"><MoneyInput aria-label={`HĐ mua lẻ dòng ${i + 1}`} value={r.retail} onChange={(v) => setRow(r.key, { retail: v })} disabled={readOnly} className="h-8 w-[78px]" /></td>
                           <td><Input aria-label={`Nội dung dòng ${i + 1}`} value={r.note} title={r.note || undefined} onChange={(e) => setRow(r.key, { note: e.target.value })} disabled={readOnly} className="h-8 w-full min-w-[230px]" placeholder="Nội dung…" /></td>
                         </>
                       ) : null}
-                      <td className={num}>
+                      <td className={mid}>
                         {hid.length ? <span className="mr-1 inline-block size-[7px] rounded-full bg-warn align-middle" title={`Có khoản không hiện trên bảng:\n${hid.join('\n')}`} aria-label={`Có khoản ẩn: ${hid.join('; ')}`} data-testid="cc-hidden-mark" /> : null}
                         <b className={c.netPay < 0 ? 'text-bad' : ''}>{c.netPay ? (c.netPay < 0 ? `(${formatMoney(-c.netPay)})` : formatMoney(c.netPay)) : '—'}</b>
                       </td>
@@ -375,14 +377,19 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
                   <td colSpan={3}>Tổng tuần</td>
                   {totals.days.map((v, i) => <td key={i} className="num text-center">{v ? cDay(v) : ''}</td>)}
                   <td className={num}>{cDay(totals.dayUnits)}</td><td />
-                  <td className={num}>{formatMoney(totals.wage)}</td>
-                  {extras ? <><td className={num}>{formatMoney(totals.allowance)}</td><td className={num}>{formatMoney(totals.retail)}</td><td /></> : null}
-                  <td className={num} data-testid="cc-foot-net">{formatMoney(totals.netPay)}</td><td />
+                  <td className={mid}>{formatMoney(totals.wage)}</td>
+                  {extras ? <><td className={mid}>{formatMoney(totals.allowance)}</td><td className={mid}>{formatMoney(totals.retail)}</td><td /></> : null}
+                  <td className={mid} data-testid="cc-foot-net">{formatMoney(totals.netPay)}</td><td />
                 </tr>
               </tfoot>
             </table>
           </div>
         )}
+        {!readOnly ? (
+          <div className="border-t border-line-soft px-3 py-2">
+            <Button variant="ghost" onClick={addRow} data-testid="cc-add"><Icon name="person_add" />Thêm công nhân</Button>
+          </div>
+        ) : null}
       </Card>
       <Note>Ô ngày: bấm để đổi 1 → ½ → 0, hoặc gõ số rồi Enter / mũi tên — được số lẻ dấu chấm hoặc phẩy (1,3 · 0.75 · 2). Gõ <b>H</b> = nửa công. Phụ cấp / HĐ mua lẻ / nội dung đang ẩn vẫn tính vào Thực lãnh (dòng có khoản ẩn có chấm cam ở Thực lãnh). Trả nợ ứng lương ghi ở tab <b>Tạm ứng lương</b>.</Note>
       {dialogs}
