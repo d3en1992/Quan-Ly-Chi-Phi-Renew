@@ -55,14 +55,14 @@
 /* 14/11/2026 — Chrome vẽ chữ trong Ô NHẬP bằng file chữ Việt của Google Fonts (unicode-range) thì mất dấu tầng trên của Ễ Ề Ỗ…
    (chữ thường vẫn đúng). Cách chữa: ô nhập dùng file Latin làm chính, file chữ Việt làm phụ — cùng các file Google Fonts app đang tải
    (index.html), không giới hạn unicode-range. Google đổi phiên bản (v12) thì cập nhật đường dẫn ở đây. */
-@font-face { font-family: 'BVP Latin'; font-weight: 400; font-display: swap; src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVPSTAyLFyeg_IDWvOJmVES_Hw3BXo.woff2) format('woff2'); }
-@font-face { font-family: 'BVP Viet'; font-weight: 400; font-display: swap; src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVPSTAyLFyeg_IDWvOJmVES_Hw4BXoKZA.woff2) format('woff2'); }
-@font-face { font-family: 'BVP Latin'; font-weight: 500; font-display: swap; src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVMSTAyLFyeg_IDWvOJmVES_HTEJm81Rb0.woff2) format('woff2'); }
-@font-face { font-family: 'BVP Viet'; font-weight: 500; font-display: swap; src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVMSTAyLFyeg_IDWvOJmVES_HTEJm86Rb0bcw.woff2) format('woff2'); }
-@font-face { font-family: 'BVP Latin'; font-weight: 600; font-display: swap; src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVMSTAyLFyeg_IDWvOJmVES_HToIW81Rb0.woff2) format('woff2'); }
-@font-face { font-family: 'BVP Viet'; font-weight: 600; font-display: swap; src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVMSTAyLFyeg_IDWvOJmVES_HToIW86Rb0bcw.woff2) format('woff2'); }
-@font-face { font-family: 'BVP Latin'; font-weight: 700; font-display: swap; src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVMSTAyLFyeg_IDWvOJmVES_HSMIG81Rb0.woff2) format('woff2'); }
-@font-face { font-family: 'BVP Viet'; font-weight: 700; font-display: swap; src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVMSTAyLFyeg_IDWvOJmVES_HSMIG86Rb0bcw.woff2) format('woff2'); }
+@font-face { font-family: 'BVP Latin'; font-weight: 400; font-display: swap; ascent-override: 115%; src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVPSTAyLFyeg_IDWvOJmVES_Hw3BXo.woff2) format('woff2'); }
+@font-face { font-family: 'BVP Viet'; font-weight: 400; font-display: swap; ascent-override: 115%; src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVPSTAyLFyeg_IDWvOJmVES_Hw4BXoKZA.woff2) format('woff2'); }
+@font-face { font-family: 'BVP Latin'; font-weight: 500; font-display: swap; ascent-override: 115%; src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVMSTAyLFyeg_IDWvOJmVES_HTEJm81Rb0.woff2) format('woff2'); }
+@font-face { font-family: 'BVP Viet'; font-weight: 500; font-display: swap; ascent-override: 115%; src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVMSTAyLFyeg_IDWvOJmVES_HTEJm86Rb0bcw.woff2) format('woff2'); }
+@font-face { font-family: 'BVP Latin'; font-weight: 600; font-display: swap; ascent-override: 115%; src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVMSTAyLFyeg_IDWvOJmVES_HToIW81Rb0.woff2) format('woff2'); }
+@font-face { font-family: 'BVP Viet'; font-weight: 600; font-display: swap; ascent-override: 115%; src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVMSTAyLFyeg_IDWvOJmVES_HToIW86Rb0bcw.woff2) format('woff2'); }
+@font-face { font-family: 'BVP Latin'; font-weight: 700; font-display: swap; ascent-override: 115%; src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVMSTAyLFyeg_IDWvOJmVES_HSMIG81Rb0.woff2) format('woff2'); }
+@font-face { font-family: 'BVP Viet'; font-weight: 700; font-display: swap; ascent-override: 115%; src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVMSTAyLFyeg_IDWvOJmVES_HSMIG86Rb0bcw.woff2) format('woff2'); }
 
 @layer base {
   html, body, #root { height: 100%; }

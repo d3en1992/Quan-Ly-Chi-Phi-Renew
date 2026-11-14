@@ -334,8 +334,8 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
             <table data-testid="cc-table">
               <thead>
                 <tr>
-                  <th className={fit}>#</th><th className="w-[200px] min-w-[160px]">Tên CN</th><th className={`${fit} !text-center`}>T/P</th>
-                  {DAY_LABELS.map((d) => <th key={d} className={`${fit} !text-center`}>{d}</th>)}
+                  <th className={fit}>#</th><th className="w-[240px] min-w-[180px]">Tên CN</th><th className={`${fit} !text-center`}>T/P</th>
+                  {DAY_LABELS.map((d) => <th key={d} className="w-[56px] !text-center">{d}</th>)}
                   <th className={`${fit} !text-right`}>TC</th><th className={`${fit} !text-center`}>Lương/ngày</th><th className={`${fit} !text-center`}>TC Lương</th>
                   {extras ? <><th className={`${fit} !text-center`}>Phụ cấp</th><th className={`${fit} !text-center`}>HĐ mua lẻ</th><th className="min-w-[240px]">Nội dung</th></> : null}
                   <th className="!text-center">Thực lãnh</th><th className={fit} />
@@ -351,15 +351,15 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
                       <td><Combo aria-label={`Tên công nhân dòng ${i + 1}`} placeholder="Tên…" value={r.name} onChange={(v) => setName(r.key, v)} items={workers} groupLabel="Công nhân" onCreate={canAdd ? createName : undefined} disabled={readOnly} className="h-8" /></td>
                       <td className="text-center"><RoleTag role={r.role} /></td>
                       {r.days.map((v, d) => (
-                        <td key={d} className="text-center !px-1"><DayCell value={v} disabled={readOnly} label={`${DAY_LABELS[d]} dòng ${i + 1}`} onChange={(nv) => setRow(r.key, { days: r.days.map((x, j) => (j === d ? nv : x)) })} /></td>
+                        <td key={d} className="text-center !px-1 [&>button]:min-w-[42px]"><DayCell value={v} disabled={readOnly} label={`${DAY_LABELS[d]} dòng ${i + 1}`} onChange={(nv) => setRow(r.key, { days: r.days.map((x, j) => (j === d ? nv : x)) })} /></td>
                       ))}
                       <td className={num}>{cDay(c.dayUnits)}</td>
-                      <td className="!px-2"><MoneyInput aria-label={`Lương/ngày dòng ${i + 1}`} value={r.wage} onChange={(v) => setRow(r.key, { wage: v })} disabled={readOnly} className="h-8 w-[88px]" /></td>
+                      <td className="!px-2"><MoneyInput aria-label={`Lương/ngày dòng ${i + 1}`} value={r.wage} onChange={(v) => setRow(r.key, { wage: v })} disabled={readOnly} className="h-8 w-[118px]" /></td>
                       <td className={mid}><Money value={c.wage} /></td>
                       {extras ? (
                         <>
-                          <td className="!px-2"><MoneyInput aria-label={`Phụ cấp dòng ${i + 1}`} value={r.allowance} onChange={(v) => setRow(r.key, { allowance: v })} disabled={readOnly} className="h-8 w-[78px]" /></td>
-                          <td className="!px-2"><MoneyInput aria-label={`HĐ mua lẻ dòng ${i + 1}`} value={r.retail} onChange={(v) => setRow(r.key, { retail: v })} disabled={readOnly} className="h-8 w-[78px]" /></td>
+                          <td className="!px-2"><MoneyInput aria-label={`Phụ cấp dòng ${i + 1}`} value={r.allowance} onChange={(v) => setRow(r.key, { allowance: v })} disabled={readOnly} className="h-8 w-[104px]" /></td>
+                          <td className="!px-2"><MoneyInput aria-label={`HĐ mua lẻ dòng ${i + 1}`} value={r.retail} onChange={(v) => setRow(r.key, { retail: v })} disabled={readOnly} className="h-8 w-[104px]" /></td>
                           <td><Input aria-label={`Nội dung dòng ${i + 1}`} value={r.note} title={r.note || undefined} onChange={(e) => setRow(r.key, { note: e.target.value })} disabled={readOnly} className="h-8 w-full min-w-[230px]" placeholder="Nội dung…" /></td>
                         </>
                       ) : null}
