@@ -1,11 +1,11 @@
 // Bố cục máy tính (≥1024: menu trái đầy đủ chữ) và máy tính bảng / Z Fold mở (640–1023: menu cột biểu tượng)
-import { useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { AI_GRADIENT, AiBadge } from '@/components/ui/ai-badge';
 import { Icon } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAccess } from './auth';
-import { CommandPalette, useCommandPaletteHotkey } from './CommandPalette';
+import { CommandPalette, useGlobalSearchState } from './CommandPalette';
+import { useSearchFocus } from './search-intent';
 import { visibleTabs, type NavItem } from './nav';
 import { AccountMenu, YearPicker } from './TopBarParts';
 import { ReadOnlyBanner } from './ReadOnlyBanner';
@@ -60,8 +60,8 @@ export function DesktopShell({ compact }: { compact: boolean }) {
   // Cài Đặt nằm riêng ở cuối menu
   const main = tabs.filter((t) => t.key !== 'caidat');
   const settings = tabs.find((t) => t.key === 'caidat');
-  const [searchOpen, setSearchOpen] = useState(false);
-  useCommandPaletteHotkey(setSearchOpen);
+  const search = useGlobalSearchState(true);
+  useSearchFocus();
   const companyShort = access.company.short_name ?? access.company.name;
 
   return (
@@ -104,7 +104,8 @@ export function DesktopShell({ compact }: { compact: boolean }) {
         >
           <button
             type="button"
-            onClick={() => setSearchOpen(true)}
+            onClick={() => search.onOpenChange(true)}
+            data-testid="open-search"
             className="flex min-w-0 flex-[0_1_380px] items-center gap-2 rounded-lg bg-surface-2 px-2.5 py-[7px] text-left text-[13px] text-faint"
           >
             <Icon name="search" />
@@ -128,7 +129,7 @@ export function DesktopShell({ compact }: { compact: boolean }) {
           <Outlet />
         </main>
       </div>
-      <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
+      <CommandPalette {...search} />
     </div>
   );
 }

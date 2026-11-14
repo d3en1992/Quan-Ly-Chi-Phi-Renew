@@ -1,10 +1,10 @@
 // Bố cục điện thoại (<640px): đầu trang (tên + chọn năm), nội dung dạng thẻ, thanh dưới 5 nút — giữa là nút Trợ lý AI to, nhô lên
-import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Icon } from '@/components/ui/button';
 import { AiBadge } from '@/components/ui/ai-badge';
 import { useAccess } from './auth';
-import { CommandPalette } from './CommandPalette';
+import { CommandPalette, useGlobalSearchState } from './CommandPalette';
+import { useSearchFocus } from './search-intent';
 import { canSeeItem, findByPath, pathOfSub, PHONE_CAPTURE, PHONE_HOME, PHONE_MORE_PATH } from './nav';
 import { ReadOnlyBanner } from './ReadOnlyBanner';
 import { YearPicker } from './TopBarParts';
@@ -31,7 +31,8 @@ export function PhoneShell() {
   const access = useAccess();
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const [searchOpen, setSearchOpen] = useState(false);
+  const search = useGlobalSearchState(false);
+  useSearchFocus();
 
   const found = findByPath(pathname);
   // Tab con "Nhập" ở thanh dưới: tiêu đề là "Nhập chi phí"; các tab con khác: tên tab (dải tab con nằm ngay dưới)
@@ -58,7 +59,7 @@ export function PhoneShell() {
           {isMore ? <small className="block truncate text-xs font-medium text-muted">{access.profile.display_name} · {access.role.name}</small> : null}
         </div>
         {isMore ? null : <YearPicker compact tiny />}
-        <Button size="icon" aria-label="Tìm" onClick={() => setSearchOpen(true)}>
+        <Button size="icon" aria-label="Tìm" onClick={() => search.onOpenChange(true)} data-testid="open-search">
           <Icon name="search" />
         </Button>
       </header>
@@ -102,7 +103,7 @@ export function PhoneShell() {
           </NavLink>
         ))}
       </nav>
-      <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
+      <CommandPalette {...search} />
     </div>
   );
 }

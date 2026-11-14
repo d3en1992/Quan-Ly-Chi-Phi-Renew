@@ -1,6 +1,7 @@
 // Tab THỐNG KÊ CP/HĐ (chỉ xem): tra cứu mọi khoản chi đã nhập — hóa đơn + dòng lương / HĐ mua lẻ từ chấm công
 // (như `buildInvoices` app cũ). Lọc theo năm (ô chọn năm phía trên), tháng, công trình, loại, NCC, người mua.
 import { useMemo, useState } from 'react';
+import { useSearchIntent } from '@/app/search-intent';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
 import { Button, Icon } from '@/components/ui/button';
@@ -125,6 +126,8 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
   const [buyer, setBuyer] = useState('');
   const [paid, setPaid] = useState('');
   const [search, setSearch] = useState('');
+  // Ô tìm chung → lọc sẵn công trình của hóa đơn vừa bấm (ô Nội dung do SearchBox tự điền)
+  useSearchIntent((i) => { if (i.params?.project !== undefined) { setProject(i.params.project); setMonth(''); setType(''); setSupplier(''); setBuyer(''); setPaid(''); } });
   const [open, setOpen] = useState<Row | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const canEdit = hasLevel(useAccess().permissions, 'expenses', 'add');

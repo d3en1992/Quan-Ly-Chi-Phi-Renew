@@ -2,6 +2,7 @@
 // SĐT, CCCD che theo quyền "Xem SĐT, số CCCD" (`see_contact_ids`). Nút Chụp CCCD mở bảng trượt Chụp đa năng (features/scan) — chỉ lưu chữ, không lưu ảnh.
 import { useMemo, useState, type ReactNode } from 'react';
 import { useAccess } from '@/app/auth';
+import { useSearchIntent } from '@/app/search-intent';
 import { useLayoutMode } from '@/app/useLayoutMode';
 import { Button, Icon } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm';
@@ -49,6 +50,8 @@ export function ContactsPage() {
   /** Nhóm danh bạ đang xem (tab Cửa hàng có màn riêng — ShopsPanel) */
   const tab: ContactKind = tabSel === 'shop' ? 'customer' : tabSel;
   const [search, setSearch] = useState('');
+  // Ô tìm chung → mở đúng nhóm danh bạ (khách hàng / thầu phụ / NCC / công nhân / nhân viên / cửa hàng)
+  useSearchIntent((i) => { const t = i.params?.tab; if (t && TABS.some((x) => x.key === t)) setTab(t as Tab); });
   const [filter, setFilter] = useState('');
   const [form, setForm] = useState<{ kind: ContactKind; id: string | null } | null>(null);
   const [scanOpen, setScanOpen] = useState(false);

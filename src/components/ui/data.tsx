@@ -4,6 +4,7 @@
 // bảng con trên điện thoại (MiniList — thay bảng nhiều cột bị bó).
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { useSearchIntent } from '@/app/search-intent';
 import { formatMoney, formatShortMoney } from '@/lib/format';
 import { Button, Icon } from './button';
 import { Pill, type Tone } from './misc';
@@ -60,6 +61,8 @@ export function FilterSelect({
 
 /** Ô tìm (.f.q của mẫu) */
 export function SearchBox({ value, onChange, placeholder = 'Tìm…', className }: { value: string; onChange: (v: string) => void; placeholder?: string; className?: string }) {
+  // Bấm kết quả ở ô tìm chung → ô lọc của trang đích tự điền chữ (app/search-intent.ts)
+  useSearchIntent((i) => { if (i.seed !== undefined) onChange(i.seed); });
   return (
     <label className={cn('inline-flex h-9 min-w-[180px] flex-1 items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 text-[13px] sm:max-w-[320px] sm:min-w-[140px] lg:min-w-[180px]', className)}>
       <Icon name="search" className="text-[18px] text-faint" />
@@ -145,6 +148,7 @@ export function Pager({ from, to, total, page, pages, setPage }: { from: number;
 export function MobileCard({ children, onClick }: { children: ReactNode; onClick?: () => void }) {
   return (
     <div
+      data-mobile-card=""
       className={cn('grid gap-0.5 rounded-[var(--r)] border border-line bg-surface px-3 py-2.5 text-[13px]', onClick && 'cursor-pointer active:bg-surface-2')}
       onClick={onClick}
       role={onClick ? 'button' : undefined}

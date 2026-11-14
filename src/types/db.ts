@@ -1134,6 +1134,22 @@ isOneToOne: false
 "save_timesheet_week":
 { Args: { "p_lines": Json,"p_project_id": string,"p_week_start": string }; Returns: string
                            },
+"search_all":
+{ Args: { "p_kinds"?: (string)[],"p_limit"?: number,"p_q": string,"p_terms"?: (string)[] }; Returns: {
+              "amount": number,"date": string,"extra": string,"id": string,"kind": string,"project_id": string,"sub": string,"title": string,"total": number
+            }[]
+                           },
+"search_hit":
+{ Args: { "hay": string,"q": string,"terms": (string)[] }; Returns: boolean
+                           },
+"search_norm":
+{ Args: { "t": string }; Returns: string
+                           },
+"search_vocab":
+{ Args: { "p_limit"?: number }; Returns: {
+              "n": number,"name": string
+            }[]
+                           },
 "sees_all_projects":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },

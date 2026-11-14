@@ -29,6 +29,8 @@ src/features/reports/  Lợi nhuận, Dashboard, Tra cứu chi phí (chỉ xem) 
 src/features/cost-allocation/  Tỉ Trọng & Định Mức (công thức ở lib/calc/cost-allocation.ts; jsonb giữ tên trường app cũ: nhomTay, theoHdtp, nhomLoai…)
 src/features/equipment/  Theo Dõi TB (thêm / chuyển / sửa qua hàm kho save_equipment, transfer_equipment, edit_equipment)
 src/features/schedule/ Tiến Độ (logic.ts = lịch làm việc, trễ / chậm, mẫu giai đoạn, Gantt, báo cáo Zalo — hàm thuần có test; kế hoạch ở schedule_plans)
+src/features/search/   Tìm kiếm chung (ô tìm thanh trên = app/CommandPalette.tsx): api.ts gọi hàm kho search_all + Edge Function search-assist,
+                       targets.ts = nhóm → trang đích; app/search-intent.ts = bấm kết quả → trang lọc sẵn + tô sáng; logic chung ở supabase/functions/_shared/search.ts
 src/features/trash/    Thùng Rác (thêm loại dữ liệu mới: thêm 1 dòng vào DEFS ở api.ts + `_trash_edit_mods` trong migration)
 src/lib/            supabase.ts, format.ts, permissions.ts, calc/ (công thức tiền)
 src/features/<tab>/ mỗi tab 1 thư mục tên tiếng Anh: api.ts (đọc/ghi), schema.ts (Zod), các màn .tsx

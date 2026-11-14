@@ -1,5 +1,6 @@
 // Tab CHẤM CÔNG (PAGES.chamcong / MP.cc của mẫu): SỔ CHẤM CÔNG · TỔNG LƯƠNG & LỊCH SỬ · TẠM ỨNG LƯƠNG.
 import { useMemo, useRef, useState } from 'react';
+import { useSearchIntent } from '@/app/search-intent';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
 import { ConfirmDialog } from '@/components/ui/confirm';
@@ -30,6 +31,12 @@ export function TimesheetPage() {
   const [weekStart, setWeekStart] = useState(() => weekStartOf(todayIso()));
   const [projectPick, setProjectPick] = useState<string>(() => { try { return localStorage.getItem(PROJECT_KEY) ?? ''; } catch { return ''; } });
   const dirtyRef = useRef(false);
+  // Ô tìm chung → mở đúng sổ chấm công (công trình + tuần)
+  useSearchIntent((i) => {
+    if (i.params?.project) setProject(i.params.project);
+    if (i.params?.week) setWeekStart(weekStartOf(i.params.week));
+    if (i.params?.project || i.params?.week) setTab('sheet');
+  });
   const data = query.data;
   const ix = useMemo(() => (data ? buildPayrollIndex(data.weeks, data.lines, data.advances) : null), [data]);
 
