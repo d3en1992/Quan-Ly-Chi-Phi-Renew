@@ -18,7 +18,10 @@ type Form = Record<string, string | boolean>;
 
 const PRIV_KEYS = ['phone', 'id_number', 'date_of_birth', 'hometown', 'permanent_address', 'bank_name', 'bank_account', 'bank_holder'] as const;
 const PRIV_BY_KIND: Record<ContactKind, readonly (typeof PRIV_KEYS)[number][]> = {
-  customer: ['phone', 'id_number'], worker: PRIV_KEYS, employee: ['phone', 'id_number', 'date_of_birth', 'bank_name', 'bank_account', 'bank_holder'], supplier: [], subcontractor: ['phone'],
+  // Khách hàng / thầu phụ: Trợ lý AI "Lưu thông tin" lưu được cả CCCD → form hiện đủ để xem, sửa
+  customer: ['phone', 'id_number', 'date_of_birth', 'hometown', 'permanent_address'], worker: PRIV_KEYS,
+  employee: ['phone', 'id_number', 'date_of_birth', 'bank_name', 'bank_account', 'bank_holder'], supplier: [],
+  subcontractor: ['phone', 'id_number', 'date_of_birth', 'hometown', 'permanent_address'],
 };
 const PRIV_LABEL: Record<(typeof PRIV_KEYS)[number], string> = {
   phone: 'Số điện thoại', id_number: 'Số CCCD', date_of_birth: 'Ngày sinh', hometown: 'Quê quán', permanent_address: 'Nơi thường trú',

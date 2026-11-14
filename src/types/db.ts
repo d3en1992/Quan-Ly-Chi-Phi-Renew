@@ -800,6 +800,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"shops": {
+                  Row: {
+                    "address": string | null,"area": string | null,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"details": string | null,"id": string,"name": string,"phone": string | null,"photo_path": string | null,"supplier_id": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "address"?: string | null,"area"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"details"?: string | null,"id"?: string,"name": string,"phone"?: string | null,"photo_path"?: string | null,"supplier_id"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "address"?: string | null,"area"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"details"?: string | null,"id"?: string,"name"?: string,"phone"?: string | null,"photo_path"?: string | null,"supplier_id"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "shops_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "shops_supplier_id_fkey"
+      columns: ["supplier_id"]
+isOneToOne: false
+      referencedRelation: "suppliers"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"subcontractors": {
                   Row: {
                     "archived": boolean,"company_id": string,"contact_person": string | null,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"field": string | null,"id": string,"name": string,"note": string | null,"updated_at": string,"worker_id": string | null
@@ -912,14 +938,14 @@ isOneToOne: false
                   ]
                 },"timesheet_weeks": {
                   Row: {
-                    "company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"id": string,"note": string | null,"project_id": string,"updated_at": string,"week_start": string
+                    "company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"id": string,"note": string | null,"project_id": string,"sheet_image_path": string | null,"updated_at": string,"week_start": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"note"?: string | null,"project_id": string,"updated_at"?: string,"week_start": string
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"note"?: string | null,"project_id": string,"sheet_image_path"?: string | null,"updated_at"?: string,"week_start": string
                   }
                   Update: {
-                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"note"?: string | null,"project_id"?: string,"updated_at"?: string,"week_start"?: string
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"note"?: string | null,"project_id"?: string,"sheet_image_path"?: string | null,"updated_at"?: string,"week_start"?: string
                   }
                   Relationships: [
                     {

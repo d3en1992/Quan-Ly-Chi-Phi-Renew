@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Icon } from '@/components/ui/button';
 import { Combo } from '@/components/ui/combo';
 import { MobileCard, MobileRow } from '@/components/ui/data';
+import { HasPhotoMark } from '@/features/scan/ReceiptPhoto';
 import { Checkbox, Input, MoneyInput } from '@/components/ui/input';
 import { Card, EmptyState, Pill } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/toast';
@@ -142,7 +143,7 @@ export function PhoneEntry({ lists, expenses, canAdd, today, onOpen }: Props) {
       {dayRows.map((e) => (
         <MobileCard key={e.id} onClick={() => onOpen(e)}>
           <MobileRow><b className="min-w-0 truncate">{lists.nameOf(e.expense_type_id) || 'Chưa phân loại'}</b><b className="num">{formatMoney(e.amount)}</b></MobileRow>
-          <MobileRow meta><span className="min-w-0 truncate">{lists.nameOf(e.project_id)}</span></MobileRow>
+          <MobileRow meta><span className="min-w-0 truncate">{lists.nameOf(e.project_id)}</span><HasPhotoMark path={e.receipt_image_path} /></MobileRow>
           <MobileRow meta><span className="min-w-0 truncate">{e.description || lists.nameOf(e.supplier_id) || '—'}</span>{e.paid_at_purchase ? <Pill tone="good">Đã trả</Pill> : <Pill tone="warn">Mua nợ</Pill>}</MobileRow>
         </MobileCard>
       ))}

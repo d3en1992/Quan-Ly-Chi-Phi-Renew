@@ -1,4 +1,6 @@
 // Bảng trượt SỬA một hóa đơn (bấm dòng ở "Hóa đơn trong ngày" hoặc ở Thống Kê CP/HĐ). Có nút Xóa (xóa mềm → Thùng Rác).
+// Hóa đơn có ảnh (Trợ lý AI lưu kèm) thì hiện ảnh ở đầu bảng — bấm ảnh để xem toàn màn hình, phóng to đối chiếu.
+// Hóa đơn cũ chưa có ảnh: nút "Lưu ảnh hóa đơn" (chụp / chọn ảnh) gắn ảnh vào hóa đơn ngay, không cần bấm Lưu.
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAccess } from '@/app/auth';
@@ -9,12 +11,13 @@ import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
 import { formatMoney } from '@/lib/format';
 import { hasLevel } from '@/lib/permissions';
-import { fetchExpenseLines, useDeleteExpense, useEntryExpenses, useLineHistory, useUpdateExpense, type EntryExpense } from './api';
+import { fetchExpenseLines, useDeleteExpense, useEntryExpenses, useLineHistory, useSetExpenseImage, useUpdateExpense, type EntryExpense } from './api';
 import { expenseToDraft, InvoiceFields, useLineSuggestions } from './InvoiceForm';
 import { blankInvoice, blankLines, checkInvoice, invoiceTotal, type InvoiceDraft, type InvoiceField } from './invoice-model';
 import { findDuplicates, historySuggest, isoToVn, type DupHit } from './logic';
 import type { ExpenseInput } from './schema';
 import { DuplicateDialog, toDupCandidate, useLists, type Lists } from './shared';
+import { AttachReceiptButton, ReceiptPhoto } from '@/features/scan/ReceiptPhoto';
 
 type Props = { expense: EntryExpense | null; expenses: readonly EntryExpense[]; lists: Lists; onClose: () => void };
 
@@ -23,6 +26,9 @@ export function EditExpenseSheet({ expense, expenses, lists, onClose }: Props) {
   const access = useAccess();
   const update = useUpdateExpense();
   const remove = useDeleteExpense();
+  const setImage = useSetExpenseImage();
+  /** Ảnh vừa gắn trong lúc bảng đang mở (danh sách cha chưa kịp tải lại) */
+  const [photo, setPhoto] = useState<{ id: string; path: string } | null>(null);
   const id = expense?.id ?? null;
   const linesQuery = useQuery({ queryKey: ['expense-lines', 'edit', id], enabled: !!id, staleTime: 0, queryFn: () => fetchExpenseLines(id!) });
   const lineHistory = useLineHistory(!!id);
@@ -105,6 +111,18 @@ export function EditExpenseSheet({ expense, expenses, lists, onClose }: Props) {
           : (
             <>
               {canEdit ? null : <Note icon="lock">Hóa đơn do người khác nhập. Bạn chỉ xem được; cần quyền “Sửa / xóa dòng người khác nhập” để sửa.</Note>}
+              {(() => {
+                const path = photo?.id === expense.id ? photo.path : expense.receipt_image_path;
+                return (
+                  <>
+                    <ReceiptPhoto key={path ?? ''} path={path} />
+                    {canEdit ? (
+                      <div><AttachReceiptButton date={expense.date} hasPhoto={!!path} label="Lưu ảnh hóa đơn" className="border border-line"
+                        onAttach={async (p) => { await setImage.mutateAsync({ id: expense.id, path: p }); setPhoto({ id: expense.id, path: p }); }} /></div>
+                    ) : null}
+                  </>
+                );
+              })()}
               <fieldset disabled={!canEdit} className="m-0 grid min-w-0 gap-3 border-0 p-0">
                 <InvoiceFields draft={draft} setDraft={setDraft} lists={lists} suggestions={suggestions} descriptions={descriptions} bad={bad} compact projectItems={projectItems} />
                 {draft.lines ? null : canEdit ? (

@@ -12,8 +12,8 @@ import { ACCESS_QUERY_KEY, useAuth } from './auth';
 /** Chờ thêm chừng này sau thay đổi cuối cùng rồi mới tải lại (gom các thay đổi của một lần lưu) */
 export const REALTIME_DEBOUNCE_MS = 700;
 
-/** Không tải lại theo Realtime: quyền tài khoản (đã tự kiểm tra mỗi phút), link ảnh hóa đơn (có hạn dùng riêng) */
-const SKIP = new Set<string>([ACCESS_QUERY_KEY[0], 'receipt-url']);
+/** Không tải lại theo Realtime: quyền tài khoản (đã tự kiểm tra mỗi phút), link ảnh hóa đơn / ảnh cửa hàng (có hạn dùng riêng) */
+const SKIP = new Set<string>([ACCESS_QUERY_KEY[0], 'receipt-url', 'shop-photo-url']);
 export const shouldRefresh = (q: Pick<Query, 'queryKey'>) => !SKIP.has(String(q.queryKey[0]));
 
 export function useRealtimeRefresh() {

@@ -1,4 +1,4 @@
-// Tab DANH BẠ: Khách hàng · Công nhân · Nhân viên · Nhà cung cấp · Thầu phụ.
+// Tab DANH BẠ: Khách hàng · Công nhân · Nhân viên · Nhà cung cấp · Thầu phụ · Cửa hàng (ShopsPanel — điểm bán vật tư, ảnh mặt tiền).
 // SĐT, CCCD che theo quyền "Xem SĐT, số CCCD" (`see_contact_ids`). Nút Chụp CCCD mở bảng trượt Chụp đa năng (features/scan) — chỉ lưu chữ, không lưu ảnh.
 import { useMemo, useState, type ReactNode } from 'react';
 import { useAccess } from '@/app/auth';
@@ -18,10 +18,13 @@ import { linkedSubOf, useDeleteContact, useContacts, useToggleCredit, type Conta
 import { ContactForm, KIND_TITLE } from './ContactForm';
 import { Sheet } from '@/components/ui/sheet';
 import { ScanWorkspace } from '@/features/scan/ScanWorkspace';
+import { ShopsPanel } from './ShopsPanel';
 
-const TABS: { key: ContactKind; label: string; short?: string }[] = [
+type Tab = ContactKind | 'shop';
+const TABS: { key: Tab; label: string; short?: string }[] = [
   { key: 'customer', label: 'KHÁCH HÀNG', short: 'KHÁCH' }, { key: 'worker', label: 'CÔNG NHÂN', short: 'THỢ' }, { key: 'employee', label: 'NHÂN VIÊN', short: 'NHÂN VIÊN' },
   { key: 'supplier', label: 'NHÀ CUNG CẤP', short: 'NCC' }, { key: 'subcontractor', label: 'THẦU PHỤ' },
+  { key: 'shop', label: 'CỬA HÀNG', short: 'CỬA HÀNG' },
 ];
 const ROLE_LABEL: Record<string, string> = { C: 'Cai', T: 'Thợ', P: 'Phụ' };
 const dim = (t: string) => <span className="text-faint">{t}</span>;
@@ -42,7 +45,9 @@ export function ContactsPage() {
   const toggle = useToggleCredit();
   const del = useDeleteContact();
 
-  const [tab, setTab] = useState<ContactKind>('customer');
+  const [tabSel, setTab] = useState<Tab>('customer');
+  /** Nhóm danh bạ đang xem (tab Cửa hàng có màn riêng — ShopsPanel) */
+  const tab: ContactKind = tabSel === 'shop' ? 'customer' : tabSel;
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('');
   const [form, setForm] = useState<{ kind: ContactKind; id: string | null } | null>(null);
@@ -56,6 +61,16 @@ export function ContactsPage() {
     return buildRows(tab, data, reportQ.data ?? null, { money, canSeeIds, canEdit, onToggleCredit: (id, value) => void toggle.mutateAsync({ id, value }).catch((e: Error) => toast(e.message, 'error')) });
   }, [q.data, reportQ.data, tab, money, canSeeIds, canEdit]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const subTabs = <SubTabs tabs={TABS} value={tabSel} onChange={(t) => { setTab(t); setSearch(''); setFilter(''); }} />;
+  if (tabSel === 'shop') {
+    return (
+      <>
+        {mode === 'phone' ? null : <PageHeader title="Danh Bạ" sub="Cửa hàng vật tư: địa chỉ, ảnh mặt tiền, mặt hàng — để anh em tìm và đi mua đồ" />}
+        {subTabs}
+        <ShopsPanel />
+      </>
+    );
+  }
   if (q.isError) return <Card><ErrorState error={q.error} onRetry={() => void q.refetch()} /></Card>;
   if (!q.data) return <Card><LoadingState label="Đang tải danh bạ…" /></Card>;
 
@@ -83,7 +98,7 @@ export function ContactsPage() {
   return (
     <>
       {mode === 'phone' ? null : <PageHeader title="Danh Bạ" sub="Thông tin khách hàng, công nhân, nhân viên, nhà cung cấp, thầu phụ" actions={actions} />}
-      <SubTabs tabs={TABS} value={tab} onChange={(t) => { setTab(t); setSearch(''); setFilter(''); }} />
+      {subTabs}
       {mode === 'phone' ? (
         // Điện thoại: tìm + lọc + nút nhỏ trên một hàng; Xuất dữ liệu nằm ở mục Thêm → Xuất dữ liệu; Chụp CCCD chỉ ở nhóm Công nhân
         <div className="flex min-w-0 items-center gap-2">

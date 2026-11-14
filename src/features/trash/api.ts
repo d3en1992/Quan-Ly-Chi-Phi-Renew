@@ -83,6 +83,7 @@ const DEFS: Def[] = [
   named('customers', 'Khách hàng', ['contacts']), named('workers', 'Công nhân', ['contacts', 'timesheets']),
   { table: 'employees', tab: 'other', type: 'Nhân viên', modules: ['contacts'], cols: 'full_name', describe: (r) => ({ content: s(r.full_name) }) },
   named('suppliers', 'Nhà cung cấp', ['contacts', 'catalog', 'expenses']), named('subcontractors', 'Thầu phụ', ['contacts', 'catalog']),
+  named('shops', 'Cửa hàng', ['contacts']),
   // Tiến độ (GĐ12): xóa kế hoạch / giai đoạn kéo theo việc con cùng deleted_at → chỉ hiện bản ghi mẹ (khôi phục mẹ là về đủ)
   { table: 'schedule_plans', tab: 'other', type: 'Kế hoạch tiến độ', modules: ['schedule'], cols: 'project_id,start_date',
     describe: (r, c) => ({ content: `Cả kế hoạch tiến độ (khởi công ${dm(r.start_date)})`, project: c.project(r.project_id) }) },

@@ -2,7 +2,8 @@
 // Nhận ảnh (đã thu nhỏ ≤ 1600px) / PDF / ghi âm (WAV) / chữ (Excel đã đổi ra chữ) + ghi chú + loại, gửi Gemini (mẫu JSON trong câu lệnh),
 // kèm danh mục công trình / loại chi phí / NCC / thầu phụ / khách hàng để AI khớp tên. Trả kết quả + ô AI không chắc.
 // Loại: invoice (hóa đơn / sổ cộng tiền), advance (tiền ứng thầu phụ), receipt (thu tiền khách), contract (hợp đồng / dự toán),
-// material_list (danh sách vật tư cần mua — không lưu), id_card (chỉ nút Chụp CCCD ở Danh Bạ).
+// material_list (danh sách vật tư cần mua — không lưu), id_card (CCCD / danh thiếp → Danh Bạ), shop (bảng hiệu → Danh Bạ › Cửa hàng);
+// save_info = nút "Lưu thông tin" (AI chọn id_card hoặc shop).
 //
 // Key Gemini: Supabase secret GEMINI_API_KEY (hóa đơn, gói miễn phí) và GEMINI_API_KEY_PAID (CCCD, gói trả tiền — Google không
 // dùng dữ liệu). Không có key → chế độ GIẢ LẬP: trả fixtures/*.json (để làm và test giao diện). Key không bao giờ tới trình duyệt.
@@ -23,10 +24,11 @@ import fxAdvance from './fixtures/tien-ung.json' with { type: 'json' };
 import fxReceipt from './fixtures/thu-tien.json' with { type: 'json' };
 import fxMaterials from './fixtures/vat-tu.json' with { type: 'json' };
 import fxTimesheet from './fixtures/cham-cong.json' with { type: 'json' };
+import fxShop from './fixtures/cua-hang.json' with { type: 'json' };
 
 const FIXTURES: Record<string, unknown> = {
   'hoa-don-ncc-moi': fxInvoiceNew, 'hoa-don-chu-mo': fxInvoiceBlur, cccd: fxIdCard, 'hop-dong': fxContract,
-  'tien-ung': fxAdvance, 'thu-tien': fxReceipt, 'vat-tu': fxMaterials, 'cham-cong': fxTimesheet,
+  'tien-ung': fxAdvance, 'thu-tien': fxReceipt, 'vat-tu': fxMaterials, 'cham-cong': fxTimesheet, 'cua-hang': fxShop,
 };
 
 const cors = {
@@ -47,11 +49,11 @@ const env = (...names: string[]) => {
 
 type InFile = { mime_type?: string; data?: string };
 type Body = { image_base64?: string; mime_type?: string; files?: InFile[]; text?: string; note?: string; kind?: ScanRequestKind; fixture?: string };
-const KINDS: ScanRequestKind[] = ['auto', 'invoice', 'advance', 'receipt', 'contract', 'material_list', 'timesheet', 'id_card'];
+const KINDS: ScanRequestKind[] = ['auto', 'save_info', 'invoice', 'advance', 'receipt', 'contract', 'material_list', 'timesheet', 'id_card', 'shop'];
 /** Loại tệp Gemini đọc được: ảnh, PDF, âm thanh (app đổi ghi âm sang WAV) */
 const MIME_OK = /^(image\/(jpeg|png|webp)|application\/pdf|audio\/(wav|x-wav|webm|ogg|mp4|mpeg|aac|flac))$/;
 const KIND_LABEL: Record<ScanKind, string> = {
-  invoice: 'hóa đơn', advance: 'tiền ứng thầu phụ / trả nhà cung cấp', receipt: 'thu tiền khách', contract: 'hợp đồng', material_list: 'danh sách vật tư', timesheet: 'phiếu chấm công', id_card: 'CCCD',
+  invoice: 'hóa đơn', advance: 'tiền ứng thầu phụ / trả nhà cung cấp', receipt: 'thu tiền khách', contract: 'hợp đồng', material_list: 'danh sách vật tư', timesheet: 'phiếu chấm công', id_card: 'CCCD / thông tin người', shop: 'bảng hiệu cửa hàng',
 };
 /** Thứ tự xoay tua mặc định — model đầu đọc tốt nhất; mỗi model gói miễn phí có lượt riêng (≈ 5 lần/phút, 20 lần/ngày) */
 // Model lite lên đầu (anh Tình chốt 13/11/2026: nhanh, đọc đủ chính xác, nhiều lượt/phút); bản 2.5 đã ngừng cho key mới
@@ -91,9 +93,9 @@ Deno.serve(async (req) => {
     ]);
     const perms: KindPermissions = {
       invoice: canInvoice, advance: canPayments, receipt: canRevenue, contract: canRevenue,
-      material_list: canInvoice || canPayments, timesheet: canTimesheets, id_card: canContacts && canSeeIds,
+      material_list: canInvoice || canPayments, timesheet: canTimesheets, id_card: canContacts && canSeeIds, shop: canContacts,
     };
-    const allowed = kind === 'auto' ? promptKinds('auto', perms).some((k) => perms[k]) : !!perms[kind];
+    const allowed = kind === 'auto' || kind === 'save_info' ? promptKinds(kind, perms).some((k) => perms[k]) : !!perms[kind];
     if (!allowed) return json(403, { error: 'Tài khoản không có quyền dùng chức năng này.' });
 
     const ctx = await loadContext(caller);
@@ -121,7 +123,8 @@ Deno.serve(async (req) => {
     const hasDoc = files.some((f) => !String(f.mime_type).startsWith('audio/'));
 
     // CCCD → ưu tiên key trả tiền để Google không dùng ảnh giấy tờ cá nhân; các loại khác dùng key miễn phí
-    const privacy = kind === 'id_card';
+    // Nút "Lưu thông tin" có thể là ảnh CCCD → cũng dùng key trả tiền
+    const privacy = kind === 'id_card' || kind === 'save_info';
     const key = privacy ? paidKey || freeKey : freeKey || paidKey;
     const warning = privacy && !paidKey ? 'Chưa có GEMINI_API_KEY_PAID — ảnh này được đọc bằng key miễn phí.' : undefined;
     // Xoay tua model (giống bot n8n): model nào hết lượt (429) / quá tải (503) / không dùng được (404…) / treo → chuyển model sau.

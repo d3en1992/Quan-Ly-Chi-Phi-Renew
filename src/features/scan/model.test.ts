@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addressForms, applyProjectGuess, buildPrompt, foldVi, guessProjectFromHistory, keepIfSimilar, matchName, matchProjectByNote, normalizeScan, pickFixture, promptKinds,
+  addressForms, applyProjectGuess, buildPrompt, foldVi, guessProjectFromHistory, keepIfSimilar, matchName, matchProjectByNote, normalizeScan, pickFixture, promptKinds, bulletLines,
   scanExtras, supplierRecentProjects, toIsoDate, toMoney, toPhones, type ExpenseHistoryRow, type ProjectMeta, type ScanContext,
 } from '@shared/scan';
 import fxNew from '../../../supabase/functions/scan-document/fixtures/hoa-don-ncc-moi.json';
 import fxBlur from '../../../supabase/functions/scan-document/fixtures/hoa-don-chu-mo.json';
 import fxId from '../../../supabase/functions/scan-document/fixtures/cccd.json';
 import fxContract from '../../../supabase/functions/scan-document/fixtures/hop-dong.json';
+import fxShop from '../../../supabase/functions/scan-document/fixtures/cua-hang.json';
+import { appendNote } from './ScanIdCard';
 import { printedTotalGap } from '@/lib/calc';
 import { exportFileName, sheetName, vnDate } from '@/lib/export/ten-file';
-import { checkPrintedTotal, contractCustomer, guessContactKind, idCardCandidates, invoiceFromScan, shortNameFromFull, supplierPlan } from './model';
+import { checkPrintedTotal, contactNameFromSaid, contractCustomer, guessContactKind, idCardCandidates, invoiceFromScan, shortNameFromFull, supplierPlan } from './model';
 import { materialsText, materialsTsv, methodNote } from './shared';
 
 const ctx: ScanContext = {
@@ -339,5 +341,50 @@ describe('_shared/scan — AI khớp nhầm người', () => {
     const r = normalizeScan({ kind: 'advance', advance: { party: 'supplier', amount: 12_000_000, subcontractor_text: 'VLXD Bá Hòa', supplier_match: 'VLXD ĐẠI HUY LONG' } },
       { ...ctx, suppliers: ['VLXD ĐẠI HUY LONG', 'SẮT THÉP AN PHÚ'] });
     expect(r.kind === 'advance' && r.advance).toMatchObject({ party: 'supplier', supplier_match: '' });
+  });
+});
+
+describe('Lưu thông tin — CCCD / danh thiếp / bảng hiệu cửa hàng', () => {
+  it('nút Lưu thông tin: chỉ CCCD + cửa hàng, lọc theo quyền; AI tự nhận cũng nhận được khi có quyền', () => {
+    expect(promptKinds('save_info', { id_card: true, shop: true })).toEqual(['id_card', 'shop']);
+    expect(promptKinds('save_info', { id_card: false, shop: true })).toEqual(['shop']);
+    expect(promptKinds('auto', { invoice: true, id_card: true, shop: true })).toEqual(['invoice', 'id_card', 'shop']);
+    const p = buildPrompt('save_info', 'cửa hàng này bán tôn lá', { ...ctx, subcontractors: ['TP ĐẢNG'] }, { id_card: true, shop: true });
+    expect(p).toContain('"shop"');
+    expect(p).toContain('subcontractor');
+    expect(p).toContain('- TP ĐẢNG');
+    expect(p).toContain('- SẮT THÉP AN PHÚ');
+  });
+  it('chuẩn hóa cửa hàng: gạch đầu dòng sạch, SĐT chỉ chữ số, ô mờ giữ lại để tô vàng', () => {
+    const r = normalizeScan(fxShop, ctx, 'save_info');
+    if (r.kind !== 'shop') throw new Error('sai loại');
+    expect(r.shop.name).toBe('VLXD PHƯƠNG');
+    expect(r.shop.phones).toEqual(['0909123456', '02743777888']);
+    expect(r.shop.details).toEqual(['Gạch, cát, đá, xi măng', 'Sắt thép xây dựng', 'Giao hàng tận công trình']);
+    expect(r.shop.low_confidence).toEqual(['phone']);
+    expect(r.shop.supplier_match).toBe('');
+    expect(bulletLines('- a\n• b\n\nA')).toEqual(['a', 'b']);
+    expect(pickFixture('save_info', 'bảng hiệu cửa hàng')).toBe('cua-hang');
+    expect(pickFixture('save_info', 'thầu phụ Đảng')).toBe('cccd');
+  });
+  it('lưu người: nhóm thầu phụ / nhà cung cấp, SĐT + ghi chú từ lời nói, khớp tên gọi anh nói', () => {
+    const r = normalizeScan({ kind: 'id_card', id_card: {
+      doc_type: 'cccd', full_name: 'Trần Văn Đảng', contact_kind: 'subcontractor', contact_match: 'TP BỊA', short_name: 'Đảng',
+      phone: '0909 123 456', note_lines: ['- làm kỹ', 'giá mềm'],
+    } }, { ...ctx, subcontractors: ['TP ĐẢNG'] });
+    if (r.kind !== 'id_card') throw new Error('sai loại');
+    expect(r.id_card).toMatchObject({ full_name: 'TRẦN VĂN ĐẢNG', contact_kind: 'subcontractor', contact_match: '', phone: '0909123456', note_lines: ['làm kỹ', 'giá mềm'], doc_type: 'cccd' });
+    const c = idCardCandidates(r.id_card, {
+      workers: [], customers: [], employees: [],
+      subcontractors: [{ id: 's1', name: 'TP ĐẢNG', contact_person: null }, { id: 's2', name: 'TP HÀ', contact_person: null }],
+      suppliers: [{ id: 'n1', name: 'VLXD PHƯƠNG' }],
+    }, () => false);
+    expect(c.map((x) => [x.id, x.reason])).toEqual([['s1', 'short_name']]);
+    expect(guessContactKind('', 'lưu thông tin thầu phụ Đảng')).toBe('subcontractor');
+    expect(guessContactKind('', 'nhà cung cấp gạch')).toBe('supplier');
+    expect(shortNameFromFull('Vật liệu Phương', 'supplier')).toBe('VẬT LIỆU PHƯƠNG');
+    expect(contactNameFromSaid('Thành', 'worker')).toBe('THÀNH');
+    expect(appendNote('làm kỹ', ['Làm kỹ', 'ở Dĩ An'])).toBe('làm kỹ\nở Dĩ An');
+    expect(appendNote(null, [])).toBeNull();
   });
 });

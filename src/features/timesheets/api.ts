@@ -11,7 +11,11 @@ import type { PayrollLine, PayWeek, WageAdvance } from '@/lib/calc';
 const sb = supabase as unknown as SupabaseClient;
 const money = z.coerce.number();
 
-const weekSchema = z.object({ id: z.string(), project_id: z.string(), week_start: z.string(), created_by: z.string().nullable(), updated_at: z.string() });
+const weekSchema = z.object({
+  id: z.string(), project_id: z.string(), week_start: z.string(), created_by: z.string().nullable(), updated_at: z.string(),
+  /** Ảnh phiếu chấm công trong kho `receipts` (Trợ lý AI lưu kèm), không có thì null */
+  sheet_image_path: z.string().nullable(),
+});
 const lineSchema = z.object({
   id: z.string(), week_id: z.string(), worker_id: z.string(), position: z.number(), role: z.string().nullable(),
   day_units: z.array(z.coerce.number().nullable().transform((v) => v ?? 0)), daily_wage: money, allowance: money, retail_purchase: money,
@@ -94,6 +98,19 @@ export function useSaveWeek() {
       const { data, error } = await sb.rpc('save_timesheet_week', { p_project_id: v.projectId, p_week_start: v.weekStart, p_lines: v.lines });
       if (error) throw friendly(error);
       return data as string;
+    },
+    onSuccess: done,
+  });
+}
+
+/** Gắn ảnh phiếu chấm công (đã tải lên kho `receipts`) vào tuần vừa lưu */
+export function useSetWeekImage() {
+  const done = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { weekId: string; path: string }) => {
+      const { data, error } = await sb.from('timesheet_weeks').update({ sheet_image_path: v.path }).eq('id', v.weekId).select('id');
+      if (error) throw friendly(error);
+      if (!data?.length) throw new Error('Không gắn được ảnh vào tuần chấm công.');
     },
     onSuccess: done,
   });

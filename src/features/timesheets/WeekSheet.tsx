@@ -12,7 +12,8 @@ import { calcSheetRow, payslipData, payslipText, sheetTotals, shiftWeek, weekEnd
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { findByName } from '@/features/expenses/logic';
-import { useCreateWorker, useDeleteWeek, useSaveWeek, type TimesheetData } from './api';
+import { AttachReceiptButton, ReceiptPhotoButton } from '@/features/scan/ReceiptPhoto';
+import { useCreateWorker, useDeleteWeek, useSaveWeek, useSetWeekImage, type TimesheetData } from './api';
 import { blankRow, checkSheet, copyRows, pasteRows, rowsFromWeek, sameRows, toCalcRow, type DraftRow } from './sheet-model';
 import { cDay, DAY_LABELS, DayCell, dayText, PayslipSheet, PhoneDayInput, RoleTag } from './shared';
 
@@ -104,6 +105,12 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
   const workers = useMemo(() => data.workers.filter((w) => !w.archived), [data.workers]);
   const totals = sheetTotals(rows.map(toCalcRow));
   const readOnly = !canAdd;
+  // Tuần cũ đã lưu (nhập tay): nút lưu ảnh phiếu chấm công giấy để đối chiếu sau — gắn ngay, không cần bấm Lưu tuần
+  const setWeekImage = useSetWeekImage();
+  const attachPhoto = !readOnly && week ? {
+    date: week.week_start, hasPhoto: !!week.sheet_image_path, label: 'Lưu ảnh phiếu',
+    onAttach: (path: string) => setWeekImage.mutateAsync({ weekId: week.id, path }),
+  } : null;
 
   const setRow = (key: string, patch: Partial<DraftRow>) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   const setName = (key: string, name: string) => {
@@ -273,6 +280,8 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
           })}
           {/* Nút gọn một hàng: Thêm thợ · Dán tuần (khi đã copy) · Copy tuần (khi tuần có thợ).
               Điện thoại bỏ nút Zalo (13/11/2026) — phiếu lương Zalo làm ở tab Tổng lương */}
+          {week?.sheet_image_path ? <ReceiptPhotoButton path={week.sheet_image_path} label="Xem ảnh phiếu chấm công" className="w-full justify-center border border-line" /> : null}
+          {attachPhoto ? <AttachReceiptButton block {...attachPhoto} className="w-full justify-center border border-line" /> : null}
           <div className="flex min-w-0 gap-2 [&>button]:min-w-0 [&>button]:flex-1">
             {!readOnly ? <Button onClick={addRow} aria-label="Thêm công nhân"><Icon name="person_add" />Thêm thợ</Button> : null}
             {!readOnly && clip?.length ? <Button onClick={doPaste}><Icon name="content_paste" />Dán tuần</Button> : null}
@@ -299,6 +308,8 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
         {weekNav}
         {projectSel}
         {!readOnly ? <Button variant="ghost" onClick={addRow} data-testid="cc-add"><Icon name="person_add" />Thêm công nhân</Button> : null}
+        <ReceiptPhotoButton path={week?.sheet_image_path} />
+        {attachPhoto ? <AttachReceiptButton {...attachPhoto} /> : null}
         <div className="flex-1" />
         <Button variant="ghost" size="sm" aria-pressed={extras} data-testid="cc-extras" onClick={toggleExtras}>
           <Icon name={extras ? 'visibility_off' : 'visibility'} />{extras ? 'Ẩn phụ cấp, HĐ lẻ, nội dung' : 'Hiện phụ cấp, HĐ lẻ, nội dung'}

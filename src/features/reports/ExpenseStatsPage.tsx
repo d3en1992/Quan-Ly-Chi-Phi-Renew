@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
 import { Button, Icon } from '@/components/ui/button';
+import { HasPhotoMark, ReceiptPhoto } from '@/features/scan/ReceiptPhoto';
 import { FilterSelect, MiniList, MobileCard, MobileRow, Money, Pager, SearchBox, usePaged, type Option } from '@/components/ui/data';
 import { FilterCombo } from '@/components/ui/combo';
 import { matchFilterText } from '@/features/expenses/logic';
@@ -25,6 +26,8 @@ const RETAIL_TYPE = 'Hóa Đơn Lẻ';
 export type Row = {
   entry: CostEntry; id: string; date: string | null; month: string; projectId: string; project: string; type: string; supplier: string;
   buyer: string; description: string; paid: boolean; source: string; amount: number;
+  /** Ảnh hóa đơn đã lưu (kho receipts), không có thì null */
+  photo: string | null;
 };
 
 export function buildRows(data: ReportData): Row[] {
@@ -45,6 +48,7 @@ export function buildRows(data: ReportData): Row[] {
       paid: c.paid_at_purchase,
       source: e?.source ?? c.source,
       amount: c.amount,
+      photo: e?.receipt_image_path ?? null,
     };
   });
 }
@@ -78,10 +82,11 @@ export function DetailSheet({ row, onClose, onEdit }: { row: Row | null; onClose
             <dt>Nguồn</dt><dd>{SOURCE_LABEL[row.source] ?? row.source}</dd>
             <dt>Số tiền</dt><dd className="num text-[15px] font-bold">{formatMoney(row.amount)} đ</dd>
           </dl>
+          <ReceiptPhoto path={row.photo} />
           {expenseId ? (
             lines.isPending ? <LoadingState label="Đang tải dòng vật tư…" />
             : lines.isError ? <ErrorState error={lines.error} onRetry={() => void lines.refetch()} />
-            : lines.data.length === 0 ? <div className="rounded-lg bg-surface-2 px-3 py-2.5 text-[12.5px] text-muted">Hóa đơn nhập nhanh, không có dòng vật tư. Ảnh hóa đơn (nếu chụp) sẽ hiện ở đây từ GĐ9.</div>
+            : lines.data.length === 0 ? <div className="rounded-lg bg-surface-2 px-3 py-2.5 text-[12.5px] text-muted">Hóa đơn nhập nhanh, không có dòng vật tư.</div>
             : phone ? (
               <MiniList testId="expense-lines-list" items={lines.data.map((l) => ({
                 key: l.id, title: l.name, value: formatMoney(l.amount),
@@ -203,7 +208,7 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
         {paged.slice.map((r) => (
           <MobileCard key={r.id} onClick={() => setOpen(r)}>
             <MobileRow><b className="min-w-0 truncate">{r.type}</b><b className="num">{formatMoney(r.amount)}</b></MobileRow>
-            <MobileRow meta><span className="min-w-0 truncate">{years.length === 1 ? formatDate(r.date).slice(0, 5) : formatDate(r.date)} · {r.project}</span></MobileRow>
+            <MobileRow meta><span className="min-w-0 truncate">{years.length === 1 ? formatDate(r.date).slice(0, 5) : formatDate(r.date)} · {r.project}</span><HasPhotoMark path={r.photo} /></MobileRow>
             <MobileRow meta><span className="min-w-0 truncate">{[r.supplier, r.buyer ? `mua: ${r.buyer}` : ''].filter(Boolean).join(' · ') || r.description}</span>{r.paid ? null : <PaidPill paid={false} />}</MobileRow>
           </MobileCard>
         ))}
@@ -238,7 +243,7 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
                     <td className="whitespace-nowrap">{r.buyer}</td>
                     <td className="max-w-[150px] truncate" title={r.supplier}>{r.supplier}</td>
                     <td><PaidPill paid={r.paid} /></td>
-                    <td className="whitespace-nowrap text-muted">{SOURCE_LABEL[r.source] ?? r.source}</td>
+                    <td className="whitespace-nowrap text-muted">{SOURCE_LABEL[r.source] ?? r.source}<HasPhotoMark path={r.photo} /></td>
                     <td className="text-right"><Money value={r.amount} /></td>
                   </tr>
                 ))}

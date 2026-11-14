@@ -16,6 +16,7 @@ import { InvoiceFields, useLineSuggestions } from './InvoiceForm';
 import { blankInvoice, checkInvoice, type InvoiceDraft, type InvoiceField } from './invoice-model';
 import { findDuplicates, historySuggest, isoToVn, type DupHit } from './logic';
 import { PhoneEntry } from './PhoneEntry';
+import { HasPhotoMark } from '@/features/scan/ReceiptPhoto';
 import { ScanWorkspace } from '@/features/scan/ScanWorkspace';
 import { QuickGrid } from './QuickGrid';
 import type { ExpenseInput } from './schema';
@@ -57,7 +58,7 @@ function DayInvoices({ date, expenses, lists, onOpen }: { date: string; expenses
                   <td className="whitespace-nowrap">{lists.nameOf(e.buyer_id)}</td>
                   <td className="whitespace-nowrap">{lists.nameOf(e.supplier_id)}</td>
                   <td>{e.paid_at_purchase ? <Pill tone="good">Đã trả</Pill> : <Pill tone="warn">Mua nợ</Pill>}</td>
-                  <td className="whitespace-nowrap text-muted">{SOURCE_SHORT[e.source] ?? e.source}</td>
+                  <td className="whitespace-nowrap text-muted">{SOURCE_SHORT[e.source] ?? e.source}<HasPhotoMark path={e.receipt_image_path} /></td>
                   <td className="text-right"><Money value={e.amount} /></td>
                 </tr>
               ))}

@@ -3,13 +3,16 @@
 // Không import gì để chạy được ở cả hai nơi.
 //
 // Đầu vào: ảnh / PDF / chữ (Excel đã đổi thành chữ ở trình duyệt) / ghi âm giọng nói + ghi chú. AI tự nhận 1 trong các loại:
-// hóa đơn (chi tiết, hoặc sổ cộng tiền), tiền ứng thầu phụ, thu tiền khách, hợp đồng / dự toán, danh sách vật tư cần mua.
-// CCCD chỉ còn dùng ở nút "Chụp CCCD" của Danh Bạ (kind = 'id_card'), không nằm trong nút AI.
+// hóa đơn (chi tiết, hoặc sổ cộng tiền), tiền ứng thầu phụ, thu tiền khách, hợp đồng / dự toán, danh sách vật tư cần mua, phiếu chấm công,
+// LƯU THÔNG TIN: CCCD / danh thiếp (id_card → Danh Bạ: khách hàng, công nhân, thầu phụ, nhà cung cấp, nhân viên) và ảnh bảng hiệu cửa hàng
+// (shop → Danh Bạ › Cửa hàng). Nút "Lưu thông tin" = kind 'save_info' (AI chọn giữa id_card và shop).
 
-export type ScanKind = 'invoice' | 'advance' | 'receipt' | 'contract' | 'material_list' | 'timesheet' | 'id_card';
-export type ScanRequestKind = 'auto' | ScanKind;
-/** Các loại nút AI tự nhận (không có CCCD) */
-export const AUTO_KINDS: readonly ScanKind[] = ['invoice', 'advance', 'receipt', 'contract', 'material_list', 'timesheet'];
+export type ScanKind = 'invoice' | 'advance' | 'receipt' | 'contract' | 'material_list' | 'timesheet' | 'id_card' | 'shop';
+export type ScanRequestKind = 'auto' | 'save_info' | ScanKind;
+/** Các loại nút AI tự nhận (khi "AI tự nhận") — mỗi loại còn lọc theo quyền */
+export const AUTO_KINDS: readonly ScanKind[] = ['invoice', 'advance', 'receipt', 'contract', 'material_list', 'timesheet', 'id_card', 'shop'];
+/** Nút "Lưu thông tin": giấy tờ / danh thiếp người, hoặc bảng hiệu cửa hàng */
+export const SAVE_INFO_KINDS: readonly ScanKind[] = ['id_card', 'shop'];
 
 /** Chuyển khoản / tiền mặt / chưa rõ */
 export type PayMethod = 'transfer' | 'cash' | '';
@@ -130,10 +133,35 @@ export type TimesheetScan = {
 export type IdCardScan = {
   full_name: string; id_number: string; date_of_birth: string; gender: string;
   hometown: string; permanent_address: string; id_issued_on: string; id_issued_place: string;
-  /** 'worker' | 'customer' | 'employee' | '' — theo ghi chú ("CCCD thợ Hiền" → worker) */
+  /** 'worker' | 'customer' | 'employee' | 'subcontractor' | 'supplier' | '' — theo lời nhắn ("thầu phụ Đảng" → subcontractor) */
   contact_kind: string;
   /** Tên gọi trong danh bạ AI cho là cùng người ('' = không thấy) */
   contact_match: string;
+  /** Tên gọi người dùng nói ("thầu phụ Đảng" → "Đảng"), '' = không nói */
+  short_name: string;
+  /** SĐT (lời nói / danh thiếp), chỉ chữ số */
+  phone: string;
+  /** Địa chỉ liên hệ / cửa hàng trên danh thiếp (khác nơi thường trú CCCD) */
+  address: string;
+  /** Lĩnh vực (thầu phụ: điện nước, sơn…) hoặc mặt hàng (nhà cung cấp) */
+  field: string;
+  /** Ghi chú từ lời nói, mỗi ý 1 dòng ngắn */
+  note_lines: string[];
+  /** 'cccd' | 'business_card' | 'none' (chỉ lời nói) */
+  doc_type: string;
+  low_confidence: string[];
+};
+/** Ảnh mặt tiền / bảng hiệu cửa hàng → Danh Bạ › Cửa hàng */
+export type ShopScan = {
+  name: string; address: string;
+  /** Khu vực: quận / huyện, tỉnh — để tìm theo vùng */
+  area: string;
+  phones: string[];
+  /** Mặt hàng / ghi chú, mỗi ý 1 gạch đầu dòng ngắn */
+  details: string[];
+  /** NCC trong danh mục có vẻ cùng cửa hàng */
+  supplier_match: string;
+  /** Ô đọc không chắc (mờ / khuất): 'phone', 'address', 'name', 'area' */
   low_confidence: string[];
 };
 
@@ -144,7 +172,8 @@ export type ScanResult =
   | { kind: 'contract'; contract: ContractScan }
   | { kind: 'material_list'; material_list: MaterialListScan }
   | { kind: 'timesheet'; timesheet: TimesheetScan }
-  | { kind: 'id_card'; id_card: IdCardScan };
+  | { kind: 'id_card'; id_card: IdCardScan }
+  | { kind: 'shop'; shop: ShopScan };
 
 export type ScanResponse = ScanResult & {
   /** 'gemini' = AI đọc thật · 'mock' = chưa có key, đọc từ fixtures */
@@ -192,17 +221,21 @@ const KIND_TEXT: Record<ScanRequestKind, string> = {
   contract: 'Đây là HỢP ĐỒNG thi công hoặc DỰ TOÁN công trình (contract).',
   material_list: 'Đây là DANH SÁCH VẬT TƯ CẦN MUA (material_list).',
   timesheet: 'Đây là PHIẾU CHẤM CÔNG tuần của tổ thợ (timesheet).',
-  id_card: 'Đây là CĂN CƯỚC CÔNG DÂN (id_card). Đọc cả hai mặt nếu có.',
+  id_card: 'Đây là CĂN CƯỚC CÔNG DÂN / danh thiếp / thông tin một NGƯỜI để lưu danh bạ (id_card). Đọc cả hai mặt nếu có.',
+  shop: 'Đây là ẢNH MẶT TIỀN / BẢNG HIỆU CỬA HÀNG vật tư để lưu danh bạ cửa hàng (shop).',
+  save_info: 'Người dùng muốn LƯU THÔNG TIN vào danh bạ: ảnh CCCD / danh thiếp / lời nói về một người (id_card), HOẶC ảnh mặt tiền / bảng hiệu cửa hàng (shop). Chọn đúng một kind.',
 };
 
 /** Cách nhận ra từng loại (chỉ đưa các loại được phép) */
-const KIND_RULES: Record<Exclude<ScanKind, 'id_card'>, string> = {
+const KIND_RULES: Record<ScanKind, string> = {
   invoice: '- "invoice": hóa đơn / phiếu giao hàng / biên nhận của cửa hàng có tên hàng, số lượng, đơn giá, hoặc SỔ CỘNG TIỀN (chỉ có các dòng ngày + số tiền rồi cộng tổng). Nói "mua …" có số tiền cũng là invoice.',
   advance: '- "advance": tiền ỨNG / TRẢ cho THẦU PHỤ hoặc NHÀ CUNG CẤP (vd "ứng Hà điện nước 5 triệu", "ứng Đỏ 6tr", "trả sắt thép An Phú 50 triệu", "nhà cung cấp An Phú ứng 50 triệu"), hoặc ẢNH CHUYỂN KHOẢN ngân hàng mà người NHẬN là thầu phụ / cửa hàng. KHÔNG phải hóa đơn mua hàng (không có tên hàng, số lượng).',
   receipt: '- "receipt": KHÁCH HÀNG / chủ nhà đưa tiền / chuyển tiền cho công ty (vd "anh Nhật đưa 100 triệu", "khách chuyển 200tr"), hoặc ảnh chuyển khoản mà người GỬI là khách hàng.',
   contract: '- "contract": hợp đồng thi công với chủ nhà, hoặc bảng DỰ TOÁN công trình (có diện tích Móng, Trệt, Lầu, Mái… và đơn giá / m²).',
   material_list: '- "material_list": danh sách vật tư CẦN MUA do thợ / cai gửi (tin nhắn Zalo, chữ viết trên ván, giấy), chưa có giá tiền.',
   timesheet: '- "timesheet": PHIẾU CHẤM CÔNG tuần (mẫu in có logo NH, bảng TT | TÊN | T/P | CN | T2 … T7 | TIỀN CÔNG, viết tay tên thợ và dấu x / số 1 / số 0), có thể kèm phần GHI CHÚ (MUA ĐỒ) hoặc trang SỔ GHI NHẬT KÝ CÔNG TRÌNH ghi tiền mua lẻ. Dù có ghi tiền mua đồ vẫn là timesheet, KHÔNG phải invoice.',
+  id_card: '- "id_card": ảnh CĂN CƯỚC CÔNG DÂN / CMND, DANH THIẾP, hoặc lời nhắn "lưu thông tin / lưu số" của một NGƯỜI (khách hàng, công nhân, thầu phụ, nhà cung cấp, nhân viên) — không có tiền.',
+  shop: '- "shop": ảnh chụp MẶT TIỀN / BẢNG HIỆU một cửa hàng (vật liệu xây dựng, điện nước, sắt thép, sơn…) để lưu lại địa chỉ — KHÔNG phải hóa đơn (không có bảng hàng + số tiền).',
 };
 
 const TPL: Record<ScanKind, string> = {
@@ -281,14 +314,33 @@ const TPL: Record<ScanKind, string> = {
   id_card: ` "id_card": {
   "full_name": "IN HOA CÓ DẤU", "id_number": "12 chữ số", "date_of_birth": "YYYY-MM-DD", "gender": "Nam hoặc Nữ",
   "hometown": "", "permanent_address": "", "id_issued_on": "YYYY-MM-DD", "id_issued_place": "",
-  "contact_kind": "worker hoặc customer hoặc employee hoặc unknown",  // theo ghi chú: thợ → worker, khách → customer, nhân viên → employee
-  "contact_match": "",      // tên trong DANH MỤC (Công nhân / Khách hàng / Nhân viên) nếu cùng người
+  "doc_type": "cccd",       // "cccd" = căn cước / CMND, "business_card" = danh thiếp, "none" = không có ảnh giấy tờ (chỉ lời nói)
+  "contact_kind": "worker | customer | employee | subcontractor | supplier | unknown",  // theo lời nhắn: thợ / công nhân → worker, khách / chủ nhà → customer, thầu phụ → subcontractor, nhà cung cấp / cửa hàng → supplier, nhân viên → employee
+  "contact_match": "",      // tên trong DANH MỤC của nhóm đó nếu cùng người
+  "short_name": "",         // tên gọi người dùng nói (vd "thầu phụ Đảng" → "Đảng"), không nói thì ""
+  "phone": "",              // SĐT trong lời nói / danh thiếp, chỉ chữ số
+  "address": "",            // địa chỉ liên hệ / cửa hàng trên danh thiếp hoặc lời nói (KHÔNG phải nơi thường trú CCCD)
+  "field": "",              // thầu phụ: lĩnh vực (điện nước, sơn, cốp pha…); nhà cung cấp: mặt hàng chính
+  "note_lines": [],         // ý khác trong lời nói, mỗi ý 1 dòng ngắn gọn (vd "Làm kỹ, giá mềm"), không có thì []
   "low_confidence": []
+ }`,
+  shop: ` "shop": {
+  "name": "",               // tên cửa hàng trên bảng hiệu, ngắn gọn (vd "VLXD PHƯƠNG")
+  "address": "",            // địa chỉ trên bảng hiệu (số nhà, đường, phường / xã, quận / huyện, tỉnh)
+  "area": "",               // khu vực ngắn để tìm: "quận / huyện, tỉnh / thành" (vd "Tân Phú, TP.HCM", "Biên Hòa, Đồng Nai"); không rõ thì ""
+  "phones": [],             // tối đa 3 số điện thoại, chỉ chữ số
+  "details": [],            // mặt hàng / ghi chú: mỗi ý 1 gạch đầu dòng ngắn (KHÔNG có dấu "-" ở đầu)
+  "supplier_match": "",     // tên NCC trong DANH MỤC nếu chính là cửa hàng này, không thì ""
+  "low_confidence": []      // "phone" / "address" / "name" nếu chữ mờ, bị che, không chắc
  }`,
 };
 
 /** Các loại đưa vào câu lệnh: loại đã chọn, hoặc (auto) mọi loại nút AI được phép */
 export function promptKinds(kind: ScanRequestKind, allowed?: KindPermissions): ScanKind[] {
+  if (kind === 'save_info') {
+    const ks = SAVE_INFO_KINDS.filter((k) => !allowed || allowed[k]);
+    return ks.length ? ks : ['shop'];
+  }
   if (kind !== 'auto') return [kind];
   const ks = AUTO_KINDS.filter((k) => !allowed || allowed[k]);
   return ks.length ? ks : ['invoice'];
@@ -359,6 +411,24 @@ const TIMESHEET_RULES = [
   '- project_match: theo ghi chú người dùng; không có thì theo công trình mà cai / tổ thợ trên phiếu gần đây chấm công (xem phần trong ngoặc ở DANH MỤC Công nhân).',
 ];
 
+const INFO_RULES = [
+  'LƯU THÔNG TIN NGƯỜI (id_card):',
+  '- Nhóm (contact_kind) theo LỜI NHẮN: "thầu phụ" → subcontractor; "khách hàng" / "chủ nhà" → customer; "công nhân" / "thợ" / "phụ hồ" → worker; "nhà cung cấp" / "cửa hàng" / "đại lý" → supplier; "nhân viên" → employee. Không nói thì unknown.',
+  '- CCCD: đọc họ tên (IN HOA có dấu), số CCCD 12 số, ngày sinh, giới tính, quê quán, nơi thường trú, ngày cấp, nơi cấp. Danh thiếp: họ tên, SĐT, địa chỉ, tên công ty / cửa hàng (nhà cung cấp thì short_name = tên cửa hàng).',
+  '- SĐT người dùng nói ("không chín ba…") đổi ra chữ số. short_name = tên gọi người dùng nói, giữ nguyên cách gọi (vd "Đảng", "A Huynh").',
+  '- Ý khác trong lời nói ("làm kỹ", "bên Bình Dương", "anh Long giới thiệu") → note_lines, mỗi ý 1 dòng ngắn, viết lại cho gọn rõ.',
+];
+
+const SHOP_RULES = [
+  'CỬA HÀNG (shop):',
+  '- Đọc bảng hiệu: tên cửa hàng, địa chỉ, số điện thoại. Chữ mờ / bị che / bị cắt / không chắc → ghi "phone" / "address" / "name" vào low_confidence, KHÔNG bịa.',
+  '- Đọc HẾT chữ ở mặt tiền: bảng chính, bảng phụ, bạt che, và các BẢNG NHỎ / tấm bìa dựng trước cửa (vd "Cho thuê giàn giáo", "Thạch cao USG", bảng màu tấm ốp) — mặt hàng ở các bảng nhỏ cũng đưa vào details.',
+  '- phones: chỉ số điện thoại / di động, BỎ số Fax và số tài khoản. Có 2 bảng hiệu ghi số khác nhau, hoặc số bị che mất chữ số → chọn số rõ nhất và ghi "phone" vào low_confidence. Ghi đúng các chữ số như in, không tự thêm / đổi đầu số. TUYỆT ĐỐI KHÔNG ĐOÁN chữ số bị che (lá cây, xe, ô dù) hoặc bị cắt ở mép ảnh: chỉ ghi phần nhìn thấy (vd "0903641") và ghi "phone" vào low_confidence.',
+  '- Tên cửa hàng: tên riêng to nhất (vd "TIẾN THÀNH", "S.I.K"), không lấy chữ "Công ty TNHH…" hay loại hàng.',
+  '- details: nếu người dùng CÓ nói / gõ thêm (vd "bán tôn lá đủ khổ 20cm tới 1m, giá rẻ nhất Tân Phú"), kết hợp lời đó với mặt hàng trên bảng hiệu, diễn đạt lại thành các gạch đầu dòng ngắn gọn, rõ ràng, GIỮ ĐỦ ý của người dùng — kể cả lời khen / chê, so sánh giá, lời dặn (vd "Chống thấm Sika — hàng tốt") (vd "Tôn lá đủ khổ 20 cm – 1 m", "Giá rẻ nhất khu Tân Phú"). Nếu người dùng KHÔNG nói gì thêm, lấy đúng các mặt hàng / dịch vụ in trên bảng hiệu, mỗi nhóm hàng 1 dòng.',
+  '- area: quận / huyện + tỉnh / thành rút từ địa chỉ (vd "Dĩ An, Bình Dương").',
+];
+
 /** Câu lệnh hệ thống (systemInstruction) — học theo bot Telegram n8n "Bot ghi chi phí công trình V4" (mục "Gom danh mục") */
 export function buildPrompt(kind: ScanRequestKind, note: string, ctx: ScanContext, allowed?: KindPermissions): string {
   const kinds = promptKinds(kind, allowed);
@@ -367,7 +437,7 @@ export function buildPrompt(kind: ScanRequestKind, note: string, ctx: ScanContex
     'Bạn là trợ lý ghi chép cho một công ty xây nhà phố ở Việt Nam (Công ty Nguyễn Hữu). Người dùng gửi ảnh / PDF / chữ / ghi âm giọng nói. Đọc và trả về JSON theo MẪU bên dưới.',
     ctx.today ? `Hôm nay là ${ctx.today}.` : '',
     KIND_TEXT[kind],
-    kind === 'auto' ? ['CÁCH NHẬN LOẠI:', ...kinds.filter((k): k is Exclude<ScanKind, 'id_card'> => k !== 'id_card').map((k) => KIND_RULES[k])].join('\n') : '',
+    kind === 'auto' || kind === 'save_info' ? ['CÁCH NHẬN LOẠI:', ...kinds.map((k) => KIND_RULES[k])].join('\n') : '',
     '',
     ...NUMBER_RULES,
     '',
@@ -376,6 +446,8 @@ export function buildPrompt(kind: ScanRequestKind, note: string, ctx: ScanContex
     has('contract') ? CONTRACT_RULES.join('\n') : '',
     has('material_list') ? MATERIAL_RULES.join('\n') : '',
     has('timesheet') ? TIMESHEET_RULES.join('\n') : '',
+    has('id_card') ? INFO_RULES.join('\n') : '',
+    has('shop') ? SHOP_RULES.join('\n') : '',
     '',
     'QUY TẮC TÊN:',
     '- Các ô *_match PHẢI chép ĐÚNG Y một tên trong DANH MỤC bên dưới (giữ dấu, chữ hoa, ngoặc). Không chắc thì để trống. Tuyệt đối không bịa tên mới.',
@@ -392,9 +464,9 @@ export function buildPrompt(kind: ScanRequestKind, note: string, ctx: ScanContex
     'DANH MỤC',
     list('Công trình', ctx.projects, ctx.project_hints),
     has('invoice') || has('material_list') ? list('Loại chi phí', ctx.expense_types) : '',
-    has('invoice') || has('material_list') || has('advance') ? list('Nhà cung cấp', ctx.suppliers, ctx.supplier_hints) : '',
+    has('invoice') || has('material_list') || has('advance') || has('shop') || has('id_card') ? list('Nhà cung cấp', ctx.suppliers, ctx.supplier_hints) : '',
     has('invoice') ? list('Người mua', ctx.buyers) : '',
-    has('advance') ? list('Thầu phụ', ctx.subcontractors, ctx.subcontractor_hints) : '',
+    has('advance') || has('id_card') ? list('Thầu phụ', ctx.subcontractors, ctx.subcontractor_hints) : '',
     has('receipt') || has('contract') || has('id_card') ? list('Khách hàng', ctx.customers) : '',
     has('timesheet') ? list('Công nhân', ctx.workers, ctx.worker_hints) : '',
     has('id_card') ? [has('timesheet') ? '' : list('Công nhân', ctx.workers), list('Nhân viên', ctx.employees)].join('\n') : '',
@@ -437,12 +509,13 @@ export function toIsoDate(v: unknown): string {
 }
 
 /** SĐT: chỉ chữ số, 8–11 số; tối đa `max` số, bỏ trùng. Nhận mảng hoặc chuỗi nhiều số ("0903.358.289 - 0903.358.286") */
-export function toPhones(v: unknown, max = 2): string[] {
+/** min = số chữ số tối thiểu (cửa hàng: 7 — giữ số bị che dở để người dùng thấy và sửa) */
+export function toPhones(v: unknown, max = 2, min = 8): string[] {
   const raw = Array.isArray(v) ? v.map(str) : str(v).split(/\s[-–]\s|[,;/|]|\s{2,}/);
   const out: string[] = [];
   for (const r of raw) {
     const d = r.replace(/\D/g, '');
-    if (d.length >= 8 && d.length <= 11 && !out.includes(d)) out.push(d);
+    if (d.length >= min && d.length <= 11 && !out.includes(d)) out.push(d);
     if (out.length >= max) break;
   }
   return out;
@@ -521,7 +594,19 @@ function normInvoice(i: Obj, ctx: ScanContext): InvoiceScan {
   };
 }
 
-const ALL_KINDS: readonly ScanKind[] = ['invoice', 'advance', 'receipt', 'contract', 'material_list', 'timesheet', 'id_card'];
+const ALL_KINDS: readonly ScanKind[] = ['invoice', 'advance', 'receipt', 'contract', 'material_list', 'timesheet', 'id_card', 'shop'];
+const CONTACT_KINDS = ['worker', 'customer', 'employee', 'subcontractor', 'supplier'];
+/** Gạch đầu dòng: bỏ dấu "-", "•", "*" ở đầu, bỏ dòng trùng / rỗng */
+export function bulletLines(v: unknown, max = 20): string[] {
+  const raw = Array.isArray(v) ? v.map(str) : str(v).split(/\n+/);
+  const out: string[] = [];
+  for (const r of raw) {
+    const t = r.replace(/^[\s\-–•*+·]+/, '').replace(/\s+/g, ' ').trim().slice(0, 160);
+    if (t && !out.some((o) => o.toLowerCase() === t.toLowerCase())) out.push(t);
+    if (out.length >= max) break;
+  }
+  return out;
+}
 
 const DAY_NAMES = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
@@ -574,21 +659,42 @@ export function normalizeScan(raw: unknown, ctx: ScanContext, fallbackKind: Scan
   const r = isObj(raw) ? raw : {};
   let kind = str(r.kind) as ScanKind;
   if (!ALL_KINDS.includes(kind)) {
-    kind = fallbackKind !== 'auto' ? fallbackKind : ALL_KINDS.find((k) => isObj(r[k])) ?? 'invoice';
+    kind = fallbackKind !== 'auto' && fallbackKind !== 'save_info' ? fallbackKind
+      : ALL_KINDS.find((k) => isObj(r[k])) ?? (fallbackKind === 'save_info' ? 'shop' : 'invoice');
   }
   // Model lite đôi khi trả phẳng (các ô nằm ngay ngoài cùng, không bọc trong "invoice": {…}) → dùng chính đối tượng ngoài cùng
   const part = (k: string): Obj => { const v = r[k]; return isObj(v) ? v : r; };
   if (kind === 'id_card') {
     const c = part('id_card');
     const ck = str(c.contact_kind);
-    const pool = ck === 'customer' ? ctx.customers : ck === 'employee' ? ctx.employees : ctx.workers;
+    const pool = ck === 'customer' ? ctx.customers : ck === 'employee' ? ctx.employees : ck === 'subcontractor' ? ctx.subcontractors ?? []
+      : ck === 'supplier' ? ctx.suppliers : ctx.workers;
+    const dt = str(c.doc_type);
     return {
       kind, id_card: {
         full_name: str(c.full_name).toUpperCase(), id_number: str(c.id_number).replace(/\D/g, ''), date_of_birth: toIsoDate(c.date_of_birth),
         gender: str(c.gender), hometown: str(c.hometown), permanent_address: str(c.permanent_address),
         id_issued_on: toIsoDate(c.id_issued_on), id_issued_place: str(c.id_issued_place),
-        contact_kind: ['worker', 'customer', 'employee'].includes(ck) ? ck : '', contact_match: pick(c.contact_match, pool),
+        contact_kind: CONTACT_KINDS.includes(ck) ? ck : '', contact_match: pick(c.contact_match, pool),
+        short_name: str(c.short_name).replace(/\s+/g, ' ').slice(0, 60), phone: toPhones(c.phone, 1)[0] ?? '',
+        address: str(c.address).replace(/\s+/g, ' ').slice(0, 200), field: str(c.field).slice(0, 80),
+        note_lines: bulletLines(c.note_lines, 10), doc_type: dt === 'cccd' || dt === 'business_card' ? dt : 'none',
         low_confidence: strs(c.low_confidence),
+      },
+    };
+  }
+  if (kind === 'shop') {
+    const c = part('shop');
+    const phones = toPhones(c.phones ?? c.phone, 3, 7);
+    const low = strs(c.low_confidence).map((x) => (x === 'phones' ? 'phone' : x)).filter((x) => ['phone', 'address', 'name', 'area'].includes(x));
+    // Số VN đủ là 10 chữ số (di động 0xx…, bàn 028…) — thiếu / thừa (số bàn cũ "08.xxxxxxx", bị che) thì tô vàng cho anh xem lại
+    if (phones.some((p) => p.length !== 10 && p.length !== 11)) low.push('phone');
+    return {
+      kind, shop: {
+        name: str(c.name).replace(/\s+/g, ' ').slice(0, 120), address: str(c.address).replace(/\s+/g, ' ').slice(0, 250),
+        area: str(c.area).replace(/\s+/g, ' ').slice(0, 80), phones,
+        details: bulletLines(c.details), supplier_match: pick(c.supplier_match, ctx.suppliers),
+        low_confidence: [...new Set(low)],
       },
     };
   }
@@ -961,7 +1067,8 @@ export function applyTimesheetGuess(result: Extract<ScanResult, { kind: 'timeshe
 export function pickFixture(kind: ScanRequestKind, note: string): string {
   const n = foldVi(note);
   const w = ` ${n} `;
-  if (kind === 'id_card' || /cccd|can cuoc/.test(n)) return 'cccd';
+  if (kind === 'shop' || /cua hang|bang hieu|mat tien/.test(n)) return 'cua-hang';
+  if (kind === 'id_card' || kind === 'save_info' || /cccd|can cuoc/.test(n)) return 'cccd';
   if (kind === 'contract' || /hop dong|du toan/.test(n)) return 'hop-dong';
   if (kind === 'advance' || w.includes(' ung ')) return 'tien-ung';
   if (kind === 'receipt' || /thu tien|chuyen tien/.test(n) || w.includes(' dua ')) return 'thu-tien';
@@ -971,4 +1078,4 @@ export function pickFixture(kind: ScanRequestKind, note: string): string {
   return 'hoa-don-ncc-moi';
 }
 
-export const SCAN_FIXTURES = ['hoa-don-ncc-moi', 'hoa-don-chu-mo', 'cccd', 'hop-dong', 'tien-ung', 'thu-tien', 'vat-tu', 'cham-cong'] as const;
+export const SCAN_FIXTURES = ['hoa-don-ncc-moi', 'hoa-don-chu-mo', 'cccd', 'hop-dong', 'tien-ung', 'thu-tien', 'vat-tu', 'cham-cong', 'cua-hang'] as const;

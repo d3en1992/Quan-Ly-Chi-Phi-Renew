@@ -1,5 +1,6 @@
 // Bước 1 của nút AI (trước là Chụp đa năng — MP.chupmenu): chụp / chọn ảnh, PDF, Excel; bấm mic để NÓI (ghi âm gửi thẳng cho AI);
-// gõ lời nhắn; (không bắt buộc) chọn loại. AI tự nhận: hóa đơn, tiền ứng thầu phụ, thu tiền khách, hợp đồng / dự toán, vật tư cần mua.
+// gõ lời nhắn; (không bắt buộc) chọn loại. AI tự nhận: hóa đơn, tiền ứng thầu phụ, thu tiền khách, hợp đồng / dự toán, vật tư cần mua,
+// chấm công, Lưu thông tin (CCCD / danh thiếp / bảng hiệu cửa hàng).
 import { useEffect, useRef, useState } from 'react';
 import type { ScanRequestKind } from '@shared/scan';
 import { Button, Icon } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { ACCEPT_FILES, recordingSupported, type PreparedInput } from './api';
 export const KIND_OPTIONS: { value: ScanRequestKind; label: string }[] = [
   { value: 'auto', label: 'AI tự nhận' }, { value: 'invoice', label: 'Hóa đơn' }, { value: 'advance', label: 'Tiền ứng' },
   { value: 'receipt', label: 'Thu tiền' }, { value: 'contract', label: 'Hợp đồng' }, { value: 'material_list', label: 'Vật tư cần mua' },
-  { value: 'timesheet', label: 'Chấm công' },
+  { value: 'timesheet', label: 'Chấm công' }, { value: 'save_info', label: 'Lưu thông tin' },
 ];
 /** Nút Chụp CCCD ở Danh Bạ (lockKind) */
 export const ID_CARD_OPTION = { value: 'id_card' as const, label: 'CCCD' };
@@ -59,7 +60,7 @@ export function CaptureForm({ kind, setKind, allowed, note, setNote, input, onPi
 
   return (
     <div className="grid gap-3" data-testid="capture-form">
-      {!lockKind ? <Recorder disabled={busy || !allowed[kind]} onAudio={onAudio} /> : null}
+      {!lockKind || kind !== 'id_card' ? <Recorder disabled={busy || !allowed[kind]} onAudio={onAudio} /> : null}
 
       <div
         className={cn('relative grid min-h-[120px] place-items-center overflow-hidden rounded-xl border-2 border-dashed border-line bg-surface-2 text-center text-[13px] text-muted', input && 'border-solid')}
@@ -77,7 +78,7 @@ export function CaptureForm({ kind, setKind, allowed, note, setNote, input, onPi
         ) : (
           <div className="grid gap-1 p-4">
             <Icon name="add_photo_alternate" className="text-[30px] text-accent" />
-            <span>{lockKind ? 'Chụp hoặc chọn ảnh CCCD' : 'Chụp hóa đơn, phiếu chấm công, ảnh chuyển khoản, tin nhắn Zalo… hoặc chọn PDF / Excel'}</span>
+            <span>{lockKind ? (kind === 'shop' ? 'Chụp mặt tiền / bảng hiệu cửa hàng' : 'Chụp hoặc chọn ảnh CCCD') : 'Chụp hóa đơn, phiếu chấm công, CCCD, bảng hiệu cửa hàng, ảnh chuyển khoản, tin nhắn Zalo… hoặc chọn PDF / Excel'}</span>
             <span className="text-[12px] text-faint">Trên máy tính có thể kéo tệp thả vào đây</span>
           </div>
         )}
@@ -110,10 +111,10 @@ export function CaptureForm({ kind, setKind, allowed, note, setNote, input, onPi
       )}
 
       <label className="grid gap-1 text-xs font-medium text-muted">
-        <span>{lockKind ? 'Ghi chú cho AI' : 'Lời nhắn cho AI (gõ, hoặc dán tin nhắn Zalo)'}</span>
+        <span>{lockKind ? (kind === 'shop' ? 'Ghi chú cho AI (không bắt buộc) — cửa hàng bán gì, tốt / rẻ chỗ nào' : 'Ghi chú cho AI') : 'Lời nhắn cho AI (gõ, hoặc dán tin nhắn Zalo)'}</span>
         <Textarea
           aria-label="Ghi chú cho AI" value={note} maxLength={4000} rows={lockKind ? 2 : 3}
-          placeholder={lockKind ? 'ví dụ: CCCD thợ Hiền' : 'ví dụ: ứng Hà điện nước 5 triệu công trình A Huynh · hóa đơn copha CT A Huynh · cốp pha anh Long đưa'}
+          placeholder={lockKind ? (kind === 'shop' ? 'ví dụ: bán tôn lá đủ khổ 20cm tới 1m, giá rẻ nhất Tân Phú' : 'ví dụ: CCCD thợ Hiền') : 'ví dụ: ứng Hà điện nước 5 triệu công trình A Huynh · hóa đơn copha CT A Huynh · cốp pha anh Long đưa'}
           onChange={(e) => setNote(e.target.value)}
         />
       </label>

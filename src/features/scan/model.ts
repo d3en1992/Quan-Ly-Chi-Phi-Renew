@@ -93,60 +93,86 @@ export function supplierPlan(supplierText: string, inv: Pick<InvoiceScan, 'suppl
   };
 }
 
-// ───────────── CCCD ─────────────
+// ───────────── CCCD / Lưu thông tin người ─────────────
 
-export type ContactKindForId = 'worker' | 'customer' | 'employee';
-export type ContactCandidate = { id: string; kind: ContactKindForId; name: string; fullName: string | null; hasIdNumber: boolean; reason: 'full_name' | 'given_name' | 'ai' };
+export type ContactKindForId = 'worker' | 'customer' | 'employee' | 'subcontractor' | 'supplier';
+export type ContactCandidate = {
+  id: string; kind: ContactKindForId; name: string; fullName: string | null; hasIdNumber: boolean;
+  reason: 'full_name' | 'given_name' | 'short_name' | 'ai';
+};
 
 type PersonLite = { id: string; name: string; full_name: string | null };
 
 /** Tên gọi = chữ cuối của họ tên ("NGUYỄN THỊ HIỀN" → "hien"); bỏ hậu tố danh bạ như " BC", " PM" khi so */
 const givenName = (full: string) => normVi(full).split(' ').filter(Boolean).pop() ?? '';
 const shortCore = (name: string) => normVi(name).replace(/\b(c|a|chu|co|e|t|thay)\b/g, '').replace(/\b(bc|pm|tm|mt|q|l|moi|dien|sat|xi)\b/g, '').trim();
+/** Bỏ chữ xưng hô / tiền tố thầu phụ khi so tên gọi người dùng nói ("anh Đảng", "TPSN ĐỎ" → "dang", "do") */
+const callCore = (name: string) => normVi(name).replace(/\b(a|anh|c|chi|chu|co|e|em|thay|ong|ba)\b/g, '').replace(/^\s*(tp[a-z]*|thau phu)\s+/, '').replace(/\s+/g, ' ').trim();
 
 /**
- * Tìm người trong Danh Bạ có thể là chủ CCCD: trùng họ tên đầy đủ (chắc nhất), hoặc tên gọi = tên trên CCCD (HIỀN ↔ NGUYỄN THỊ HIỀN),
- * hoặc AI đã khớp theo ghi chú. Người chưa có CCCD đứng trước.
+ * Tìm người trong Danh Bạ có thể là người cần lưu: trùng họ tên đầy đủ (chắc nhất), tên gọi người dùng nói ("thầu phụ Đảng"),
+ * tên gọi = tên trên CCCD (HIỀN ↔ NGUYỄN THỊ HIỀN), hoặc AI đã khớp theo ghi chú. Người chưa có CCCD đứng trước.
  */
 export function idCardCandidates(
-  card: Pick<IdCardScan, 'full_name' | 'contact_match'>,
-  book: { workers: readonly PersonLite[]; customers: readonly PersonLite[]; employees: readonly { id: string; full_name: string }[] },
+  card: Pick<IdCardScan, 'full_name' | 'contact_match'> & { short_name?: string },
+  book: {
+    workers: readonly PersonLite[]; customers: readonly PersonLite[]; employees: readonly { id: string; full_name: string }[];
+    subcontractors?: readonly { id: string; name: string; contact_person: string | null }[];
+    suppliers?: readonly { id: string; name: string }[];
+  },
   hasIdNumber: (id: string) => boolean,
 ): ContactCandidate[] {
   const full = normVi(card.full_name);
   const given = givenName(card.full_name);
   const ai = normVi(card.contact_match);
+  const said = callCore(card.short_name ?? '');
   const out: ContactCandidate[] = [];
   const consider = (kind: ContactKindForId, p: { id: string; name: string; full_name: string | null }) => {
     let reason: ContactCandidate['reason'] | null = null;
     if (full && p.full_name && normVi(p.full_name) === full) reason = 'full_name';
-    else if (given && (shortCore(p.name) === given || normVi(p.name) === given)) reason = 'given_name';
     else if (ai && normVi(p.name) === ai) reason = 'ai';
+    else if (said && (callCore(p.name) === said || normVi(p.name) === said)) reason = 'short_name';
+    else if (given && (shortCore(p.name) === given || normVi(p.name) === given || callCore(p.name) === given)) reason = 'given_name';
     if (reason) out.push({ id: p.id, kind, name: p.name, fullName: p.full_name, hasIdNumber: hasIdNumber(p.id), reason });
   };
   for (const w of book.workers) consider('worker', w);
   for (const c of book.customers) consider('customer', c);
   for (const e of book.employees) consider('employee', { id: e.id, name: e.full_name, full_name: e.full_name });
-  const rank = (c: ContactCandidate) => (c.reason === 'full_name' ? 0 : c.reason === 'ai' ? 1 : 2) * 2 + (c.hasIdNumber ? 1 : 0);
+  for (const t of book.subcontractors ?? []) consider('subcontractor', { id: t.id, name: t.name, full_name: t.contact_person });
+  for (const s of book.suppliers ?? []) consider('supplier', { id: s.id, name: s.name, full_name: null });
+  const order = { full_name: 0, ai: 1, short_name: 2, given_name: 3 } as const;
+  const rank = (c: ContactCandidate) => order[c.reason] * 2 + (c.hasIdNumber ? 1 : 0);
   return out.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name, 'vi'));
 }
 
-/** Nhóm danh bạ đoán từ ghi chú khi AI không nói: "thợ / công nhân" → công nhân, "khách / chủ nhà" → khách hàng, "nhân viên" */
+/** Nhóm danh bạ đoán từ ghi chú khi AI không nói: "thầu phụ", "nhà cung cấp / cửa hàng", "khách / chủ nhà", "nhân viên", còn lại công nhân */
 export function guessContactKind(aiKind: string, note: string): ContactKindForId {
-  if (aiKind === 'worker' || aiKind === 'customer' || aiKind === 'employee') return aiKind;
+  if (aiKind === 'worker' || aiKind === 'customer' || aiKind === 'employee' || aiKind === 'subcontractor' || aiKind === 'supplier') return aiKind;
   const n = normVi(note);
+  if (/\bthau phu\b/.test(n)) return 'subcontractor';
+  if (/\b(nha cung cap|ncc|cua hang|dai ly)\b/.test(n)) return 'supplier';
   if (/\b(khach|chu nha|chu dau tu)\b/.test(n)) return 'customer';
   if (/\bnhan vien\b/.test(n)) return 'employee';
   return 'worker';
 }
 
-/** Tên gọi khi tạo người mới từ CCCD: công nhân = tên cuối viết hoa (HIỀN), khách hàng = "A/C + tên" để người dùng sửa */
+/**
+ * Tên gọi khi tạo người mới: công nhân / thầu phụ = tên cuối viết hoa (HIỀN), khách hàng = tên cuối viết hoa chữ đầu,
+ * nhà cung cấp = cả tên in hoa, nhân viên = họ tên viết hoa chữ đầu. Người dùng sửa được.
+ */
 export function shortNameFromFull(full: string, kind: ContactKindForId): string {
   const words = full.trim().split(/\s+/).filter(Boolean);
   const last = words[words.length - 1] ?? '';
-  if (kind === 'worker') return last.toUpperCase();
+  if (kind === 'worker' || kind === 'subcontractor') return last.toUpperCase();
+  if (kind === 'supplier') return words.join(' ').toUpperCase();
   const nice = last ? last[0]!.toUpperCase() + last.slice(1).toLowerCase() : '';
   return kind === 'customer' ? nice : words.map((w) => w[0]!.toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+
+/** Tên gọi người dùng nói → tên lưu danh bạ: công nhân / nhà cung cấp viết IN HOA như sổ chấm công / danh mục */
+export function contactNameFromSaid(said: string, kind: ContactKindForId): string {
+  const t = said.trim().replace(/\s+/g, ' ');
+  return kind === 'worker' || kind === 'supplier' ? t.toUpperCase() : t;
 }
 
 // ───────────── Hợp đồng ─────────────

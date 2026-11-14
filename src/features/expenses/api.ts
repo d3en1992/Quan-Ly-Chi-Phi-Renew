@@ -23,6 +23,8 @@ const expenseSchema = z.object({
   id: z.string(), project_id: z.string(), date: z.string(), expense_type_id: z.string(), supplier_id: z.string().nullable(), buyer_id: z.string().nullable(),
   paid_at_purchase: z.boolean(), description: z.string().nullable().transform((v) => v ?? ''), amount: z.coerce.number(),
   source: z.string(), created_by: z.string().nullable(), created_at: z.string(), updated_at: z.string(),
+  /** Ảnh hóa đơn trong kho `receipts` (Trợ lý AI lưu kèm) — có thì xem lại được ở bảng sửa */
+  receipt_image_path: z.string().nullable(),
 });
 const lineSchema = z.object({
   id: z.string(), position: z.number(), name: z.string().nullable().transform((v) => v ?? ''), unit: z.string().nullable(),
@@ -240,6 +242,19 @@ export function useDeleteExpense() {
       if (error) throw friendly(error);
       if (!data?.length) throw new Error('Không xóa được: hóa đơn do người khác nhập (cần quyền "Sửa / xóa dòng người khác nhập").');
       await resyncAllocations();
+    },
+    onSuccess: done,
+  });
+}
+
+/** Gắn / thay ảnh hóa đơn (đã tải lên kho `receipts`) cho hóa đơn cũ — nút "Lưu ảnh hóa đơn" ở bảng Sửa hóa đơn */
+export function useSetExpenseImage() {
+  const done = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; path: string }) => {
+      const { data, error } = await sb.from('expenses').update({ receipt_image_path: v.path }).eq('id', v.id).select('id');
+      if (error) throw friendly(error);
+      if (!data?.length) throw new Error('Không gắn được ảnh: hóa đơn do người khác nhập (cần quyền "Sửa / xóa dòng người khác nhập") hoặc đã bị xóa.');
     },
     onSuccess: done,
   });

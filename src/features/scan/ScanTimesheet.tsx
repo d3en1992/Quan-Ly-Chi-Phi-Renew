@@ -4,11 +4,12 @@
 // Anh kiểm tra, sửa rồi mới lưu — lưu bằng đúng hàm của Sổ chấm công (save_timesheet_week: mỗi công trình mỗi tuần 1 bản ghi).
 import { useMemo, useState } from 'react';
 import type { TimesheetScan } from '@shared/scan';
+import { useAccess } from '@/app/auth';
 import { Button, Icon } from '@/components/ui/button';
 import { Combo } from '@/components/ui/combo';
 import { ConfirmDialog } from '@/components/ui/confirm';
 import { ZoomableImage } from '@/components/ui/image-zoom';
-import { Field, Input, MoneyInput } from '@/components/ui/input';
+import { Checkbox, Field, Input, MoneyInput } from '@/components/ui/input';
 import { Card, ErrorState, LoadingState, Note, Pill } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/toast';
 import { calcSheetRow, cycleDayUnit, sheetTotals, shiftWeek, weekRangeLabel, weekStartOf } from '@/lib/calc';
@@ -16,10 +17,10 @@ import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { findByName } from '@/features/expenses/logic';
 import { today } from '@/features/expenses/shared';
-import { useCreateWorker, useSaveWeek, useTimesheetData, type TimesheetData } from '@/features/timesheets/api';
+import { useCreateWorker, useSaveWeek, useSetWeekImage, useTimesheetData, type TimesheetData } from '@/features/timesheets/api';
 import { blankRow, checkSheet, newKey, toCalcRow, type DraftRow } from '@/features/timesheets/sheet-model';
 import { cDay, DAY_LABELS, DayCell, dayText, PhoneDayInput, RoleTag } from '@/features/timesheets/shared';
-import type { PreparedImage } from './api';
+import { removeReceipt, uploadReceipt, type PreparedImage } from './api';
 import { useObjectUrl } from './CaptureForm';
 import { UNSURE } from './shared';
 import { checkPurchaseTotal, lastWage, purchaseSum, timesheetFromScan, withPurchases, type PurchaseDraft } from './timesheet-model';
@@ -39,8 +40,11 @@ const BY_TEXT: Record<TimesheetScan['project_by'], string> = {
 
 function Sheet({ scan, image, compact = false, onDone, onRetake, data }: Props & { data: TimesheetData }) {
   const toast = useToast();
+  const access = useAccess();
   const save = useSaveWeek();
+  const setWeekImage = useSetWeekImage();
   const createWorker = useCreateWorker();
+  const [keepImage, setKeepImage] = useState(true);
   const workers = useMemo(() => data.workers.filter((w) => !w.archived), [data.workers]);
   const guessed = findByName(scan.project_match, data.projectOptions) ?? findByName(scan.project_match, data.projects);
   const init = useMemo(() => timesheetFromScan(scan, data, guessed?.id ?? '', today()), [scan]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -91,8 +95,19 @@ function Sheet({ scan, image, compact = false, onDone, onRetake, data }: Props &
     setBad([]);
     if (existing && !confirmOverwrite) { setConfirmOverwrite(true); return; }
     save.mutate({ projectId: proj.id, weekStart, lines: check.lines }, {
-      onSuccess: () => {
+      onSuccess: async (weekId) => {
         setConfirmOverwrite(false);
+        // Ảnh phiếu: lưu sau khi chấm công đã vào sổ — ảnh hỏng không làm mất chấm công
+        if (image && keepImage) {
+          let path: string | null = null;
+          try {
+            path = await uploadReceipt(access.profile.company_id, image.blob, weekStart);
+            await setWeekImage.mutateAsync({ weekId, path });
+          } catch (e) {
+            if (path) void removeReceipt(path);
+            toast(`Chấm công đã lưu, nhưng chưa lưu được ảnh phiếu: ${(e as Error).message}`, 'error');
+          }
+        }
         toast(`Đã lưu chấm công ${weekRangeLabel(weekStart)} [${proj.name}] · ${check.lines.length} công nhân${buyTotal ? ` · mua lẻ ${formatMoney(buyTotal)}` : ''}`);
         onDone();
       },
@@ -118,6 +133,7 @@ function Sheet({ scan, image, compact = false, onDone, onRetake, data }: Props &
       <Card className="grid gap-2.5 p-3">
         {photo ? <ZoomableImage src={photo} alt="Ảnh phiếu chấm công" className={compact ? 'max-h-[200px]' : 'max-h-[520px]'} />
           : <div className="grid h-32 place-items-center rounded-lg bg-surface-2 text-muted">Không có ảnh</div>}
+        <Checkbox checked={keepImage && !!image} disabled={!image} onChange={setKeepImage} label="Lưu ảnh phiếu kèm tuần chấm công (để đối chiếu sau)" />
         <Button onClick={onRetake} className="justify-center"><Icon name="photo_camera" />Chụp lại / phiếu khác</Button>
       </Card>
 

@@ -1,9 +1,24 @@
 {
   "kind": "id_card",
   "id_card": {
-    "full_name": "NGUYỄN THỊ HIỀN", "id_number": "079188000123", "date_of_birth": "1988-04-12", "gender": "Nữ",
-    "hometown": "Bến Tre", "permanent_address": "Ấp 3, xã An Hiệp, Châu Thành, Bến Tre",
-    "id_issued_on": "2021-08-15", "id_issued_place": "Cục Cảnh sát QLHC về TTXH",
-    "contact_kind": "worker", "contact_match": "HIỀN", "low_confidence": ["id_issued_place"]
+    "full_name": "NGUYỄN THỊ HIỀN",
+    "id_number": "079188000123",
+    "date_of_birth": "1988-04-12",
+    "gender": "Nữ",
+    "hometown": "Bến Tre",
+    "permanent_address": "Ấp 3, xã An Hiệp, Châu Thành, Bến Tre",
+    "id_issued_on": "2021-08-15",
+    "id_issued_place": "Cục Cảnh sát QLHC về TTXH",
+    "contact_kind": "worker",
+    "contact_match": "HIỀN",
+    "low_confidence": [
+      "id_issued_place"
+    ],
+    "doc_type": "cccd",
+    "short_name": "",
+    "phone": "",
+    "address": "",
+    "field": "",
+    "note_lines": []
   }
 }

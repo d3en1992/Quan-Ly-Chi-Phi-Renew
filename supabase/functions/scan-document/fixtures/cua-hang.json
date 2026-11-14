@@ -1,0 +1,12 @@
+{
+  "kind": "shop",
+  "shop": {
+    "name": "VLXD PHƯƠNG",
+    "address": "125 Nguyễn An Ninh, P. Dĩ An, TP. Dĩ An, Bình Dương",
+    "area": "Dĩ An, Bình Dương",
+    "phones": ["0909123456", "0274 3777 888"],
+    "details": ["- Gạch, cát, đá, xi măng", "Sắt thép xây dựng", "Giao hàng tận công trình"],
+    "supplier_match": "",
+    "low_confidence": ["phones"]
+  }
+}

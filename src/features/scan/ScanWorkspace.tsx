@@ -1,7 +1,7 @@
 // Trợ lý AI (nút AI; trước là Chụp đa năng GĐ9) — dùng ở 3 chỗ: tab con CHỤP / AI (Nhập Chi Phí, máy tính), màn AI trên điện thoại (/chup),
 // nút Chụp CCCD ở Danh Bạ. Các bước: 1. Chụp / chọn tệp / nói → 2. AI đọc → 3. Anh kiểm tra, sửa → 4. Lưu. Không bao giờ tự lưu.
 // AI tự nhận: hóa đơn (chi tiết / nhanh / sổ cộng tiền), tiền ứng thầu phụ, thu tiền khách, hợp đồng / dự toán, danh sách vật tư cần mua,
-// phiếu chấm công tuần (tên + công + mua lẻ → Sổ chấm công).
+// phiếu chấm công tuần (tên + công + mua lẻ → Sổ chấm công), LƯU THÔNG TIN: CCCD / danh thiếp → Danh Bạ, ảnh bảng hiệu → Danh Bạ › Cửa hàng.
 import { useState } from 'react';
 import type { ScanRequestKind, ScanResponse } from '@shared/scan';
 import { useAccess } from '@/app/auth';
@@ -19,6 +19,7 @@ import { ScanIdCard } from './ScanIdCard';
 import { ScanInvoice } from './ScanInvoice';
 import { ScanMaterials } from './ScanMaterials';
 import { ScanReceipt } from './ScanReceipt';
+import { ScanShop } from './ScanShop';
 import { ScanTimesheet } from './ScanTimesheet';
 
 type Props = {
@@ -36,6 +37,7 @@ const GUIDE: { kind: Exclude<ScanRequestKind, 'auto' | 'id_card'>; icon: string;
   { kind: 'receipt', icon: 'savings', title: 'Thu tiền khách', text: 'Khách chuyển / đưa tiền → phiếu thu, ghi rõ chuyển khoản hay tiền mặt.', examples: ['hôm nay anh Huynh chuyển khoản 100 triệu'] },
   { kind: 'contract', icon: 'description', title: 'Hợp đồng / dự toán', text: 'Gửi PDF, ảnh hoặc Excel .xlsx → khách hàng mới, giá trị hợp đồng, diện tích móng / trệt / lầu.', examples: [] },
   { kind: 'timesheet', icon: 'calendar_month', title: 'Phiếu chấm công', text: 'Chụp phiếu chấm công tuần của cai → tên thợ, công CN – T7, tiền mua lẻ cộng cho cai; gợi ý sẵn công trình theo tổ thợ.', examples: ['chấm công công trình A Huynh'] },
+  { kind: 'save_info', icon: 'contact_page', title: 'Lưu thông tin', text: 'Ảnh CCCD / danh thiếp + lời nói → lưu khách hàng, công nhân, thầu phụ, nhà cung cấp. Ảnh bảng hiệu cửa hàng → Danh Bạ › Cửa hàng (kèm ảnh mặt tiền, mặt hàng).', examples: ['lưu thông tin thầu phụ Đảng, số điện thoại 0909 123 456', 'cửa hàng này bán tôn lá đủ khổ, giá rẻ nhất Tân Phú'] },
   { kind: 'material_list', icon: 'checklist', title: 'Vật tư cần mua', text: 'Ảnh tin nhắn Zalo của thợ, chữ cai ghi trên ván → bảng tên vật tư + số lượng để copy gửi cửa hàng.', examples: ['cốp pha anh Long đưa'] },
 ];
 
@@ -75,9 +77,12 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
     material_list: hasLevel(perms, 'expenses', 'add') || hasLevel(perms, 'payments', 'add'),
     timesheet: hasLevel(perms, 'timesheets', 'add'),
     id_card: hasLevel(perms, 'contacts', 'add') && access.special.see_contact_ids,
+    shop: hasLevel(perms, 'contacts', 'add'),
+    save_info: false,
     auto: false,
   };
-  allowedKinds.auto = allowedKinds.invoice || allowedKinds.advance || allowedKinds.receipt || allowedKinds.contract || allowedKinds.material_list || allowedKinds.timesheet;
+  allowedKinds.save_info = allowedKinds.id_card || allowedKinds.shop;
+  allowedKinds.auto = allowedKinds.invoice || allowedKinds.advance || allowedKinds.receipt || allowedKinds.contract || allowedKinds.material_list || allowedKinds.timesheet || allowedKinds.save_info;
   const [kind, setKind] = useState<ScanRequestKind>(allowedKinds[defaultKind] ? defaultKind : 'auto');
   const [note, setNote] = useState('');
   const [input, setInput] = useState<PreparedInput | null>(null);
@@ -121,7 +126,7 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
   };
 
   if (!allowedKinds.auto && !(lockKind && allowedKinds[defaultKind])) {
-    return <Card><Note icon="lock">Tài khoản chưa có quyền Nhập ở Chi Phí / Phiếu chi / Doanh Thu / Chấm Công nên không dùng được trợ lý AI.</Note></Card>;
+    return <Card><Note icon="lock">Tài khoản chưa có quyền Nhập ở Chi Phí / Phiếu chi / Doanh Thu / Chấm Công / Danh Bạ nên không dùng được trợ lý AI.</Note></Card>;
   }
   const step = result ? 2 : busy ? 1 : 0;
   const r = result?.resp;
@@ -164,7 +169,9 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
       ) : r!.kind === 'material_list' ? (
         <ScanMaterials scan={r!.material_list} onDone={done} onRetake={reset} />
       ) : r!.kind === 'id_card' ? (
-        <ScanIdCard scan={r!.id_card} note={note} onDone={done} onRetake={reset} />
+        allowedKinds.id_card ? <ScanIdCard scan={r!.id_card} note={note} onDone={done} onRetake={reset} /> : noAccess('CCCD / thông tin người (cần quyền Nhập Danh Bạ + Xem SĐT, số CCCD)')
+      ) : r!.kind === 'shop' ? (
+        allowedKinds.shop ? <ScanShop scan={r!.shop} image={result.image} onDone={done} onRetake={reset} /> : noAccess('bảng hiệu cửa hàng')
       ) : (
         allowedKinds.contract ? needLists(<ScanContract scan={r!.contract} lists={lists!} onDone={done} onRetake={reset} />) : noAccess('hợp đồng')
       )}

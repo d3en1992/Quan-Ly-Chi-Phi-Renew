@@ -9,7 +9,8 @@ const MIN = 1;
 const MAX = 6;
 const clamp = (z: number) => Math.min(MAX, Math.max(MIN, Math.round(z * 100) / 100));
 
-function Viewer({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+/** Khung xem ảnh toàn màn hình (mở bằng nút riêng — vd "Ảnh phiếu" ở Sổ chấm công) */
+export function ImageViewer({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
   const box = useRef<HTMLDivElement>(null);
   const [zoom, setZoomState] = useState(1);
   const zoomRef = useRef(1);
@@ -114,7 +115,7 @@ export function ZoomableImage({ src, alt, className, hint = true, children }: { 
         {hint ? <span className="absolute right-2 bottom-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[12px] font-medium text-white"><Icon name="zoom_in" className="text-[16px]" />Bấm để phóng to</span> : null}
       </button>
       {children}
-      {open ? <Viewer src={src} alt={alt} onClose={() => setOpen(false)} /> : null}
+      {open ? <ImageViewer src={src} alt={alt} onClose={() => setOpen(false)} /> : null}
     </>
   );
 }
