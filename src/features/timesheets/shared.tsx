@@ -23,7 +23,7 @@ const DAY_ERROR = 'Ô ngày công chỉ nhận số ≥ 0 (vd 1 · 0,5 · 1,3) �
 
 /**
  * Ô ngày công: bấm đổi 1 → ½ → 0; gõ số (chấm hoặc phẩy, số lẻ, không giới hạn trên) rồi Enter / Tab / mũi tên / bấm ra ngoài
- * để nhận; đúng chữ "5" một mình = nửa công; Esc bỏ; H = nửa công; Backspace / Delete khi chưa gõ = 0.
+ * để nhận; Esc bỏ; H = nửa công; Backspace / Delete khi chưa gõ = 0.
  */
 export function DayCell({ value, onChange, disabled, label }: { value: number; onChange: (v: number) => void; disabled?: boolean; label: string }) {
   const toast = useToast();

@@ -256,6 +256,19 @@ test('HĐ chính + phiếu thu + quyết toán (chốt) → phiếu thu tự đ�
   await page.getByLabel('Khối lượng 1', { exact: true }).fill('10');
   await page.getByLabel('Đơn giá 1', { exact: true }).fill('10000000');
   await expect(page.getByTestId('items-total')).toHaveText('100.000.000');
+  // Lưới kiểu Sheet (14/11/2026): Enter thêm dòng → dán dòng từ Excel → tổng cộng thêm → Ctrl+Z bỏ lần dán
+  await page.getByLabel('Hạng mục 1', { exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByLabel('Hạng mục 2', { exact: true })).toBeFocused();
+  await page.evaluate((text) => {
+    const dt = new DataTransfer();
+    dt.setData('text/plain', text);
+    document.activeElement!.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  }, 'Điện nước\tgói\t1,5\t2.000.000 đ\r\n');
+  await expect(page.getByLabel('Khối lượng 2', { exact: true })).toHaveValue('1,5');
+  await expect(page.getByTestId('items-total')).toHaveText('103.000.000');
+  await page.keyboard.press('Control+z');
+  await expect(page.getByTestId('items-total')).toHaveText('100.000.000');
   await page.getByRole('button', { name: 'Lấy tổng hạng mục làm Giá trị HĐ chính' }).click();
   await expect(page.getByTestId('hdc-total')).toHaveText('100.000.000');
   await page.getByTestId('hdc-save').click();

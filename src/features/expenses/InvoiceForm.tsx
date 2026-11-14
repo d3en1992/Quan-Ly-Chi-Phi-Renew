@@ -1,16 +1,17 @@
-// FORM một hóa đơn: đầu phiếu (ngày, công trình, loại, NCC, người mua, Đã TT) + bảng dòng vật tư (nếu có, Copy / Dán bảng) + nội dung.
+// FORM một hóa đơn: đầu phiếu (ngày, công trình, loại, NCC, người mua, Đã TT) + bảng dòng vật tư kiểu Sheet (LinesGrid, Copy / Dán bảng) + nội dung.
 // Dùng chung cho tab HÓA ĐƠN CHI TIẾT, bảng trượt sửa hóa đơn. Mọi phép tính tiền gọi từ invoice-model → src/lib/calc.
-import { useMemo, useState, type Dispatch, type KeyboardEvent, type ReactNode, type SetStateAction } from 'react';
+import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { Button, Icon } from '@/components/ui/button';
 import { Combo, type SuggestItem } from '@/components/ui/combo';
 import { ConfirmDialog } from '@/components/ui/confirm';
 import { Checkbox, Field, Input, MoneyInput } from '@/components/ui/input';
 import { Pill } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/toast';
-import { formatMoney } from '@/lib/format';
+import { sheetClip, SheetKeysHint } from '@/components/ui/sheet-grid';
 import { cn } from '@/lib/utils';
 import type { EntryExpense, EntryLine } from './api';
-import { blankLine, invoiceDescription, invoiceTotal, lineIsBlank, lineTotal, quantityText, type InvoiceDraft, type InvoiceField, type LineDraft } from './invoice-model';
+import { blankLine, invoiceDescription, invoiceTotal, lineIsBlank, quantityText, type InvoiceDraft, type InvoiceField, type LineDraft } from './invoice-model';
+import { LinesGrid } from './LinesGrid';
 import { findByName, historySuggest, isDifferentArea } from './logic';
 import { defaultPaid, type Lists } from './shared';
 
@@ -25,15 +26,21 @@ export function expenseToDraft(e: EntryExpense, lines: readonly EntryLine[], lis
   };
 }
 
-export type LineHistory = { names: SuggestItem[]; units: SuggestItem[] };
+export type LineHistory = { names: SuggestItem[]; units: SuggestItem[]; /** Lần mua gần nhất theo tên vật tư (chữ thường) → ĐVT + đơn giá */ last: Map<string, { unit: string; unitPrice: number }> };
 
 /** Gợi ý tên vật tư + ĐVT: danh mục ĐVT trước, rồi những gì đã từng gõ */
-export function useLineSuggestions(history: readonly { name: string; unit: string; date: string }[] | undefined, lists: Lists): LineHistory {
+export function useLineSuggestions(history: readonly { name: string; unit: string; unitPrice?: number; date: string }[] | undefined, lists: Lists): LineHistory {
   return useMemo(() => {
     const names = historySuggest((history ?? []).map((h) => ({ text: h.name, date: h.date }))).map((n) => ({ id: n, name: n }));
     const seen = new Set(lists.units.map((u) => u.name.toLowerCase()));
     const typed = historySuggest((history ?? []).map((h) => ({ text: h.unit, date: h.date }))).filter((u) => !seen.has(u.toLowerCase()));
-    return { names, units: [...lists.units, ...typed.map((u) => ({ id: `t:${u}`, name: u }))] };
+    const last = new Map<string, { unit: string; unitPrice: number; date: string }>();
+    for (const h of history ?? []) {
+      const k = h.name.trim().toLowerCase();
+      const cur = last.get(k);
+      if (k && (!cur || h.date > cur.date)) last.set(k, { unit: h.unit, unitPrice: h.unitPrice ?? 0, date: h.date });
+    }
+    return { names, units: [...lists.units, ...typed.map((u) => ({ id: `t:${u}`, name: u }))], last };
   }, [history, lists.units]);
 }
 
@@ -57,6 +64,8 @@ type Props = {
   hideCopyPaste?: boolean;
   /** Nút thêm, đặt ngay dưới bảng dòng vật tư cạnh "Thêm dòng" (nút AI: Chuyển thành hóa đơn nhanh) */
   lineActions?: ReactNode;
+  /** Ctrl+S trong bảng dòng vật tư */
+  onSave?: () => void;
 };
 
 const UNSURE = '!border-warn !bg-warn-soft';
@@ -65,17 +74,11 @@ const UNSURE = '!border-warn !bg-warn-soft';
 const LINES_CLIP_KEY = 'invoice_lines_clipboard';
 type LineClip = Pick<LineDraft, 'name' | 'unit' | 'quantity' | 'unitPrice' | 'discount'>;
 
-const cellInput = '!h-[34px] !rounded-none !border-0 !bg-transparent focus:!outline-2 focus:!-outline-offset-2';
-
-export function InvoiceFields({ draft, setDraft, lists, suggestions, descriptions, bad = [], compact = false, projectItems, unsureHead = [], unsureCells = [], hideCopyPaste = false, lineActions }: Props) {
+export function InvoiceFields({ draft, setDraft, lists, suggestions, descriptions, bad = [], compact = false, projectItems, unsureHead = [], unsureCells = [], hideCopyPaste = false, lineActions, onSave }: Props) {
   const toast = useToast();
   const u = (k: string) => (unsureHead.includes(k) ? UNSURE : undefined);
-  const uc = (key: number, col: number) => (unsureCells.includes(`${key}:${col}`) ? '!bg-warn-soft' : undefined);
   const set = <K extends keyof InvoiceDraft>(k: K, v: InvoiceDraft[K]) => setDraft((d) => ({ ...d, [k]: v }));
-  const setLine = (key: number, patch: Partial<LineDraft>) =>
-    setDraft((d) => (d.lines ? { ...d, lines: d.lines.map((l) => (l.key === key ? { ...l, ...patch } : l)) } : d));
   const addLine = () => setDraft((d) => (d.lines ? { ...d, lines: [...d.lines, blankLine()] } : d));
-  const removeLine = (key: number) => setDraft((d) => (d.lines ? { ...d, lines: d.lines.length > 1 ? d.lines.filter((l) => l.key !== key) : [blankLine()] } : d));
   const isBad = (f: InvoiceField) => bad.includes(f) || undefined;
 
   const supplier = findByName(draft.supplier, lists.suppliers);
@@ -84,21 +87,16 @@ export function InvoiceFields({ draft, setDraft, lists, suggestions, description
   const total = invoiceTotal(draft);
   const autoDescription = draft.lines && !draft.description.trim() ? invoiceDescription(draft) : '';
 
-  /** Enter trong bảng dòng vật tư: xuống ô dưới cùng cột; dòng cuối thì thêm dòng */
-  const onLineKey = (e: KeyboardEvent<HTMLElement>, row: number, col: number) => {
-    if (e.key !== 'Enter' || e.defaultPrevented) return;
-    e.preventDefault();
-    const table = e.currentTarget.closest('table');
-    if (draft.lines && row >= draft.lines.length - 1) addLine();
-    setTimeout(() => table?.querySelector<HTMLElement>(`[data-lr="${row + 1}"][data-lc="${col}"]`)?.focus(), 0);
-  };
-
   // Copy / Dán chỉ phần dòng vật tư của bảng (đầu phiếu, nội dung giữ nguyên)
   const [askPaste, setAskPaste] = useState<LineClip[] | null>(null);
   const copyLines = () => {
     const rows = (draft.lines ?? []).filter((l) => !lineIsBlank(l)).map(({ name, unit, quantity, unitPrice, discount }) => ({ name, unit, quantity, unitPrice, discount }));
     if (!rows.length) { toast('Bảng chưa có dòng vật tư để copy', 'error'); return; }
-    try { localStorage.setItem(LINES_CLIP_KEY, JSON.stringify(rows)); toast(`Đã copy ${rows.length} dòng vật tư — mở hóa đơn khác rồi bấm Dán bảng`); }
+    // Chép ra clipboard dạng bảng (dán thẳng vào Excel / Google Sheet) + giữ trong máy để bấm Dán bảng ở hóa đơn khác
+    const tsv = rows.map((r) => [r.name, r.unit, r.quantity, r.unitPrice ? String(r.unitPrice) : ''].map((x) => x.replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\r\n');
+    sheetClip.set(tsv);
+    void navigator.clipboard?.writeText(tsv).catch(() => undefined);
+    try { localStorage.setItem(LINES_CLIP_KEY, JSON.stringify(rows)); toast(`Đã copy ${rows.length} dòng vật tư — dán vào Excel, hoặc mở hóa đơn khác rồi bấm Dán bảng`); }
     catch { toast('Copy thất bại', 'error'); }
   };
   const applyPaste = (rows: LineClip[]) => { setDraft((d) => ({ ...d, lines: rows.map((r) => blankLine(r)) })); toast(`Đã dán ${rows.length} dòng vật tư`); };
@@ -181,36 +179,7 @@ export function InvoiceFields({ draft, setDraft, lists, suggestions, description
       ) : null}
 
       {draft.lines ? (
-        <div className={cn('tbl rounded-lg border', bad.includes('lines') ? 'border-bad' : 'border-line')}>
-          {/* Kẻ dọc giữa các cột để phân biệt Tên / ĐVT / Số lượng / Đơn giá / Thành tiền */}
-          <table data-testid="invoice-lines" className="!w-full table-fixed [&_td]:border-r [&_td]:border-line [&_th]:border-r [&_th]:border-line [&_tr>*:last-child]:border-r-0" style={{ minWidth: compact ? 600 : 680 }}>
-            <colgroup><col style={{ width: 34 }} /><col style={{ minWidth: 160 }} /><col style={{ width: 70 }} /><col style={{ width: 76 }} /><col style={{ width: 112 }} /><col style={{ width: 112 }} /><col style={{ width: 36 }} /></colgroup>
-            <thead>
-              <tr><th className="!px-0 !text-center">#</th><th>Tên vật tư</th><th>ĐVT</th><th className="!text-right">Số lượng</th><th className="!text-right">Đơn giá</th><th className="!text-right">Thành tiền</th><th /></tr>
-            </thead>
-            <tbody>
-              {draft.lines.map((l, i) => (
-                <tr key={l.key}>
-                  <td className="!px-0 text-center text-[12px] text-faint">{i + 1}</td>
-                  <td className={cn('!p-0', uc(l.key, 0))}><Combo free data-lr={i} data-lc={0} aria-label={`Tên vật tư dòng ${i + 1}`} className={cellInput} value={l.name} maxLength={300} items={suggestions.names} groupLabel="Vật tư đã nhập" onChange={(v) => setLine(l.key, { name: v })} onKeyDown={(e) => onLineKey(e, i, 0)} /></td>
-                  <td className={cn('!p-0', uc(l.key, 1))}><Combo free data-lr={i} data-lc={1} aria-label={`ĐVT dòng ${i + 1}`} className={cellInput} value={l.unit} maxLength={30} items={suggestions.units} groupLabel="Đơn vị tính" onChange={(v) => setLine(l.key, { unit: v })} onKeyDown={(e) => onLineKey(e, i, 1)} /></td>
-                  <td className={cn('!p-0', uc(l.key, 2))}><Input data-lr={i} data-lc={2} aria-label={`Số lượng dòng ${i + 1}`} inputMode="decimal" autoComplete="off" className={cn(cellInput, 'num text-right')} value={l.quantity} onChange={(e) => setLine(l.key, { quantity: e.target.value.replace(/[^\d.,]/g, '') })} onKeyDown={(e) => onLineKey(e, i, 2)} /></td>
-                  <td className={cn('!p-0', uc(l.key, 3))}><MoneyInput data-lr={i} data-lc={3} aria-label={`Đơn giá dòng ${i + 1}`} className={cellInput} placeholder="" value={l.unitPrice} onChange={(v) => setLine(l.key, { unitPrice: v })} onKeyDown={(e) => onLineKey(e, i, 3)} /></td>
-                  <td className="num text-right">{lineIsBlank(l) ? '' : formatMoney(lineTotal(l))}{l.discount.trim() ? <div className="text-[11px] text-muted">CK {l.discount}</div> : null}</td>
-                  <td className="!p-0 text-center"><button type="button" tabIndex={-1} aria-label={`Xóa dòng ${i + 1}`} className="grid h-[34px] w-full place-items-center text-faint hover:text-bad" onClick={() => removeLine(l.key)}><Icon name="close" className="text-[17px]" /></button></td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="font-bold [&>td]:bg-surface-2">
-                <td />
-                <td colSpan={4}>Tổng hóa đơn</td>
-                <td className="num text-right" data-testid="invoice-total">{formatMoney(total)}</td>
-                <td />
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+        <LinesGrid draft={draft} setDraft={setDraft} suggestions={suggestions} compact={compact} bad={bad.includes('lines')} unsure={unsureCells} total={total} onSave={onSave} />
       ) : null}
       {draft.lines ? (
         <div className="flex flex-wrap gap-2">
@@ -222,6 +191,7 @@ export function InvoiceFields({ draft, setDraft, lists, suggestions, description
           {lineActions}
         </div>
       ) : null}
+      {draft.lines && !compact ? <SheetKeysHint /> : null}
       {draft.lines ? descriptionField : null}
       <ConfirmDialog open={!!askPaste} onOpenChange={(o) => { if (!o) setAskPaste(null); }} title="Ghi đè dòng vật tư?" confirmLabel="Ghi đè"
         message="Bảng đang có dòng vật tư. Dán sẽ thay toàn bộ bằng các dòng đã copy (đầu phiếu và nội dung giữ nguyên)."

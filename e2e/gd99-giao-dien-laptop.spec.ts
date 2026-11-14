@@ -81,13 +81,13 @@ test('1536px: menu trái ≈ 200px; sổ chấm công gõ 1.3, không cuộn nga
   await expect(page.getByRole('combobox', { name: 'Tên công nhân dòng 1' })).toHaveValue(WORKER);
   await page.getByLabel('Lương/ngày dòng 1').fill('500000');
 
-  // Gõ 1.3 vào T2, 1,5 vào T3, đúng "5" vào T4 = nửa công; số âm bị từ chối
+  // Gõ 1.3 vào T2, 1,5 vào T3, 0,5 vào T4 = nửa công ("5" giờ là 5 công); số âm bị từ chối
   await page.getByRole('button', { name: 'T2 dòng 1' }).focus();
   await page.keyboard.type('1.3');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.type('1,5');
   await page.keyboard.press('ArrowRight');
-  await page.keyboard.type('5');
+  await page.keyboard.type('0,5');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('button', { name: 'T2 dòng 1' })).toHaveText('1,3');
   await expect(page.getByRole('button', { name: 'T3 dòng 1' })).toHaveText('1,5');

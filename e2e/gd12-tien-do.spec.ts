@@ -95,6 +95,25 @@ test('Lập tiến độ từ mẫu Xây mới, sửa %, Gantt + số tổng c�
   const notes = (await admin.from('schedule_notes').select('progress_pct,content').eq('task_id', task.id)).data ?? [];
   expect(notes).toEqual([{ progress_pct: 50, content: 'xong nửa số cọc' }]);
 
+  // Kéo thả trên Gantt: kéo mép phải +3 ngày (dài ra), rồi kéo giữa thanh +2 ngày (dời cả việc) → ngày lưu theo
+  const before = (await admin.from('schedule_tasks').select('start_date,end_date').eq('id', task.id)).data![0]!;
+  const bar = gantt.locator('.gbar[title^="Ép / khoan cọc ·"]');
+  const box1 = (await bar.boundingBox())!;
+  const perDay = box1.width / (1 + (Date.parse(before.end_date) - Date.parse(before.start_date)) / 864e5); // px mỗi ngày
+  await page.mouse.move(box1.x + box1.width - 1, box1.y + box1.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box1.x + box1.width - 1 + perDay * 3, box1.y + box1.height / 2, { steps: 6 });
+  await page.mouse.up();
+  const plus = (d: string, n: number) => { const x = new Date(`${d}T00:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+  await expect.poll(async () => (await admin.from('schedule_tasks').select('start_date,end_date').eq('id', task.id)).data![0]).toEqual({ start_date: before.start_date, end_date: plus(before.end_date, 3) });
+  const box2 = (await bar.boundingBox())!;
+  await page.mouse.move(box2.x + box2.width / 2, box2.y + box2.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box2.x + box2.width / 2 + perDay * 2, box2.y + box2.height / 2, { steps: 6 });
+  await page.mouse.up();
+  await expect.poll(async () => (await admin.from('schedule_tasks').select('start_date,end_date').eq('id', task.id)).data![0]).toEqual({ start_date: plus(before.start_date, 2), end_date: plus(before.end_date, 5) });
+  await expect(page.getByRole('dialog')).toHaveCount(0); // kéo xong không mở bảng chi tiết
+
   // Thêm việc nhanh cuối giai đoạn "Bàn giao"
   await page.getByLabel('Thêm việc vào Bàn giao').fill('Lắp camera');
   await page.getByLabel('Thêm việc vào Bàn giao').press('Enter');

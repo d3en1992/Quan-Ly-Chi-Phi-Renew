@@ -1,6 +1,6 @@
 // Tab TIẾN ĐỘ (PAGES.tiendo / MP.tiendo) — tính năng phụ: chọn công trình → lập kế hoạch từ mẫu giai đoạn → bảng việc + Gantt
 // (vạch Hôm nay, việc trễ tô đỏ, chậm tô cam), chi tiết việc, báo cáo chữ gửi Zalo. Tiến độ KHÔNG lọc theo năm (công trình kéo dài qua năm).
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -16,10 +16,10 @@ import { canEditRow } from '@/features/payments/shared';
 import { matchesSearch, todayIso } from '@/features/reports/shared';
 import {
   calendarOf, projectSchedule, useAddPhase, useAddTask, useCreatePlan, useDeletePhase, useDeletePlan, useSaveTemplate, useSchedData,
-  useSetProgress, useUpdatePhase, useUpdatePlan, type Phase, type Plan, type SchedData, type SchedProject, type Task,
+  useSetProgress, useUpdatePhase, useUpdatePlan, useUpdateTask, type Phase, type Plan, type SchedData, type SchedProject, type Task,
 } from './api';
 import {
-  addDays, barGeometry, buildFromTemplate, DEFAULT_TEMPLATES, fmtDm, fmtDmy, ganttScale, guessTemplate, nextStartFor, nextWorkDay, planToTemplate,
+  addDays, barGeometry, daysBetween, buildFromTemplate, DEFAULT_TEMPLATES, fmtDm, fmtDmy, ganttScale, guessTemplate, nextStartFor, nextWorkDay, planToTemplate,
   planView, REST_DAYS, zaloReport, type Calendar, type PlanView, type RestDays, type TaskView, type Template,
 } from './logic';
 import { TaskSheet, type TaskSheetTarget } from './TaskSheet';
@@ -219,11 +219,68 @@ function QuickAdd({ placeholder, label, onAdd, busy }: { placeholder: string; la
   );
 }
 
+// ============ Thanh việc kéo được: giữa = dời cả việc, mép trái = đổi ngày bắt đầu, mép phải = đổi ngày kết thúc ============
+type DragMode = 'move' | 'start' | 'end';
+function DragBar({ t, scale, editable, onOpen, onDates }: {
+  t: TV; scale: ReturnType<typeof ganttScale>; editable: boolean; onOpen: () => void; onDates: (start: string, end: string) => void;
+}) {
+  const [drag, setDrag] = useState<{ mode: DragMode; x0: number; w: number; delta: number } | null>(null);
+  const moved = useRef(false);
+  const s0 = t.start_date!, e0 = t.end_date!;
+  const shift = (mode: DragMode, d: number): [string, string] => {
+    if (mode === 'move') return [addDays(s0, d), addDays(e0, d)];
+    if (mode === 'start') { const st = addDays(s0, d); return [st > e0 ? e0 : st, e0]; }
+    const en = addDays(e0, d); return [s0, en < s0 ? s0 : en];
+  };
+  const [s, e] = drag ? shift(drag.mode, drag.delta) : [s0, e0];
+  const g = barGeometry(scale, s, e);
+  const down = (mode: DragMode) => (ev: RPointerEvent<HTMLElement>) => {
+    if (!editable || ev.button !== 0) return;
+    ev.stopPropagation(); ev.preventDefault();
+    const row = (ev.currentTarget.closest('.gr') as HTMLElement | null)?.getBoundingClientRect().width ?? 1;
+    ev.currentTarget.setPointerCapture(ev.pointerId);
+    moved.current = false;
+    setDrag({ mode, x0: ev.clientX, w: row, delta: 0 });
+  };
+  const move = (ev: RPointerEvent<HTMLElement>) => {
+    if (!drag) return;
+    const d = Math.round(((ev.clientX - drag.x0) / drag.w) * scale.total);
+    if (Math.abs(ev.clientX - drag.x0) > 3) moved.current = true;
+    if (d !== drag.delta) setDrag({ ...drag, delta: d });
+  };
+  const up = (ev: RPointerEvent<HTMLElement>) => {
+    if (!drag) return;
+    ev.stopPropagation();
+    const [ns, ne] = shift(drag.mode, drag.delta);
+    setDrag(null);
+    if (!moved.current) { onOpen(); return; }
+    if (ns !== s0 || ne !== e0) onDates(ns, ne);
+  };
+  const tip = `${t.name} · ${fmtDm(s)} → ${fmtDm(e)} (${daysBetween(s, e) + 1} ngày) · ${t.progress_pct}%`;
+  const handlers = { onPointerMove: move, onPointerUp: up, onPointerCancel: () => setDrag(null) };
+  if (t.kind === 'milestone') {
+    return <div className={`gmile ${barClass(t)} ${editable ? 'cursor-grab' : 'cursor-pointer'}`} style={{ left: `${g.left + g.width / 2}%` }} title={tip}
+      onPointerDown={down('move')} {...handlers} onClick={editable ? undefined : onOpen} />;
+  }
+  return (
+    <div className={`gbar ${barClass(t)} ${editable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} ${drag ? 'z-[3] shadow-md' : ''}`}
+      style={{ left: `${g.left}%`, width: `${g.width}%` }} title={tip} data-testid="td-bar"
+      onPointerDown={down('move')} {...handlers} onClick={editable ? undefined : onOpen}>
+      <i style={{ width: `${t.progress_pct}%` }} />
+      {editable ? <>
+        <span className="gh-l" aria-hidden onPointerDown={down('start')} {...handlers} />
+        <span className="gh-r" aria-hidden onPointerDown={down('end')} {...handlers} />
+      </> : null}
+      {drag ? <span className="gdrag-tip">{fmtDm(s)} → {fmtDm(e)}</span> : null}
+    </div>
+  );
+}
+
 // ============ Bảng việc + Gantt (máy tính / máy tính bảng) ============
-function GanttBoard({ view, today, deadline, filter, query, canEdit, canEditTask, onOpenTask, onOpenPhase, onQuickAdd, onAddPhase, onSetPct }: {
+function GanttBoard({ view, today, deadline, filter, query, canEdit, canEditTask, onOpenTask, onOpenPhase, onQuickAdd, onAddPhase, onSetPct, onSetDates }: {
   view: PlanView<Task>; today: string; deadline: string | null; filter: QuickFilter; query: string; canEdit: boolean; canEditTask: (t: Task) => boolean;
   onOpenTask: (t: Task) => void; onOpenPhase: (p: Phase) => void; onQuickAdd: (phaseId: string, name: string) => Promise<unknown>;
-  onAddPhase: (name: string) => Promise<unknown>; onSetPct: (t: Task, pct: number) => void;
+  onAddPhase: (name: string) => Promise<unknown>; onSetPct: (t: Task, pct: number) => void; onSetDates: (t: Task, start: string, end: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const scale = useMemo(() => ganttScale([...view.tasks.flatMap((t) => [t.start_date, t.end_date]), deadline], today), [view, today, deadline]);
@@ -232,7 +289,7 @@ function GanttBoard({ view, today, deadline, filter, query, canEdit, canEditTask
   const narrow = filter !== 'all' || !!query.trim();
   const weekStep = Math.max(1, Math.ceil(scale.weeks.length / 14)); // kế hoạch dài: ghi nhãn cách 2–3 tuần cho khỏi chồng chữ
   const L: ReactNode[] = [], R: ReactNode[] = [];
-  const cols = 'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_92px_44px_44px_52px] items-center gap-2';
+  const cols = 'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_80px_42px_42px_52px] items-center gap-2';
 
   const groups = [...view.phases, ...(view.loose.length ? [{ id: '', name: '(Chưa có giai đoạn)', position: 999, tasks: view.loose, start: null, end: null, pct: 0, plannedPct: 0, lateCount: 0, project_id: '', created_by: null }] : [])];
   for (const p of groups) {
@@ -257,9 +314,9 @@ function GanttBoard({ view, today, deadline, filter, query, canEdit, canEditTask
       L.push(
         <div key={`l-${t.id}`} className="gl" style={{ paddingLeft: 30 }} data-testid="td-row">
           <div className={cols}>
-            <button type="button" className="flex min-w-0 items-center gap-1.5 text-left" onClick={() => onOpenTask(t)}>
+            <button type="button" className="flex min-w-0 items-center gap-1.5 text-left" title={t.name} onClick={() => onOpenTask(t)}>
               {t.kind === 'milestone' ? <span className="text-accent">◆</span> : null}
-              <span className="truncate hover:underline">{t.name}</span>
+              <span className="min-w-[96px] truncate hover:underline">{t.name}</span>
               {t.late || t.behind ? <span className="shrink-0"><TaskPill t={t} /></span> : null}
             </button>
             <span className="truncate text-[12px] text-muted">{t.assignee ?? ''}</span>
@@ -274,13 +331,9 @@ function GanttBoard({ view, today, deadline, filter, query, canEdit, canEditTask
           </div>
         </div>,
       );
-      let bar: ReactNode = null;
-      if (t.start_date && t.end_date) {
-        const g = barGeometry(scale, t.start_date, t.end_date);
-        bar = t.kind === 'milestone'
-          ? <div className={`gmile ${barClass(t)}`} style={{ left: `${g.left + g.width / 2}%` }} title={`${t.name} · ${fmtDmy(t.end_date)}`} />
-          : <div className={`gbar ${barClass(t)}`} style={{ left: `${g.left}%`, width: `${g.width}%` }} title={`${t.name} · ${fmtDm(t.start_date)} → ${fmtDm(t.end_date)} · ${t.progress_pct}%`}><i style={{ width: `${t.progress_pct}%` }} /></div>;
-      }
+      const bar = t.start_date && t.end_date
+        ? <DragBar t={t} scale={scale} editable={editable} onOpen={() => onOpenTask(t)} onDates={(st, en) => onSetDates(t, st, en)} />
+        : null;
       R.push(<div key={`r-${t.id}`} className="gr" data-testid="td-bar-row">{bar}</div>);
     }
     if (canEdit && p.id && !narrow) {
@@ -297,7 +350,7 @@ function GanttBoard({ view, today, deadline, filter, query, canEdit, canEditTask
     <Card className="overflow-hidden">
       <div className="tbl">
         <div className="gantt" data-testid="td-gantt">
-          <div className="gh"><span className="flex-1">Giai đoạn / công việc</span><span className="w-[92px]">Phụ trách</span><span className="w-[44px]">Bắt đầu</span><span className="w-[44px]">Kết thúc</span><span className="w-[52px] text-right">% xong</span></div>
+          <div className="gh"><span className="flex-1">Giai đoạn / công việc</span><span className="w-[80px]">Phụ trách</span><span className="w-[42px]">Bắt đầu</span><span className="w-[42px]">Kết thúc</span><span className="w-[52px] text-right">% xong</span></div>
           <div className="gweeks">{scale.weeks.map((w, i) => <span key={w.iso} style={{ left: `${w.left}%` }}>{i % weekStep === 0 ? w.label : ''}</span>)}</div>
           <div>{L}</div>
           <div className="relative">
@@ -357,7 +410,7 @@ export function SchedulePage() {
   const [phaseSheet, setPhaseSheet] = useState<Phase | null>(null);
   const [settings, setSettings] = useState(false);
   const [zalo, setZalo] = useState(false);
-  const addTask = useAddTask(), addPhase = useAddPhase(), setProgress = useSetProgress();
+  const addTask = useAddTask(), addPhase = useAddPhase(), setProgress = useSetProgress(), updateTask = useUpdateTask();
   const canEdit = hasLevel(access.permissions, 'schedule', 'add');
   const canEditTask = (t: Task) => canEditRow(access, 'schedule', t.created_by);
   const today = todayIso();
@@ -382,7 +435,7 @@ export function SchedulePage() {
   if (q.error || !data) return <div className="grid gap-4">{header()}<ErrorState error={q.error} onRetry={() => q.refetch()} /></div>;
   if (!data.projects.length) return <div className="grid gap-4">{header()}<EmptyState icon="view_timeline" title="Chưa có công trình nào">Thêm công trình ở tab Công Trình trước.</EmptyState></div>;
 
-  return <ProjectSchedule key={projectId} {...{ data, projectId, choose, mode, filter, setFilter, query, setQuery, sheet, setSheet, phaseSheet, setPhaseSheet, settings, setSettings, zalo, setZalo, canEdit, canEditTask, today, header, addTask, addPhase, setProgress, toast }} />;
+  return <ProjectSchedule key={projectId} {...{ data, projectId, choose, mode, filter, setFilter, query, setQuery, sheet, setSheet, phaseSheet, setPhaseSheet, settings, setSettings, zalo, setZalo, canEdit, canEditTask, today, header, addTask, addPhase, setProgress, updateTask, toast }} />;
 }
 
 function ProjectSchedule(props: {
@@ -391,9 +444,9 @@ function ProjectSchedule(props: {
   sheet: TaskSheetTarget | null; setSheet: (s: TaskSheetTarget | null) => void; phaseSheet: Phase | null; setPhaseSheet: (p: Phase | null) => void;
   settings: boolean; setSettings: (v: boolean) => void; zalo: boolean; setZalo: (v: boolean) => void;
   canEdit: boolean; canEditTask: (t: Task) => boolean; today: string; header: (extra?: ReactNode) => ReactNode;
-  addTask: ReturnType<typeof useAddTask>; addPhase: ReturnType<typeof useAddPhase>; setProgress: ReturnType<typeof useSetProgress>; toast: ReturnType<typeof useToast>;
+  addTask: ReturnType<typeof useAddTask>; addPhase: ReturnType<typeof useAddPhase>; setProgress: ReturnType<typeof useSetProgress>; updateTask: ReturnType<typeof useUpdateTask>; toast: ReturnType<typeof useToast>;
 }) {
-  const { data, projectId, choose, mode, filter, setFilter, query, setQuery, sheet, setSheet, phaseSheet, setPhaseSheet, settings, setSettings, zalo, setZalo, canEdit, canEditTask, today, header, addTask, addPhase, setProgress, toast } = props;
+  const { data, projectId, choose, mode, filter, setFilter, query, setQuery, sheet, setSheet, phaseSheet, setPhaseSheet, settings, setSettings, zalo, setZalo, canEdit, canEditTask, today, header, addTask, addPhase, setProgress, updateTask, toast } = props;
   const project = data.projects.find((p) => p.id === projectId)!;
   const { plan, phases, tasks } = projectSchedule(data, projectId);
   const cal = plan ? calendarOf(plan) : { restDays: 'sun' as const, holidays: [] };
@@ -420,6 +473,10 @@ function ProjectSchedule(props: {
     .catch((e: Error) => { toast(`Chưa thêm được: ${e.message}`, 'error'); throw e; });
   const setPct = (t: Task, pct: number) => setProgress.set(t, pct, { onError: (e) => toast(`Chưa lưu được: ${e.message}`, 'error') });
 
+  const setDates = (t: Task, start: string, end: string) => updateTask.mutate({ task: t, patch: { start_date: start, end_date: end } }, {
+    onSuccess: () => toast(`${t.name}: ${fmtDm(start)} → ${fmtDm(end)}`),
+    onError: (e) => toast(`Chưa lưu được: ${e.message}`, 'error'),
+  });
   const counts = { all: view.tasks.length, late: view.lateCount, behind: view.behindCount, doing: view.doingCount };
   const filterOpts = [
     { value: 'all' as const, label: `Tất cả ${counts.all}` }, { value: 'late' as const, label: `Trễ ${counts.late}` },
@@ -467,7 +524,7 @@ function ProjectSchedule(props: {
             </>
           ) : (
             <GanttBoard view={view} today={today} deadline={plan.deadline} filter={filter} query={query} canEdit={canEdit} canEditTask={canEditTask}
-              onOpenTask={(t) => setSheet({ task: t })} onOpenPhase={setPhaseSheet} onQuickAdd={quickAdd} onAddPhase={quickPhase} onSetPct={setPct} />
+              onOpenTask={(t) => setSheet({ task: t })} onOpenPhase={setPhaseSheet} onQuickAdd={quickAdd} onAddPhase={quickPhase} onSetPct={setPct} onSetDates={setDates} />
           )}
         </>
       )}

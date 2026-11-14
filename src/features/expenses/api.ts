@@ -101,8 +101,8 @@ export function useLineHistory(enabled: boolean) {
     enabled,
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const rows = await fetchLive('expense_lines', z.object({ id: z.string(), name: z.string().nullable(), unit: z.string().nullable(), created_at: z.string().nullable() }));
-      return rows.map((r) => ({ name: r.name ?? '', unit: r.unit ?? '', date: r.created_at ?? '' }));
+      const rows = await fetchLive('expense_lines', z.object({ id: z.string(), name: z.string().nullable(), unit: z.string().nullable(), unit_price: z.coerce.number().nullable().optional(), created_at: z.string().nullable() }));
+      return rows.map((r) => ({ name: r.name ?? '', unit: r.unit ?? '', unitPrice: Math.round(Number(r.unit_price) || 0), date: r.created_at ?? '' }));
     },
   });
 }

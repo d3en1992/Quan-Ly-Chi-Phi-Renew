@@ -120,7 +120,7 @@ function DetailInvoice({ lists, expenses, onSavedDate }: { lists: Lists; expense
         <div className="flex-1" />
       </header>
       <div className="grid gap-3 p-4" onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save(); } }}>
-        <InvoiceFields draft={draft} setDraft={setDraft} lists={lists} suggestions={suggestions} descriptions={descriptions} bad={bad} />
+        <InvoiceFields draft={draft} setDraft={setDraft} lists={lists} suggestions={suggestions} descriptions={descriptions} bad={bad} onSave={save} />
         <div className="flex flex-wrap justify-end gap-2">
           <Button onClick={() => { setDraft(blankInvoice(today(), true)); setBad([]); }}><Icon name="restart_alt" />Làm lại</Button>
           <Button variant="primary" data-testid="detail-save" disabled={create.isPending} onClick={save}><Icon name="save" />{create.isPending ? 'Đang lưu…' : 'Lưu hóa đơn'}</Button>

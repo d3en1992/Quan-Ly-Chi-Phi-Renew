@@ -190,7 +190,7 @@ function Sheet({ scan, image, compact = false, onDone, onRetake, data }: Props &
                       ))}
                     </div>
                     {open ? (
-                      <div className="grid gap-1 text-[12px] text-muted">Gõ số công (được số lẻ: 1,3 · 0,75; “5” = nửa công)
+                      <div className="grid gap-1 text-[12px] text-muted">Gõ số công (được số lẻ: 1,3 · 0,75)
                         <div className="grid grid-cols-7 gap-1">
                           {r.days.map((v, d) => <PhoneDayInput key={d} label={`Số công ${DAY_LABELS[d]} dòng ${i + 1}`} value={v} onChange={(nv) => setDay(d, nv)} />)}
                         </div>

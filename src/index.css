@@ -89,7 +89,7 @@
 .tbl.tbl-tight th, .tbl.tbl-tight td { padding-left: 8px; padding-right: 8px; } /* bảng hẹp đặt cạnh nhau (Tổng lương & Lịch sử) */
 
 /* Gantt Tiến Độ (PAGES.tiendo của mẫu): cột trái = bảng việc, cột phải = thanh theo ngày; cuộn ngang trong khung .tbl */
-.gantt { display: grid; grid-template-columns: minmax(260px, 470px) minmax(560px, 1fr); font-size: 12.5px; min-width: 820px; }
+.gantt { display: grid; grid-template-columns: minmax(340px, 560px) minmax(560px, 1fr); font-size: 12.5px; min-width: 900px; }
 .gantt .gh { padding: 8px 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11.5px; font-weight: 600; display: flex; gap: 8px; min-height: 34px; align-items: center; }
 .gantt .gl { padding: 6px 12px; border-bottom: 1px solid var(--line-soft); display: flex; gap: 8px; align-items: center; height: 36px; min-width: 0; overflow: hidden; }
 .gantt .gl.phase { font-weight: 700; background: var(--surface-2); }
@@ -102,7 +102,14 @@
 .gbar.done { border-color: var(--good); background: var(--good-soft); } .gbar.done i { background: var(--good); }
 .gbar.behind { border-color: var(--warn); background: var(--warn-soft); } .gbar.behind i { background: var(--warn); }
 .gbar.late { border-color: var(--bad); background: var(--bad-soft); } .gbar.late i { background: var(--bad); }
-.gbar.ph { top: 13px; height: 10px; background: var(--line); border-color: var(--faint); } .gbar.ph i { background: var(--fg); opacity: .55; }
+.gbar { touch-action: none; user-select: none; overflow: visible; }
+.gbar i { border-radius: 4px 0 0 4px; }
+.gbar .gh-l, .gbar .gh-r { position: absolute; top: -1px; bottom: -1px; width: 8px; cursor: ew-resize; }
+.gbar .gh-l { left: -4px; } .gbar .gh-r { right: -4px; }
+.gbar:hover .gh-l, .gbar:hover .gh-r { background: color-mix(in srgb, var(--fg) 25%, transparent); border-radius: 3px; }
+.gdrag-tip { position: absolute; bottom: calc(100% + 3px); left: 0; white-space: nowrap; font-size: 10.5px; font-weight: 600; background: var(--fg); color: var(--surface); padding: 1px 6px; border-radius: 4px; pointer-events: none; }
+.gmile { touch-action: none; }
+.gbar.ph { overflow: hidden;  top: 13px; height: 10px; background: var(--line); border-color: var(--faint); } .gbar.ph i { background: var(--fg); opacity: .55; }
 .gmile { position: absolute; top: 11px; width: 13px; height: 13px; margin-left: -6px; transform: rotate(45deg); background: var(--accent); border-radius: 2px; }
 .gmile.done { background: var(--good); } .gmile.late { background: var(--bad); }
 .today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--bad); z-index: 2; pointer-events: none; }

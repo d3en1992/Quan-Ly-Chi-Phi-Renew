@@ -250,7 +250,7 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
                 </div>
                 {open ? (
                   <div className="grid grid-cols-2 gap-2 text-[12px] text-muted">
-                    <div className="col-span-2 grid gap-1">Gõ số công (được số lẻ: 1,3 · 0,75; “5” = nửa công)
+                    <div className="col-span-2 grid gap-1">Gõ số công (được số lẻ: 1,3 · 0,75)
                       <div className="grid grid-cols-7 gap-1">
                         {r.days.map((v, d) => (
                           <PhoneDayInput key={d} label={`Số công ${DAY_LABELS[d]} ${r.name}`} value={v} disabled={readOnly}
@@ -384,7 +384,7 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
           </div>
         )}
       </Card>
-      <Note>Ô ngày: bấm để đổi 1 → ½ → 0, hoặc gõ số rồi Enter / mũi tên — được số lẻ dấu chấm hoặc phẩy (1,3 · 0.75 · 2). Gõ đúng <b>5</b> một mình = nửa công; 5,5 hay 15 là đúng số đó. Phụ cấp / HĐ mua lẻ / nội dung đang ẩn vẫn tính vào Thực lãnh (dòng có khoản ẩn có chấm cam ở Thực lãnh). Trả nợ ứng lương ghi ở tab <b>Tạm ứng lương</b>.</Note>
+      <Note>Ô ngày: bấm để đổi 1 → ½ → 0, hoặc gõ số rồi Enter / mũi tên — được số lẻ dấu chấm hoặc phẩy (1,3 · 0.75 · 2). Gõ <b>H</b> = nửa công. Phụ cấp / HĐ mua lẻ / nội dung đang ẩn vẫn tính vào Thực lãnh (dòng có khoản ẩn có chấm cam ở Thực lãnh). Trả nợ ứng lương ghi ở tab <b>Tạm ứng lương</b>.</Note>
       {dialogs}
     </>
   );

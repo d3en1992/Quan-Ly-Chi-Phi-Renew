@@ -60,13 +60,13 @@ describe('một dòng sổ chấm công (calcCCRow + Trừ nợ)', () => {
     expect(parseDayUnit('0,5')).toBe(0.5);
     expect(parseDayUnit('1')).toBe(1);
   });
-  it('GĐ99: gõ số lẻ dấu chấm / phẩy, không giới hạn trên; đúng "5" một mình = nửa công; âm / chữ = null', () => {
+  it('GĐ99: gõ số lẻ dấu chấm / phẩy, không giới hạn trên; "5" = 5 công; âm / chữ = null', () => {
     expect(parseDayUnit('1.3')).toBe(1.3);
     expect(parseDayUnit('1,5')).toBe(1.5);
     expect(parseDayUnit('2')).toBe(2);
     expect(parseDayUnit('0.75')).toBe(0.75);
     expect(parseDayUnit(',5')).toBe(0.5);
-    expect(parseDayUnit('5')).toBe(0.5);
+    expect(parseDayUnit('5')).toBe(5);
     expect(parseDayUnit('5.5')).toBe(5.5);
     expect(parseDayUnit('15')).toBe(15);
     expect(parseDayUnit('8')).toBe(8);

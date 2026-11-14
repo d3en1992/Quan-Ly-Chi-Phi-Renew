@@ -104,13 +104,12 @@ export function cycleDayUnit(v: number): number {
 
 /**
  * Ô ngày công gõ tay (GĐ99, anh Tình chọn): nhận số lẻ dấu chấm hoặc phẩy, không giới hạn trên — "1,3", "1.5", "2", "0.75".
- * Riêng đúng chữ "5" một mình = nửa công (0,5) như app cũ; "5.5", "15" là đúng số đó. Rỗng = 0.
+ * Gõ "5" là 5 công (anh Tình sửa 14/11/2026, bỏ quy tắc "5" = nửa công của app cũ). Rỗng = 0.
  * Số âm / có chữ → null (báo lỗi, không nhận). Làm tròn 2 số lẻ.
  */
 export function parseDayUnit(text: string): number | null {
   const t = text.trim();
   if (t === '') return 0;
-  if (t === '5') return 0.5;
   if (!/^(\d+([.,]\d*)?|[.,]\d+)$/.test(t)) return null;
   const n = Number(t.replace(',', '.'));
   return Number.isFinite(n) && n >= 0 ? round2(n) : null;

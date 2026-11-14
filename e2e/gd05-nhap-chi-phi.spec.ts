@@ -212,6 +212,35 @@ test('Hóa đơn chi tiết: lưu 2 dòng vật tư → bấm dòng trong ngày 
   await expect(page.getByLabel('Tên vật tư dòng 3')).toHaveCount(0);
   await expect(page.getByLabel('Tên vật tư dòng 2')).toHaveValue('Vận chuyển');
   expect(await money(page, 'invoice-total')).toBe(1_500_000);
+
+  // Lưới kiểu Sheet (14/11/2026): Enter ở dòng cuối thêm dòng → dán 2 dòng từ Excel (tự tách cột, tự thêm dòng) → Ctrl+Z bỏ lần dán
+  await page.getByLabel('Tên vật tư dòng 2').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByLabel('Tên vật tư dòng 3')).toBeFocused();
+  await page.evaluate((text) => {
+    const dt = new DataTransfer();
+    dt.setData('text/plain', text);
+    document.activeElement!.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  }, 'Đinh 5 phân\tkg\t2\t50.000 đ\r\nKẽm buộc\tkg\t1\t30.000\r\n');
+  await expect(page.getByLabel('Tên vật tư dòng 4')).toHaveValue('Kẽm buộc');
+  await expect(page.getByLabel('Đơn giá dòng 3')).toHaveValue('50.000');
+  expect(await money(page, 'invoice-total')).toBe(1_630_000);
+  await page.keyboard.press('Control+z');
+  await expect(page.getByLabel('Tên vật tư dòng 3')).toHaveValue('');
+  expect(await money(page, 'invoice-total')).toBe(1_500_000);
+  // Kéo ô vuông góc ô ĐVT dòng 1 xuống dòng 2 → điền "tấm"; Ctrl+Z quay lại
+  await page.getByLabel('ĐVT dòng 1').click();
+  const handle = (await page.getByTestId('fill-handle').boundingBox())!;
+  const target = (await page.getByLabel('ĐVT dòng 2').boundingBox())!;
+  await page.mouse.move(handle.x + 3, handle.y + 3);
+  await page.mouse.down();
+  await page.mouse.move(target.x + 10, target.y + target.height / 2, { steps: 5 });
+  await page.mouse.up();
+  await expect(page.getByLabel('ĐVT dòng 2')).toHaveValue('tấm');
+  await page.getByLabel('ĐVT dòng 1').focus();
+  await page.keyboard.press('Control+z');
+  await expect(page.getByLabel('ĐVT dòng 2')).toHaveValue('');
+
   await page.screenshot({ path: `${SHOTS}/hoa-don-chi-tiet-da-nhap.png`, fullPage: true });
   await page.getByTestId('detail-save').click();
   await expect(page.getByText('Đã lưu hóa đơn 2 dòng')).toBeVisible();

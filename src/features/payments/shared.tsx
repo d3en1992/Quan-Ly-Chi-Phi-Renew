@@ -18,6 +18,8 @@ import {
 import { formatDate, formatMoney } from '@/lib/format';
 import type { ModuleKey } from '@/lib/permissions';
 import { paymentZaloText } from './zalo';
+import { ItemsGrid } from './ItemsGrid';
+import { sheetClip } from '@/components/ui/sheet-grid';
 import { findByName } from '@/features/expenses/logic';
 import { todayIso } from '@/features/reports/shared';
 import {
@@ -75,7 +77,11 @@ export function ItemsEditor({ items, onChange, disabled }: { items: ContractItem
   const copy = () => {
     const rows = items.filter((i) => i.name.trim() || i.sl || i.donGia);
     if (!rows.length) { toast('Không có dữ liệu để copy', 'error'); return; }
-    try { localStorage.setItem(KL_KEY, JSON.stringify(rows.map((r) => ({ ten: r.name, donvi: r.donVi, khoiluong: r.sl, dongia: r.donGia })))); toast('Đã copy khối lượng chi tiết'); }
+    // Chép cả ra clipboard dạng bảng → dán thẳng vào Excel được
+    const tsv = rows.map((r) => [r.name, r.donVi, r.sl ? String(r.sl).replace('.', ',') : '', r.donGia ? String(r.donGia) : ''].map((x) => x.replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\r\n');
+    sheetClip.set(tsv);
+    void navigator.clipboard?.writeText(tsv).catch(() => undefined);
+    try { localStorage.setItem(KL_KEY, JSON.stringify(rows.map((r) => ({ ten: r.name, donvi: r.donVi, khoiluong: r.sl, dongia: r.donGia })))); toast('Đã copy khối lượng chi tiết (dán được vào Excel)'); }
     catch { toast('Copy thất bại', 'error'); }
   };
   const paste = () => {
@@ -120,27 +126,7 @@ export function ItemsEditor({ items, onChange, disabled }: { items: ContractItem
           ))}
           <div className="flex justify-between rounded-lg bg-surface-2 px-3 py-2 text-[13px] font-bold"><span>Tổng hạng mục</span><span className="num" data-testid="items-total">{formatMoney(contractItemsTotal(items))}</span></div>
         </div>
-      ) : items.length ? (
-        <div className="tbl">
-          <table data-testid="items-table">
-            <thead><tr><th>Hạng mục</th><th style={{ width: 70 }}>ĐVT</th><th style={{ width: 90 }} className="!text-right">Khối lượng</th><th style={{ width: 130 }} className="!text-right">Đơn giá</th><th className="!text-right">Thành tiền</th><th style={{ width: 36 }} /></tr></thead>
-            <tbody>
-              {items.map((it, i) => (
-                <tr key={i}>
-                  <td className="!p-1"><Input aria-label={`Hạng mục ${i + 1}`} disabled={disabled} value={it.name} onChange={(e) => set(i, { name: e.target.value })} /></td>
-                  <td className="!p-1"><Input aria-label={`ĐVT ${i + 1}`} disabled={disabled} value={it.donVi} onChange={(e) => set(i, { donVi: e.target.value })} /></td>
-                  <td className="!p-1"><Input aria-label={`Khối lượng ${i + 1}`} disabled={disabled} inputMode="decimal" className="num text-right" value={it.sl ? String(it.sl).replace('.', ',') : ''}
-                    onChange={(e) => set(i, { sl: Number(e.target.value.replace(/[^\d.,]/g, '').replace(',', '.')) || 0 })} /></td>
-                  <td className="!p-1"><MoneyInput aria-label={`Đơn giá ${i + 1}`} disabled={disabled} value={it.donGia} onChange={(v) => set(i, { donGia: v })} /></td>
-                  <td className="num text-right whitespace-nowrap">{formatMoney(contractItemsTotal([it]))}</td>
-                  <td className="!p-1">{disabled ? null : <Button size="icon" variant="ghost-danger" aria-label={`Xóa hạng mục ${i + 1}`} onClick={() => onChange(items.filter((_, j) => j !== i))}><Icon name="close" /></Button>}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot><tr className="font-bold"><td colSpan={4}>Tổng hạng mục</td><td className="num text-right" data-testid="items-total">{formatMoney(contractItemsTotal(items))}</td><td /></tr></tfoot>
-          </table>
-        </div>
-      ) : null}
+      ) : items.length ? <ItemsGrid items={items} onChange={onChange} disabled={disabled} /> : null}
       <ConfirmDialog open={!!askPaste} onOpenChange={(o) => { if (!o) setAskPaste(null); }} title="Ghi đè hạng mục?" confirmLabel="Ghi đè"
         message="Hợp đồng đang có hạng mục. Dán sẽ thay toàn bộ bằng dữ liệu đã copy."
         onConfirm={() => { if (askPaste) onChange(askPaste); setAskPaste(null); toast('Đã dán khối lượng chi tiết'); }} />
