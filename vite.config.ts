@@ -33,12 +33,22 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
-        navigateFallback: '/index.html',
-        // Mọi gọi tới Supabase / API đi thẳng ra mạng, không qua cache
-        navigateFallbackDenylist: [/^\/rest\//, /^\/auth\//, /^\/functions\//, /^\/storage\//],
-        // Chỉ cache phông chữ + icon của Google Fonts (không phải dữ liệu nghiệp vụ)
+        // KHÔNG cất index.html sẵn: trước 16/11/2026 service worker trả index.html cũ trong máy nên F5 / vuốt xuống
+        // vẫn ra giao diện cũ, phải kill app. Nay trang (index.html) luôn hỏi Vercel trước (NetworkFirst bên dưới).
+        globPatterns: ['**/*.{js,css,png,svg,woff2}'],
+        navigateFallback: null,
         runtimeCaching: [
+          // Mở trang / F5 / vuốt xuống: lấy index.html mới từ mạng; mạng chậm quá 4 giây hoặc mất mạng mới dùng bản cất trong máy
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'trang-html',
+              networkTimeoutSeconds: 4,
+              expiration: { maxEntries: 5 },
+            },
+          },
+          // Chỉ cache phông chữ + icon của Google Fonts (không phải dữ liệu nghiệp vụ)
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
             handler: 'CacheFirst',
