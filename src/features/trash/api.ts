@@ -64,10 +64,8 @@ const DEFS: Def[] = [
     describe: (r, c) => ({ content: `CN ${dm(r.week_start)} – T7 ${dm(addDays(s(r.week_start), 6))}`, project: c.project(r.project_id), amount: c.weekPay.get(r.id) ?? null }) },
   { table: 'wage_advances', tab: 'advance', type: 'Ứng lương', modules: ['timesheets'], cols: 'project_id,worker_id,date,direction,amount,note', filter: (q) => q.is('source_week_id', null),
     describe: (r, c) => ({ content: [dm(r.date), r.direction === 'repay' ? 'Trả nợ' : 'Ứng tiền', c.worker(r.worker_id), s(r.note)].filter(Boolean).join(' · '), project: c.project(r.project_id), amount: n(r.amount) }) },
-  { table: 'payments', tab: 'advance', type: (r) => PAY_KIND[s(r.kind)] ?? 'Phiếu chi', modules: ['payments'], cols: 'project_id,kind,date,amount,supplier_id,subcontractor_id,note', filter: (q) => q.is('closure_id', null),
+  { table: 'payments', tab: 'advance', type: (r) => PAY_KIND[s(r.kind)] ?? 'Phiếu chi', modules: ['payments'], cols: 'project_id,kind,date,amount,supplier_id,subcontractor_id,note', filter: (q) => q.is('closure_id', null), // ẩn phiếu của lần tất toán cũ đã hoàn tác
     describe: (r, c) => ({ content: [dm(r.date), c.supplier(r.supplier_id) || c.subcontractor(r.subcontractor_id), s(r.note)].filter(Boolean).join(' · '), project: c.project(r.project_id), amount: n(r.amount) }) },
-  { table: 'payable_closures', tab: 'advance', type: 'Tất toán thầu phụ', modules: ['payables'], cols: 'project_id,subcontractor_id,closed_on,amount,note',
-    describe: (r, c) => ({ content: [dm(r.closed_on), c.subcontractor(r.subcontractor_id), s(r.note)].filter(Boolean).join(' · '), project: c.project(r.project_id), amount: n(r.amount) }) },
   { table: 'receipts', tab: 'receipt', type: (r) => RECEIPT_KIND[s(r.kind)] ?? 'Phiếu thu', modules: ['revenue', 'settlements'], cols: 'project_id,date,amount,kind,note', filter: (q) => q.eq('is_auto', false),
     describe: (r, c) => ({ content: [dm(r.date), s(r.note)].filter(Boolean).join(' · ') || 'Phiếu thu', project: c.project(r.project_id), amount: n(r.amount) }) },
   { table: 'main_contracts', tab: 'main_contract', type: 'HĐ chính', modules: ['revenue'], cols: 'project_id,date,value,extra_value,legacy_variation,description',

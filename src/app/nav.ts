@@ -49,7 +49,6 @@ export const NAV_TABS: NavItem[] = [
       { key: 'hdtp', slug: 'hop-dong', label: 'Thầu phụ', hint: 'Hợp đồng thầu phụ, đã trả, còn nợ', module: 'payables', aka: 'công nợ phải trả' },
       { key: 'ncc', slug: 'ncc', label: 'Nhà cung cấp', short: 'NCC', hint: 'Công nợ nhà cung cấp (hóa đơn mua nợ)', module: 'payables' },
       { key: 'phieuchi', slug: 'phieu-chi', label: 'Phiếu chi', hint: 'Phiếu chi trả thầu phụ và trả nợ nhà cung cấp', module: 'payments', aka: 'chi trả tp ncc' },
-      { key: 'tattoan', slug: 'tat-toan', label: 'Tất toán', hint: 'Chốt công nợ đã trả xong', module: 'payables' },
     ],
   },
   {
@@ -210,6 +209,7 @@ export const LEGACY_REDIRECTS: Record<string, string> = {
   '/xuat-du-lieu': pathOfSub('xuat'),
   '/thung-rac': pathOfSub('thungrac'),
   '/chup': AI_TAB.path,
+  '/thau-phu/tat-toan': pathOfSub('hdtp'), // tab Tất toán đã bỏ 18/11/2026
 };
 
 /** Bảng Phân quyền: nhóm các mục quyền theo tab (thứ tự như menu). Mục chưa nằm trong tab nào → nhóm "Khác". */

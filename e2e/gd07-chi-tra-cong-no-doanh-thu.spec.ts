@@ -87,14 +87,11 @@ for (const size of [{ name: '1440', width: 1440, height: 900 }, { name: '800', w
     await shot('chi-tra');
 
     await page.goto('/cong-no');
-    await expect(page.getByText('Tổng giá trị HĐ')).toBeVisible();
+    await expect(page.getByText('Tổng giá trị hợp đồng')).toBeVisible();
     await shot('cong-no-thau-phu');
     await sub('NHÀ CUNG CẤP').click();
     await expect(page.getByText('Còn nợ NCC')).toBeVisible();
     await shot('cong-no-ncc');
-    await sub('TẤT TOÁN').click();
-    await expect(page.getByText('Chờ tất toán')).toBeVisible();
-    await shot('cong-no-tat-toan');
 
     await page.goto('/doanh-thu');
     await page.getByRole('tab', { name: 'HỢP ĐỒNG CHÍNH' }).click();
@@ -186,7 +183,7 @@ test('Trả NCC theo cục 50 tr → chia vào hóa đơn cũ nhất trước; C
   expect(errors).toEqual([]);
 });
 
-test('HĐ thầu phụ: thêm, trả nhanh, Chi Trả hiện "còn phải trả", Tất toán tạo phiếu chi phần còn lại, Hoàn tác', async ({ page }) => {
+test('HĐ thầu phụ: thêm, trả nhanh, Chi Trả hiện "còn phải trả"; đường dẫn Tất toán cũ về trang Thầu phụ', async ({ page }) => {
   const errors = watchConsole(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await login(page, 'e2e.gd');
@@ -218,24 +215,9 @@ test('HĐ thầu phụ: thêm, trả nhanh, Chi Trả hiện "còn phải trả"
   await page.getByLabel('Công trình dòng 1').selectOption(nhutId);
   await expect(page.getByTestId('pay-grid-debt')).toContainText('6.000.000');
 
-  // Tất toán: tạo phiếu chi 6.000.000, rồi Hoàn tác
-  await page.goto('/cong-no');
-  await page.getByRole('tab', { name: 'TẤT TOÁN' }).click();
-  await page.getByText('Hiện cả khoản còn nợ').click();
-  await page.getByTestId('tt-waiting').getByRole('row', { name: new RegExp(TP) }).getByRole('button', { name: 'Tất toán' }).click();
-  await page.getByLabel('Ngày phiếu chi').fill('2030-10-20');
-  await page.getByTestId('tt-ok').click();
-  await expect(page.getByText(/Đã tất toán/).first()).toBeVisible();
-  await expect(page.getByTestId('tt-done').getByRole('row', { name: new RegExp(TP) })).toContainText('6.000.000');
-  const auto = await one(admin.from('payments').select('amount,kind,closure_id').eq('subcontractor_id', tpId).not('closure_id', 'is', null).is('deleted_at', null));
-  expect(auto).toHaveLength(1);
-  expect(auto[0]).toMatchObject({ amount: 6_000_000, kind: 'progress' });
-  await page.screenshot({ path: `${SHOTS}/tat-toan.png`, fullPage: true });
-
-  await page.getByTestId('tt-undo').click();
-  await page.getByRole('button', { name: 'Hoàn tác', exact: true }).click();
-  await expect(page.getByText('Đã hoàn tác lần tất toán')).toBeVisible();
-  expect(await one(admin.from('payments').select('id').eq('subcontractor_id', tpId).not('closure_id', 'is', null).is('deleted_at', null))).toEqual([]);
+  // Tab Tất toán đã bỏ (18/11/2026): đường dẫn cũ chuyển về trang Thầu phụ
+  await page.goto('/thau-phu/tat-toan');
+  await expect(page).toHaveURL(/\/thau-phu\/hop-dong$/);
   expect(errors).toEqual([]);
 });
 

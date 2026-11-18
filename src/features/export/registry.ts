@@ -8,7 +8,7 @@ export type Row = Record<string, unknown>;
 export type DatasetKey =
   | 'expenses' | 'expense_lines' | 'cost_allocations'
   | 'timesheet_weeks' | 'timesheet_lines' | 'wage_advances'
-  | 'receipts' | 'payments' | 'payment_allocations' | 'subcontracts' | 'main_contracts' | 'settlements' | 'payable_closures'
+  | 'receipts' | 'payments' | 'payment_allocations' | 'subcontracts' | 'main_contracts' | 'settlements'
   | 'equipment'
   | 'customers' | 'workers' | 'suppliers' | 'subcontractors' | 'employees' | 'catalog_items' | 'contact_private' | 'projects'
   | 'schedule_templates' | 'schedule_phases' | 'schedule_tasks' | 'schedule_notes';
@@ -188,12 +188,6 @@ export const DATASETS: Dataset[] = [
     key: 'settlements', label: 'Quyết toán', sheet: 'Quyet toan', group: 'tien', table: 'settlements', permModule: 'settlements',
     link: { kind: 'direct', field: 'project_id' }, dateField: 'date',
     columns: [date('date'), txt('kind', 'LOẠI', 10, (r) => lab(L.stKind, r.kind)), bool('is_final', 'CHỐT'), note(), money('amount', 'SỐ TIỀN')],
-  },
-  {
-    key: 'payable_closures', label: 'Tất toán công nợ', sheet: 'Tat toan', group: 'tien', table: 'payable_closures', permModule: 'payables',
-    link: { kind: 'direct', field: 'project_id' }, dateField: 'closed_on',
-    columns: [date('closed_on'), txt('party', 'THẦU PHỤ / NCC', 26, (r, c) => (r.subcontractor_id ? c.name('subcontractors', r.subcontractor_id) : c.name('suppliers', r.supplier_id))),
-      txt('undone', 'ĐÃ HOÀN TÁC', 10, (r) => (r.undone_at ? 'Có' : '')), note(), money('amount', 'SỐ TIỀN')],
   },
 
   // ───── KHÁC ─────

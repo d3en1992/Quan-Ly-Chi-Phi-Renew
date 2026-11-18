@@ -305,7 +305,7 @@ function SubsTab({ data, rows }: { data: ReportData; rows: ReturnType<typeof pro
     <MiniList items={rows.map((r) => ({
       key: r.id, title: data.subcontractorName.get(r.subcontractorId) ?? '—',
       sub: `HĐ ${formatDate(r.date)} · ${formatMoney(r.total)}`,
-      value: Math.round(r.debt) > 0 ? <span className="text-bad">{formatMoney(r.debt)}</span> : <Pill tone="good">Đã tất toán</Pill>,
+      value: Math.round(r.debt) > 0 ? <span className="text-bad">{formatMoney(r.debt)}</span> : <Pill tone="good">Đã trả đủ</Pill>,
       valueSub: `đã trả ${formatMoney(r.paid)}`,
     }))} />
   );
@@ -319,7 +319,7 @@ function SubsTab({ data, rows }: { data: ReportData; rows: ReturnType<typeof pro
               <tr key={r.id}>
                 <td className="font-semibold">{data.subcontractorName.get(r.subcontractorId) ?? '—'}</td><td className="num">{formatDate(r.date)}</td>
                 <td className="text-right"><Money value={r.total} /></td><td className="text-right"><Money value={r.paid} /></td>
-                <td className="text-right">{Math.round(r.debt) > 0 ? <Money value={r.debt} className="text-bad" /> : <Pill tone="good">Đã tất toán</Pill>}</td>
+                <td className="text-right">{Math.round(r.debt) > 0 ? <Money value={r.debt} className="text-bad" /> : <Pill tone="good">Đã trả đủ</Pill>}</td>
               </tr>
             ))}
           </tbody>

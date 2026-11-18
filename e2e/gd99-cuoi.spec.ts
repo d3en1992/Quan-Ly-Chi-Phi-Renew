@@ -16,7 +16,7 @@ const SIZES = [
 // Menu 9 tab + tab con (gộp 13/11/2026)
 const ROUTES: [string, string][] = [
   ['cong-trinh', '/cong-trinh'], ['nhap-chi-phi', '/chi-phi/nhap'], ['tra-cuu', '/chi-phi/tra-cuu'],
-  ['cham-cong', '/cham-cong'], ['hd-thau-phu', '/thau-phu/hop-dong'], ['ncc', '/thau-phu/ncc'], ['tat-toan', '/thau-phu/tat-toan'],
+  ['cham-cong', '/cham-cong'], ['hd-thau-phu', '/thau-phu/hop-dong'], ['ncc', '/thau-phu/ncc'],
   ['phieu-chi', '/thau-phu/phieu-chi'], ['hd-chinh', '/thu-lai/hop-dong'], ['thu-tien', '/thu-lai/thu-tien'],
   ['quyet-toan', '/thu-lai/quyet-toan'], ['loi-nhuan', '/thu-lai/loi-nhuan'], ['tien-do', '/ke-hoach/tien-do'],
   ['ti-trong', '/ke-hoach/ti-trong'], ['dinh-muc', '/ke-hoach/dinh-muc'], ['cau-hinh', '/ke-hoach/cau-hinh'],

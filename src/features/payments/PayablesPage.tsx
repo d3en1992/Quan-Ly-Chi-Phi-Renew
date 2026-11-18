@@ -1,5 +1,6 @@
 // Tab CÔNG NỢ PHẢI TRẢ (PAGES.congno / MP.congno — công ty nợ thầu phụ, nhà cung cấp; mục 4L):
-// HỢP ĐỒNG THẦU PHỤ (master–detail, trả nhanh) · NHÀ CUNG CẤP (sổ nợ theo NCC + Đối chiếu, mục 4J) · TẤT TOÁN.
+// THẦU PHỤ (hợp đồng thầu phụ, master–detail, trả nhanh) · NHÀ CUNG CẤP (sổ nợ theo NCC + Đối chiếu, mục 4J).
+// (Tất toán đã bỏ 18/11/2026: không ảnh hưởng số liệu; trả nốt dùng "Trả thêm", xem đã xong dùng lọc "Đã trả đủ".)
 import { Fragment, useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -8,13 +9,13 @@ import { Button, Icon } from '@/components/ui/button';
 import { Combo } from '@/components/ui/combo';
 import { ConfirmDialog } from '@/components/ui/confirm';
 import { FilterBar, FilterSelect, HBar, KpiStrip, MiniList, MobileCard, MobileRow, SearchBox } from '@/components/ui/data';
-import { Checkbox, Field, Input, MoneyInput, Select } from '@/components/ui/input';
+import { Field, Input, MoneyInput, Select } from '@/components/ui/input';
 import { Card, CardHeader, EmptyState, ErrorState, LoadingState, Note, Pill } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
 import {
-  allocatedByPayment, contractItemsTotal, inYearLoose, PAYABLE_DONE_TOLERANCE, percentOf, subcontractTotal, sumOf, supplierStatement, toYearFilter,
-  type ContractItem, type PairPayable, type YearFilter,
+  allocatedByPayment, contractItemsTotal, inYearLoose, percentOf, subcontractTotal, sumOf, supplierStatement, toYearFilter,
+  type ContractItem, type YearFilter,
 } from '@/lib/calc';
 import { formatDate, formatMoney } from '@/lib/format';
 import { hasLevel } from '@/lib/permissions';
@@ -23,12 +24,12 @@ import { subcontractZaloText, supplierZaloText } from './zalo';
 import { findByName } from '@/features/expenses/logic';
 import { matchesSearch, todayIso } from '@/features/reports/shared';
 import {
-  MODE_LABEL, useClosePayable, useCreateParty, useCreatePayments, useDeleteSubcontract, usePayData, useSaveSubcontract, useUndoClosure,
-  type Closure, type PayData, type Subcontract,
+  MODE_LABEL, useCreateParty, useCreatePayments, useDeleteSubcontract, usePayData, useSaveSubcontract,
+  type PayData, type Subcontract,
 } from './api';
 import { blankPayDraft, canEditRow, ItemsEditor, PaymentSheet, projectFilterOptions, usePayCalc, type PayCalc, type PayDraft } from './shared';
 
-export type PayablesTab = 'contracts' | 'suppliers' | 'closures';
+export type PayablesTab = 'contracts' | 'suppliers';
 type Ctx = { data: PayData; calc: PayCalc; years: YearFilter; phone: boolean; canAdd: boolean; canPay: boolean; company: string };
 
 const pct = (a: number, b: number) => percentOf(a, b) ?? 0;
@@ -404,126 +405,7 @@ function SuppliersTab({ ctx, onPay }: { ctx: Ctx; onPay: (supplierName: string) 
   );
 }
 
-// ───────────────────────── TẤT TOÁN ─────────────────────────
-function ClosuresTab({ ctx }: { ctx: Ctx }) {
-  const { data, calc, years, phone, canAdd } = ctx;
-  const toast = useToast();
-  const close = useClosePayable(), undo = useUndoClosure();
-  const [showDebt, setShowDebt] = useState(false);
-  const [party, setParty] = useState('');
-  const [q, setQ] = useState('');
-  const [pending, setPending] = useState<PairPayable | null>(null);
-  const [date, setDate] = useState(todayIso());
-  const [askUndo, setAskUndo] = useState<Closure | null>(null);
-
-  const closedKeys = useMemo(() => new Set(data.closures.filter((c) => c.subcontractor_id).map((c) => `${c.subcontractor_id}|${c.project_id}`)), [data]);
-  const waiting = useMemo(() => calc.pairs.filter((p) => p.contractCount > 0 && !closedKeys.has(p.key)
-    && (showDebt ? true : p.paid > 0 && p.debt <= PAYABLE_DONE_TOLERANCE)
-    && (data.subcontracts.some((h) => h.subcontractor_id === p.subcontractorId && h.project_id === p.projectId && inYearLoose(h.date, years))
-      || data.payments.some((u) => u.subcontractor_id === p.subcontractorId && u.project_id === p.projectId && inYearLoose(u.date, years))))
-    .sort((a, b) => a.debt - b.debt), [calc, closedKeys, showDebt, data, years]);
-  const partyOf = (c: Closure) => (c.party_kind === 'supplier' ? data.supplierName(c.supplier_id) : data.subcontractorName(c.subcontractor_id));
-  const done = useMemo(() => data.closures.filter((c) => inYearLoose(c.closed_on, years) && (!party || partyOf(c) === party) && matchesSearch(q, partyOf(c), data.projectName(c.project_id)))
-    .sort((a, b) => b.closed_on.localeCompare(a.closed_on) || (b.created_at ?? '').localeCompare(a.created_at ?? '')), [data, years, party, q]); // eslint-disable-line react-hooks/exhaustive-deps
-  const last = useMemo(() => [...data.closures].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0] ?? null, [data]);
-  const partyOpts = [...new Set(data.closures.map(partyOf))].sort((a, b) => a.localeCompare(b, 'vi')).map((n) => ({ value: n, label: n }));
-  const cleared = [...calc.supplier.values()].filter((s) => s.paid > 0 && s.debt <= 0);
-  const detail = (c: Closure) => (c.party_kind === 'supplier' ? 'Nhà cung cấp' : `HĐ thầu phụ${c.amount > 0 ? ` · phiếu chi ${formatMoney(c.amount)}` : ' · đóng sổ'}`);
-
-  const confirmClose = () => {
-    if (!pending) return;
-    if (!date) { toast('Chọn ngày phiếu chi!', 'error'); return; }
-    const amount = Math.max(0, pending.debt);
-    close.mutate({ subcontractorId: pending.subcontractorId, projectId: pending.projectId, date, amount, by: '' }, {
-      onSuccess: () => { toast(`Đã tất toán ${data.subcontractorName(pending.subcontractorId)}${amount ? ` — ${formatMoney(amount)}` : ''}`); setPending(null); },
-      onError: (e) => toast(`Chưa tất toán được: ${e.message}`, 'error'),
-    });
-  };
-
-  return (
-    <>
-      <Card>
-        <CardHeader title="Chờ tất toán" sub={showDebt ? 'mọi cặp thầu phụ × công trình chưa đóng sổ' : 'đã trả đủ nhưng chưa đóng sổ'}
-          actions={<Checkbox checked={showDebt} onChange={setShowDebt} label="Hiện cả khoản còn nợ" />} />
-        {waiting.length === 0 ? <EmptyState icon="task_alt" title="Không có khoản nào chờ tất toán" /> : (
-          <div className="tbl">
-            <table data-testid="tt-waiting">
-              <thead><tr><th>Đối tác</th><th>Công trình</th><th className="!text-right">Giá trị</th><th className="!text-right">Đã trả</th><th className="!text-right">Còn lại</th><th /></tr></thead>
-              <tbody>
-                {waiting.map((p) => (
-                  <tr key={p.key}>
-                    <td className="whitespace-nowrap"><b className="font-semibold">{data.subcontractorName(p.subcontractorId)}</b></td>
-                    <td className="max-w-[260px] truncate">{data.projectName(p.projectId)}</td>
-                    <td className="num text-right">{formatMoney(p.value)}</td>
-                    <td className="num text-right">{formatMoney(p.paid)}</td>
-                    <td className="num text-right">{p.debt > 0 ? <b className="text-bad">{formatMoney(p.debt)}</b> : p.debt < 0 ? <span className="text-warn">dư {formatMoney(-p.debt)}</span> : <Dash />}</td>
-                    <td className="text-right">{canAdd ? <Button size="sm" variant="primary" onClick={() => { setPending(p); setDate(todayIso()); }}>Tất toán</Button> : null}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-      <FilterBar>
-        <FilterSelect label="Đối tác" value={party} onChange={setParty} options={partyOpts} />
-        <SearchBox value={q} onChange={setQ} />
-        <div className="flex-1" />
-        {canAdd ? <Button disabled={!last} data-testid="tt-undo" onClick={() => setAskUndo(last)}><Icon name="undo" />Hoàn tác lần tất toán gần nhất</Button> : null}
-      </FilterBar>
-      <Card>
-        <CardHeader title="Đã tất toán" sub={`${done.length} lần`} />
-        {done.length === 0 ? <EmptyState icon="history" title="Chưa có lần tất toán nào trong kỳ này" /> : phone ? (
-          <div className="grid gap-2 p-2">
-            {done.map((c) => (
-              <MobileCard key={c.id}>
-                <MobileRow><b className="truncate">{partyOf(c)}</b><b className="num">{formatMoney(c.amount)}</b></MobileRow>
-                <MobileRow meta><span className="truncate">{formatDate(c.closed_on)} · {data.projectName(c.project_id)}</span><span>{c.closed_by_name || data.userName(c.created_by)}</span></MobileRow>
-              </MobileCard>
-            ))}
-          </div>
-        ) : (
-          <div className="tbl">
-            <table data-testid="tt-done">
-              <thead><tr><th>Ngày TT</th><th>Đối tác</th><th>Công trình</th><th>Chi tiết</th><th className="!text-right">Tổng tiền</th></tr></thead>
-              <tbody>
-                {done.map((c) => (
-                  <tr key={c.id}>
-                    <td className="num whitespace-nowrap">{formatDate(c.closed_on)}</td>
-                    <td className="whitespace-nowrap"><b className="font-semibold">{partyOf(c)}</b></td>
-                    <td className="max-w-[260px] truncate">{data.projectName(c.project_id)}</td>
-                    <td className="text-muted">{detail(c)}</td>
-                    <td className="num text-right">{formatMoney(c.amount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-      <Note>Nhà cung cấp không cần bấm Tất toán: nợ về 0 là tự coi như đã tất toán{cleared.length ? ` — hiện có ${cleared.length} NCC đã hết nợ (${cleared.slice(0, 4).map((s) => data.supplierName(s.supplierId)).join(', ')}${cleared.length > 4 ? '…' : ''})` : ''}.</Note>
-
-      <Sheet open={!!pending} onOpenChange={(o) => { if (!o) setPending(null); }} title="Xác nhận tất toán"
-        footer={<><Button onClick={() => setPending(null)}>Hủy</Button><div className="flex-1" /><Button variant="primary" data-testid="tt-ok" disabled={close.isPending} onClick={confirmClose}>{pending && pending.debt > 0 ? 'OK — Tạo phiếu chi' : 'OK — Đóng sổ'}</Button></>}>
-        {pending ? (
-          <>
-            <p className="m-0 text-sm">{pending.debt > 0
-              ? <>Tạo phiếu chi thanh toán nốt <b className="num text-bad">{formatMoney(pending.debt)}</b> cho <b>{data.subcontractorName(pending.subcontractorId)}</b>?</>
-              : <>Đóng sổ công nợ với <b>{data.subcontractorName(pending.subcontractorId)}</b> (đã trả đủ, không tạo phiếu chi)?</>}</p>
-            <div className="text-xs text-muted">Công trình: <b>{data.projectName(pending.projectId)}</b><br />Giá trị {formatMoney(pending.value)} · Đã trả {formatMoney(pending.paid)}</div>
-            <Field label="Ngày phiếu chi"><Input type="date" aria-label="Ngày phiếu chi" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
-            <Note>Phiếu chi tự sinh nằm ở tab Chi Trả TP/NCC (chỉ xem). Hoàn tác được bằng nút “Hoàn tác lần tất toán gần nhất”.</Note>
-          </>
-        ) : null}
-      </Sheet>
-      <ConfirmDialog open={!!askUndo} onOpenChange={(o) => { if (!o) setAskUndo(null); }} title="Hoàn tác lần tất toán gần nhất?" danger busy={undo.isPending} confirmLabel="Hoàn tác"
-        message={askUndo ? <>Hủy lần tất toán ngày {formatDate(askUndo.closed_on)} của {partyOf(askUndo)} ({formatMoney(askUndo.amount)}). Phiếu chi tự sinh vào Thùng rác, công nợ quay lại như trước.</> : null}
-        onConfirm={() => { if (!askUndo) return; undo.mutate(askUndo.id, { onSuccess: () => { setAskUndo(null); toast('Đã hoàn tác lần tất toán'); }, onError: (e) => { setAskUndo(null); toast(`Chưa hoàn tác được: ${e.message}`, 'error'); } }); }} />
-    </>
-  );
-}
-
-/** Tab con do khung Thầu Phụ & NCC chọn (HĐ thầu phụ / Nhà cung cấp / Tất toán) */
+/** Tab con do khung Thầu Phụ & NCC chọn (Thầu phụ / Nhà cung cấp) */
 export function PayablesPage({ tab }: { tab: PayablesTab }) {
   const phone = useLayoutMode() === 'phone';
   const access = useAccess();
@@ -541,9 +423,7 @@ export function PayablesPage({ tab }: { tab: PayablesTab }) {
   };
   return (
     <>
-      {tab === 'contracts' ? <ContractsTab ctx={ctx} /> : tab === 'suppliers'
-        ? <SuppliersTab ctx={ctx} onPay={(name) => setPay(blankPayDraft({ kind: 'supplier_payment', party: name }))} />
-        : <ClosuresTab ctx={ctx} />}
+      {tab === 'contracts' ? <ContractsTab ctx={ctx} /> : <SuppliersTab ctx={ctx} onPay={(name) => setPay(blankPayDraft({ kind: 'supplier_payment', party: name }))} />}
       {pay ? <PaymentSheet draft={pay} setDraft={setPay} data={data} calc={calc} nccOnly onClose={() => setPay(null)} /> : null}
     </>
   );

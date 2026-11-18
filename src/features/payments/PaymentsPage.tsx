@@ -160,7 +160,7 @@ export function PaymentsPage() {
   const editing = draft?.id ? data.payments.find((p) => p.id === draft.id) : undefined;
   const sheet = draft ? (
     <PaymentSheet draft={draft} setDraft={setDraft} data={data} calc={calc} nccOnly={nccOnly} onClose={() => { setDraft(null); setNccOnly(false); }}
-      readOnly={!!editing && (!!editing.closure_id || !canEditRow(access, 'payments', editing.created_by))} />
+      readOnly={!!editing && !canEditRow(access, 'payments', editing.created_by)} />
   ) : null;
   const filters = (
     <FilterBar>

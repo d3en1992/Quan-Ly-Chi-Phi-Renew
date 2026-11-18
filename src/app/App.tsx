@@ -72,7 +72,6 @@ const SUB_PAGES: Record<string, (go: (subKey: string) => void) => ReactNode> = {
   tracuu: () => <ExpenseStatsPage />,
   hdtp: () => <PayablesPage tab="contracts" />,
   ncc: () => <PayablesPage tab="suppliers" />,
-  tattoan: () => <PayablesPage tab="closures" />,
   phieuchi: () => <PaymentsPage />,
   hdchinh: () => <RevenuePage tab="contracts" />,
   thutien: () => <RevenuePage tab="receipts" />,

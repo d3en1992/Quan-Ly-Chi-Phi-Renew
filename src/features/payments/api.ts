@@ -1,4 +1,4 @@
-// Đọc / ghi cho 2 tab Chi Trả TP/NCC và Công Nợ Phải Trả: phiếu chi, dòng chia tiền trả NCC, HĐ thầu phụ, tất toán,
+// Đọc / ghi cho 2 tab Chi Trả TP/NCC và Công Nợ Phải Trả: phiếu chi, dòng chia tiền trả NCC, HĐ thầu phụ,
 // hóa đơn mua nợ (chưa tích Đã TT). Công thức ở src/lib/calc/payables.ts; file này chỉ đọc / ghi.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -24,10 +24,6 @@ const subcontractSchema = z.object({
   id: z.string(), project_id: z.string(), subcontractor_id: z.string(), date, value: money, legacy_variation: money,
   items: itemsSchema, description: z.string().nullable(), created_by: z.string().nullable(), created_at: z.string().nullable(),
 });
-const closureSchema = z.object({
-  id: z.string(), party_kind: z.string(), subcontractor_id: z.string().nullable(), supplier_id: z.string().nullable(), project_id: z.string().nullable(),
-  closed_on: z.string(), amount: money, closed_by_name: z.string().nullable(), note: z.string().nullable(), created_by: z.string().nullable(), created_at: z.string().nullable(),
-});
 const creditSchema = z.object({
   id: z.string(), project_id: z.string(), supplier_id: z.string().nullable(), date, amount: money, paid_at_purchase: z.boolean(),
   description: z.string().nullable(), created_at: z.string().nullable(),
@@ -40,7 +36,6 @@ const profileSchema = z.object({ id: z.string(), display_name: z.string() });
 export type Payment = z.infer<typeof paymentSchema>;
 export type Allocation = z.infer<typeof allocationSchema>;
 export type Subcontract = z.infer<typeof subcontractSchema>;
-export type Closure = z.infer<typeof closureSchema>;
 export type CreditExpense = z.infer<typeof creditSchema> & { supplier_id: string };
 export type Party = z.infer<typeof partySchema>;
 export type PayProject = z.infer<typeof projectSchema>;
@@ -55,7 +50,6 @@ export type PayData = {
   payments: Payment[];
   allocations: Allocation[];
   subcontracts: Subcontract[];
-  closures: Closure[];
   /** Hóa đơn mua nợ (chưa tích Đã TT) có NCC */
   credits: CreditExpense[];
   suppliers: z.infer<typeof supplierSchema>[];
@@ -84,9 +78,8 @@ const fetchCredits = async () =>
   (await fetchWhere('expenses', creditSchema, (q) => q.eq('paid_at_purchase', false).not('supplier_id', 'is', null))) as CreditExpense[];
 
 export async function fetchPayData(): Promise<PayData> {
-  const [payments, allocations, subcontracts, closures, credits, suppliers, subcontractors, projects, profiles] = await Promise.all([
+  const [payments, allocations, subcontracts, credits, suppliers, subcontractors, projects, profiles] = await Promise.all([
     fetchLive('payments', paymentSchema), fetchLive('payment_allocations', allocationSchema), fetchLive('subcontracts', subcontractSchema),
-    fetchLive('payable_closures', closureSchema).catch(() => [] as Closure[]),
     fetchCredits().catch(() => [] as CreditExpense[]),
     fetchLive('suppliers', supplierSchema), fetchLive('subcontractors', partySchema), fetchLive('projects', projectSchema).catch(() => [] as PayProject[]),
     fetchLive('profiles', profileSchema, false).catch(() => [] as z.infer<typeof profileSchema>[]),
@@ -100,7 +93,7 @@ export async function fetchPayData(): Promise<PayData> {
   const supplierName = (id: string | null | undefined) => (id ? sup.get(id) ?? '?' : '—');
   const subcontractorName = (id: string | null | undefined) => (id ? sub.get(id) ?? '?' : '—');
   return {
-    payments, subcontracts, closures, credits,
+    payments, subcontracts, credits,
     allocations: allocations.filter((a) => payIds.has(a.payment_id)),
     suppliers: suppliers.sort(byName), subcontractors: subcontractors.sort(byName), projects: projects.sort(byName),
     projectOptions: [...open, ...projects.filter((p) => p.is_company_overhead)],
@@ -253,7 +246,8 @@ export function useDeletePayment() {
   const done = useRefresh();
   return useMutation({
     mutationFn: async (p: Pick<Payment, 'id' | 'kind'>) => {
-      const { data, error } = await sb.from('payments').update({ deleted_at: new Date().toISOString() }).eq('id', p.id).select('id');
+      // closure_id = null: phiếu sinh từ Tất toán cũ (tab đã bỏ) xóa đi vẫn hiện trong Thùng rác như phiếu thường
+      const { data, error } = await sb.from('payments').update({ deleted_at: new Date().toISOString(), closure_id: null }).eq('id', p.id).select('id');
       if (error) throw friendly(error);
       if (!data?.length) throw new Error('Không xóa được: phiếu do người khác ghi (cần quyền "Sửa / xóa dòng người khác nhập").');
       if (p.kind === 'supplier_payment') await syncSupplierAllocations({ clear: [p.id] });
@@ -320,27 +314,3 @@ export function useDeleteSubcontract() {
   });
 }
 
-export function useClosePayable() {
-  const done = useRefresh();
-  return useMutation({
-    mutationFn: async (v: { subcontractorId: string; projectId: string; date: string; amount: number; by: string }) => {
-      const { data, error } = await sb.rpc('close_payable', {
-        p_subcontractor_id: v.subcontractorId, p_project_id: v.projectId, p_date: v.date, p_amount: v.amount, p_by: v.by, p_note: null,
-      });
-      if (error) throw friendly(error);
-      return data as string;
-    },
-    onSuccess: done,
-  });
-}
-
-export function useUndoClosure() {
-  const done = useRefresh();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await sb.rpc('undo_payable_closure', { p_closure_id: id });
-      if (error) throw friendly(error);
-    },
-    onSuccess: done,
-  });
-}

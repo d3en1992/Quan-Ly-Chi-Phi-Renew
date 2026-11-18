@@ -19,7 +19,7 @@ const EXPECT: Record<string, Record<string, string[]>> = {
   giamdoc: { ...ALL_SUBS, caidat: ['danhba', 'danhmuc', 'xuat', 'thungrac'] },
   quanly: { ...ALL_SUBS, caidat: ['danhba', 'danhmuc', 'xuat', 'thungrac'] },
   ketoan: {
-    congtrinh: [], chiphi: ['nhap', 'tracuu'], chamcong: [], thauphu: ['hdtp', 'ncc', 'phieuchi', 'tattoan'],
+    congtrinh: [], chiphi: ['nhap', 'tracuu'], chamcong: [], thauphu: ['hdtp', 'ncc', 'phieuchi'],
     kehoach: ['tiendo'], trolyai: [], caidat: ['danhba', 'xuat', 'thungrac'],
   },
   chixem: { congtrinh: [], chiphi: ['tracuu'], kehoach: ['tiendo'], caidat: ['xuat'] },
@@ -76,7 +76,7 @@ describe('đường dẫn', () => {
 
   it('mọi đường dẫn cũ đều chuyển tới một tab con có thật', () => {
     const paths = new Set(allEntries().map((e) => e.path));
-    expect(Object.keys(LEGACY_REDIRECTS).length).toBe(15); // + /chup → Trợ lý AI
+    expect(Object.keys(LEGACY_REDIRECTS).length).toBe(16); // + /chup → Trợ lý AI, /thau-phu/tat-toan → Thầu phụ
     for (const to of Object.values(LEGACY_REDIRECTS)) expect(paths.has(to)).toBe(true);
   });
 });
