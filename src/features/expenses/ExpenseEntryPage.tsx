@@ -46,7 +46,7 @@ function DayInvoices({ date, expenses, lists, onOpen }: { date: string; expenses
         <div className="tbl">
           <table data-testid="day-table">
             <thead>
-              <tr><th>Loại chi phí</th><th>Công trình</th><th>Nội dung</th><th>Người mua</th><th>Nhà cung cấp</th><th>Thanh toán</th><th>Nguồn</th><th className="!text-right">Số tiền</th></tr>
+              <tr><th>Loại chi phí</th><th>Công trình</th><th>Nội dung</th><th>Người lập phiếu</th><th>Nhà cung cấp</th><th>Thanh toán</th><th>Nguồn</th><th className="!text-right">Số tiền</th></tr>
             </thead>
             <tbody>
               {rows.map((e) => (
@@ -90,7 +90,7 @@ function DetailInvoice({ lists, expenses, onSavedDate }: { lists: Lists; expense
     create.mutate([input], {
       onSuccess: () => {
         toast(`Đã lưu hóa đơn ${input.lines?.length ?? 0} dòng · ${formatMoney(input.amount)} đ`);
-        // Giữ ngày + công trình + người mua cho hóa đơn kế (thường nhập liền một xấp cùng công trình)
+        // Giữ ngày + công trình + người lập phiếu cho hóa đơn kế (thường nhập liền một xấp cùng công trình)
         setDraft((d) => ({ ...blankInvoice(d.date, true), project: d.project, buyer: d.buyer }));
         setDups(null); setBad([]); onSavedDate(input.date);
       },

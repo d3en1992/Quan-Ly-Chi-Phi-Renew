@@ -18,8 +18,8 @@ export const expenseInputSchema = z.object({
   typeId: uuid,
   supplierId: uuid.nullable(),
   buyerId: uuid.nullable(),
-  /** Tên Người mua gõ tay / chọn từ công nhân, tài khoản (chưa có trong danh mục) → lúc lưu tự thêm vào danh mục.
-   *  Cả buyerId lẫn buyerName đều trống → Người mua = chủ tài khoản đang đăng nhập. */
+  /** Tên Người lập phiếu gõ tay / chọn từ công nhân, tài khoản (chưa có trong danh mục) → lúc lưu tự thêm vào danh mục.
+   *  Cả buyerId lẫn buyerName đều trống → Người lập phiếu = chủ tài khoản đang đăng nhập. */
   buyerName: z.string().trim().max(120).optional(),
   paid: z.boolean(),
   description: z.string().trim().max(2000),

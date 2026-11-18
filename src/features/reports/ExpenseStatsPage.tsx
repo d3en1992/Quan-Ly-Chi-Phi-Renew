@@ -1,5 +1,5 @@
 // Tab THỐNG KÊ CP/HĐ (chỉ xem): tra cứu mọi khoản chi đã nhập — hóa đơn + dòng lương / HĐ mua lẻ từ chấm công
-// (như `buildInvoices` app cũ). Lọc theo năm (ô chọn năm phía trên), tháng, công trình, loại, NCC, người mua.
+// (như `buildInvoices` app cũ). Lọc theo năm (ô chọn năm phía trên), tháng, công trình, loại, NCC, người lập phiếu.
 import { useMemo, useState } from 'react';
 import { useSearchIntent } from '@/app/search-intent';
 import { useAccess } from '@/app/auth';
@@ -77,7 +77,7 @@ export function DetailSheet({ row, onClose, onEdit }: { row: Row | null; onClose
             <dt>Công trình</dt><dd>{row.project}</dd>
             <dt>Loại chi phí</dt><dd>{row.type}</dd>
             <dt>Nhà cung cấp</dt><dd>{row.supplier || '—'}</dd>
-            <dt>Người mua</dt><dd>{row.buyer || '—'}</dd>
+            <dt>Người lập phiếu</dt><dd>{row.buyer || '—'}</dd>
             <dt>Nội dung</dt><dd>{row.description || '—'}</dd>
             <dt>Thanh toán</dt><dd><PaidPill paid={row.paid} /></dd>
             <dt>Nguồn</dt><dd>{SOURCE_LABEL[row.source] ?? row.source}</dd>
@@ -182,7 +182,7 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center" data-testid="stats-adv-panel">
           <FilterSelect label="Tháng" value={month} onChange={setMonth} options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1).padStart(2, '0'), label: String(i + 1) }))} className={fill} />
           <FilterSelect label="Thanh toán" value={paid} onChange={setPaid} options={PAID_OPTIONS} className={fill} />
-          <FilterSelect label="Người mua" value={buyer} onChange={setBuyer} options={options.buyers} className={fill} />
+          <FilterSelect label="Người lập phiếu" value={buyer} onChange={setBuyer} options={options.buyers} className={fill} />
           {advCount ? <Button variant="ghost" className={`h-9 ${fill}`} onClick={() => { setMonth(''); setPaid(''); setBuyer(''); }}><Icon name="close" />Bỏ lọc nâng cao</Button> : null}
         </div>
       ) : null}
@@ -232,7 +232,7 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
             <table data-testid="expense-table">
               <thead>
                 <tr>
-                  <th>Ngày</th><th>Loại chi phí</th><th>Công trình</th><th>Nội dung</th><th>Người mua</th><th>Nhà cung cấp</th>
+                  <th>Ngày</th><th>Loại chi phí</th><th>Công trình</th><th>Nội dung</th><th>Người lập phiếu</th><th>Nhà cung cấp</th>
                   <th>Thanh toán</th><th>Nguồn</th><th className="!text-right">Số tiền</th>
                 </tr>
               </thead>

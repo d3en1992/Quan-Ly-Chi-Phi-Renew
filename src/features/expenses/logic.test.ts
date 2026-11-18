@@ -166,7 +166,7 @@ describe('khác khu vực', () => {
   });
 });
 
-describe('Người mua (13/11/2026)', () => {
+describe('Người lập phiếu (13/11/2026)', () => {
   const U = '11111111-1111-4111-8111-111111111111';
   const cat = [{ id: U, name: 'TÌNH' }];
   it('gợi ý gộp danh mục + công nhân + tài khoản, không trùng', async () => {
@@ -175,7 +175,7 @@ describe('Người mua (13/11/2026)', () => {
     expect(m.map((x) => x.name)).toEqual(['CAI', 'PHẠM VĂN LAM', 'TÌNH']);
     expect(m.find((x) => x.name === 'CAI')!.id).toBe('ten:CAI');
   });
-  it('ô Người mua không bao giờ lỗi: danh mục → id, tên khác → tên, trống → trống', async () => {
+  it('ô Người lập phiếu không bao giờ lỗi: danh mục → id, tên khác → tên, trống → trống', async () => {
     const { buyerOf, mergeBuyerNames } = await import('./logic');
     const list = mergeBuyerNames(cat, ['Cai']);
     expect(buyerOf('tinh', list)).toEqual({ buyerId: U });

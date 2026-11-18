@@ -52,7 +52,7 @@ export function PhoneEntry({ lists, expenses, canAdd, today, onOpen }: Props) {
     create.mutate([input], {
       onSuccess: () => {
         toast(`Đã lưu chi phí · ${formatMoney(input.amount)} đ`);
-        // Giữ ngày, công trình, loại, người mua cho khoản kế tiếp
+        // Giữ ngày, công trình, loại, người lập phiếu cho khoản kế tiếp
         setDraft((d) => ({ ...blankInvoice(d.date, false), project: d.project, type: d.type, buyer: d.buyer }));
         setDups(null); setBad([]);
       },
@@ -110,8 +110,8 @@ export function PhoneEntry({ lists, expenses, canAdd, today, onOpen }: Props) {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <label className="grid min-w-0 gap-1.5"><span className={label}>Ngày</span><Input type="date" aria-label="Ngày" value={draft.date} aria-invalid={isBad('date') || undefined} onChange={(e) => set('date', e.target.value)} /></label>
-            <label className="grid min-w-0 gap-1.5"><span className={label}>Người mua</span>
-              <Combo aria-label="Người mua" value={draft.buyer} onChange={(v) => set('buyer', v)} items={lists.buyers} groupLabel="Người mua" onCreate={(t) => lists.create('person', t)} invalid={isBad('buyer') || undefined} />
+            <label className="grid min-w-0 gap-1.5"><span className={label}>Người lập phiếu</span>
+              <Combo aria-label="Người lập phiếu" value={draft.buyer} onChange={(v) => set('buyer', v)} items={lists.buyers} groupLabel="Người lập phiếu" onCreate={(t) => lists.create('person', t)} invalid={isBad('buyer') || undefined} />
             </label>
           </div>
           <div className={box}>

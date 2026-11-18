@@ -91,7 +91,7 @@ const L = {
   pStatus: { planning: 'Chuẩn bị', active: 'Đang thi công', completed: 'Hoàn thành', closed: 'Đã quyết toán' } as Record<string, string>,
   pKind: { new_build: 'CT', renovation: 'SC', small_repair: 'SN' } as Record<string, string>,
   role: { C: 'Cai', T: 'Thợ', P: 'Phụ' } as Record<string, string>,
-  catKind: { expense_type: 'Loại chi phí', person: 'Người mua', equipment_name: 'Tên thiết bị', unit: 'Đơn vị tính' } as Record<string, string>,
+  catKind: { expense_type: 'Loại chi phí', person: 'Người lập phiếu', equipment_name: 'Tên thiết bị', unit: 'Đơn vị tính' } as Record<string, string>,
   mode: { fifo: 'Cũ nhất trước', project: 'Trong công trình', manual: 'Chọn tay' } as Record<string, string>,
 };
 const lab = (m: Record<string, string>, v: unknown) => (v == null ? '' : m[String(v)] ?? String(v));
@@ -112,7 +112,7 @@ const PRIVATE_COLS = [priv('phone', 'SĐT', 14), priv('id_number', 'SỐ CCCD', 
 // Cột của hóa đơn — dùng lại cho khối ghép "Hóa đơn + dòng vật tư"
 export const EXPENSE_HEAD_COLS: Column[] = [
   date('date'), ref('expense_type_id', 'LOẠI CHI PHÍ', 'catalog_items', 18), ref('supplier_id', 'NHÀ CUNG CẤP', 'suppliers', 24),
-  ref('buyer_id', 'NGƯỜI MUA', 'catalog_items', 12), bool('paid_at_purchase', 'ĐÃ TT'),
+  ref('buyer_id', 'NGƯỜI LẬP PHIẾU', 'catalog_items', 12), bool('paid_at_purchase', 'ĐÃ TT'),
 ];
 
 export const DATASETS: Dataset[] = [
@@ -230,7 +230,7 @@ export const DATASETS: Dataset[] = [
     columns: [txt('full_name', 'HỌ TÊN', 24), txt('title', 'CHỨC DANH', 16), date('started_on', 'NGÀY VÀO LÀM'), bool('archived', 'NGHỈ'), note(), ...PRIVATE_COLS.slice(0, 2)],
   },
   {
-    key: 'catalog_items', label: 'Danh mục (loại CP, người mua, thiết bị, ĐVT)', sheet: 'Danh muc', group: 'danh-ba', table: 'catalog_items', permModule: 'catalog', link: { kind: 'none' },
+    key: 'catalog_items', label: 'Danh mục (loại CP, người lập phiếu, thiết bị, ĐVT)', sheet: 'Danh muc', group: 'danh-ba', table: 'catalog_items', permModule: 'catalog', link: { kind: 'none' },
     columns: [txt('kind', 'NHÓM', 14, (r) => lab(L.catKind, r.kind)), txt('name', 'TÊN', 30), bool('archived', 'NGỪNG DÙNG')],
   },
   {

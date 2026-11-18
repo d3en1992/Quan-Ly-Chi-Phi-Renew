@@ -1,6 +1,6 @@
 // LƯỚI NHẬP NHANH kiểu Excel (PAGES.nhap của mẫu). Hành vi phím chép từ hoadon.sheet-grid.js của app cũ:
 // phím / chọn vùng / chép dán / kéo điền / hoàn tác dùng chung ở components/ui/sheet-grid (cùng hệ với dòng vật tư Hóa đơn chi tiết).
-// Space bật tắt Đã TT. Ô gợi ý (Loại, Công trình, Người mua, NCC, Nội dung) cũng do sheet-grid lo — ở đây chỉ khai báo từng cột.
+// Space bật tắt Đã TT. Ô gợi ý (Loại, Công trình, Người lập phiếu, NCC, Nội dung) cũng do sheet-grid lo — ở đây chỉ khai báo từng cột.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Icon } from '@/components/ui/button';
 import type { SuggestItem } from '@/components/ui/combo';
@@ -21,7 +21,7 @@ import type { ExpenseInput } from './schema';
 import { DuplicateDialog, toDupCandidate, type Lists } from './shared';
 
 const WIDTHS = [36, 92, 170, 250, 116, 0, 110, 170, 62];
-const AC_LABEL: Partial<Record<Col, string>> = { type: 'Loại chi phí', project: 'Công trình', buyer: 'Người mua', supplier: 'Nhà cung cấp', description: 'Nội dung đã nhập' };
+const AC_LABEL: Partial<Record<Col, string>> = { type: 'Loại chi phí', project: 'Công trình', buyer: 'Người lập phiếu', supplier: 'Nhà cung cấp', description: 'Nội dung đã nhập' };
 const CREATE_KIND: Partial<Record<Col, CreatableKind>> = { type: 'expense_type', buyer: 'person', supplier: 'supplier' };
 
 export function QuickGrid({ lists, expenses, today, onActiveDate }: {
@@ -42,7 +42,7 @@ export function QuickGrid({ lists, expenses, today, onActiveDate }: {
     () => historySuggest(expenses.map((e) => ({ text: e.description, date: e.date }))).map((name) => ({ id: name, name })),
     [expenses],
   );
-  /** Ô gợi ý từng cột: Loại / Công trình / Người mua / NCC đúng danh mục (có "+ Thêm mới" trừ Công trình); Nội dung gõ tự do */
+  /** Ô gợi ý từng cột: Loại / Công trình / Người lập phiếu / NCC đúng danh mục (có "+ Thêm mới" trừ Công trình); Nội dung gõ tự do */
   const suggestFor = (c: number): SheetSuggestCol | null => {
     const col = COLS[c]!;
     const items = col === 'type' ? lists.types : col === 'project' ? lists.projectOptions : col === 'buyer' ? lists.buyers : col === 'supplier' ? lists.suppliers : col === 'description' ? history : null;

@@ -114,7 +114,7 @@ export function effectiveDates(rows: readonly GridRow[], todayIso: string): (str
 
 export type RowCheck = { state: 'blank' } | { state: 'valid'; input: ExpenseInput } | { state: 'invalid'; bad: Col[] };
 
-/** Kiểm tra một dòng: đủ Loại + Công trình (đúng danh mục) + Số tiền > 0; NCC nếu có phải đúng danh mục; Người mua tự do (xem buyerOf) */
+/** Kiểm tra một dòng: đủ Loại + Công trình (đúng danh mục) + Số tiền > 0; NCC nếu có phải đúng danh mục; Người lập phiếu tự do (xem buyerOf) */
 export function checkRow(row: GridRow, date: string | null, lists: GridLists): RowCheck {
   if (isBlank(row)) return { state: 'blank' };
   const bad: Col[] = [];

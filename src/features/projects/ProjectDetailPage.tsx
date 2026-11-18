@@ -244,7 +244,7 @@ function InvoicesTab({ data, projectId, years, onOpen }: { data: ReportData; pro
     <Card>
       <div className="tbl">
         <table data-testid="detail-invoices">
-          <thead><tr><th>Ngày</th><th>Loại chi phí</th><th>Nội dung</th><th>Người mua</th><th>Nhà cung cấp</th><th>Thanh toán</th><th>Nguồn</th><th className="!text-right">Số tiền</th></tr></thead>
+          <thead><tr><th>Ngày</th><th>Loại chi phí</th><th>Nội dung</th><th>Người lập phiếu</th><th>Nhà cung cấp</th><th>Thanh toán</th><th>Nguồn</th><th className="!text-right">Số tiền</th></tr></thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className="cursor-pointer" onClick={() => onOpen(r)}>

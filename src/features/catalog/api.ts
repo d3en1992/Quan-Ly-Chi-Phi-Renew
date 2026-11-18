@@ -1,4 +1,4 @@
-// Danh Mục (loại chi phí, người mua, tên thiết bị, đơn vị tính, giai đoạn mẫu) + thông tin công ty + sao lưu / khôi phục.
+// Danh Mục (loại chi phí, người lập phiếu, tên thiết bị, đơn vị tính, giai đoạn mẫu) + thông tin công ty + sao lưu / khôi phục.
 // Đổi tên: chỉ sửa 1 dòng trong catalog_items — mọi nơi khác tham chiếu bằng id nên tự hiện tên mới.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -14,13 +14,13 @@ const sb = supabase as unknown as SupabaseClient;
 export type CatalogKind = 'expense_type' | 'person' | 'equipment_name' | 'unit' | 'template';
 export const CATALOG_GROUPS: { kind: CatalogKind; label: string; hint: string }[] = [
   { kind: 'expense_type', label: 'Loại chi phí', hint: 'tên tự viết hoa chữ đầu' },
-  { kind: 'person', label: 'Người mua', hint: 'tên tự viết HOA' },
+  { kind: 'person', label: 'Người lập phiếu', hint: 'tên tự viết HOA' },
   { kind: 'equipment_name', label: 'Tên thiết bị', hint: 'tên tự viết hoa chữ đầu' },
   { kind: 'unit', label: 'Đơn vị tính', hint: 'gõ thường, VD: m2, kg, bao' },
   { kind: 'template', label: 'Giai đoạn / hạng mục mẫu', hint: 'mẫu dùng cho Tiến Độ' },
 ];
 
-/** Chuẩn hóa tên hiển thị như app cũ (`normalizeCatDisplayName`): loại chi phí / thiết bị = Viết Hoa Chữ Đầu, người mua = VIẾT HOA */
+/** Chuẩn hóa tên hiển thị như app cũ (`normalizeCatDisplayName`): loại chi phí / thiết bị = Viết Hoa Chữ Đầu, người lập phiếu = VIẾT HOA */
 export function normalizeCatalogName(kind: CatalogKind, raw: string): string {
   const v = raw.trim().replace(/\s+/g, ' ');
   if (!v) return v;

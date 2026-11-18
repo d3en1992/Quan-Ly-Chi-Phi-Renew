@@ -65,7 +65,7 @@ export type InvoiceField = 'date' | 'project' | 'type' | 'supplier' | 'buyer' | 
 export type InvoiceCheck = { ok: true; input: ExpenseInput } | { ok: false; bad: InvoiceField[]; message: string };
 
 const LABEL: Record<InvoiceField, string> = {
-  date: 'Ngày', project: 'Công trình', type: 'Loại chi phí', supplier: 'Nhà cung cấp', buyer: 'Người mua', amount: 'Số tiền', lines: 'Dòng vật tư',
+  date: 'Ngày', project: 'Công trình', type: 'Loại chi phí', supplier: 'Nhà cung cấp', buyer: 'Người lập phiếu', amount: 'Số tiền', lines: 'Dòng vật tư',
 };
 
 /** Kiểm tra form → dữ liệu để ghi. `source`: 'detail' khi có dòng vật tư, 'quick' khi không (sửa thì giữ nguồn cũ). */

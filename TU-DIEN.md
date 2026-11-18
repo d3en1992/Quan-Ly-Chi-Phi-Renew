@@ -61,7 +61,7 @@ Menu 9 tab (gộp 13/11/2026, `tai-lieu/KE-HOACH-GOP-TAB.md`). Quyền gắn v�
 | Công trình / CÔNG TY (chi phí chung) | `project` / `isCompanyOverhead` |
 | Loại công trình CT / SC / SN | `kind`: `new_build` / `renovation` / `small_repair` |
 | Hóa đơn chi phí, dòng vật tư | `expense`, `expenseLine` |
-| Loại chi phí, Nhà cung cấp, Người mua, Người TH | `expenseType`, `supplier`, `buyer`, `createdBy` |
+| Loại chi phí, Nhà cung cấp, Người lập phiếu, Người TH | `expenseType`, `supplier`, `buyer`, `createdBy` |
 | Đã thanh toán lúc mua (Đã TT) | `paidAtPurchase` |
 | Mua nợ (NCC) | `buysOnCredit` |
 | Chấm công tuần, công, lương/ngày, thực lãnh | `timesheetWeek`, `dayUnits`, `dailyWage`, `netPay` |

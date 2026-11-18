@@ -115,7 +115,7 @@ export type DupCandidate = {
 
 const nk = (v: string | null | undefined) => normVi(v);
 
-/** "Chữ ký" hóa đơn: ngày | công trình | loại | người mua | NCC | số tiền | nội dung | các dòng vật tư (`_invDupKey`) */
+/** "Chữ ký" hóa đơn: ngày | công trình | loại | người lập phiếu | NCC | số tiền | nội dung | các dòng vật tư (`_invDupKey`) */
 export function dupKey(r: DupCandidate): string {
   const lines = (r.lines ?? []).map((l) => [nk(l.name), nk(l.unit), Number(l.quantity) || 0, Number(l.unitPrice) || 0, nk(l.discount)].join('~')).join(';');
   return [r.date ?? '', r.projectId ?? '', r.typeId ?? '', r.buyerId ?? '', r.supplierId ?? '', Math.round(r.amount) || 0, nk(r.description), lines].join('|');
@@ -220,7 +220,7 @@ export function isDifferentArea(a: string | null | undefined, b: string | null |
 }
 
 /**
- * Ô Người mua → dữ liệu lưu. Không bao giờ là lỗi (Người mua không bắt buộc):
+ * Ô Người lập phiếu → dữ liệu lưu. Không bao giờ là lỗi (Người lập phiếu không bắt buộc):
  * khớp mục danh mục thật → buyerId; tên khác (công nhân, tài khoản, tên mới) → buyerName (lúc lưu tự thêm vào danh mục);
  * trống → cả hai trống (lúc lưu = chủ tài khoản).
  */
@@ -232,12 +232,12 @@ export function buyerOf(text: string, buyers: readonly { id: string; name: strin
   return { buyerId: null, buyerName: hit?.name ?? t };
 }
 
-/** Gợi ý Người mua = danh mục Người mua + tên công nhân / tài khoản chưa có (id giả 'ten:…', lúc lưu mới thêm vào danh mục) */
+/** Gợi ý Người lập phiếu = danh mục Người lập phiếu + tên công nhân / tài khoản chưa có (id giả 'ten:…', lúc lưu mới thêm vào danh mục) */
 export function mergeBuyerNames(catalog: readonly { id: string; name: string }[], names: readonly string[]): { id: string; name: string }[] {
   const have = new Set(catalog.map((c) => normVi(c.name)));
   const extra: { id: string; name: string }[] = [];
   for (const raw of names) {
-    const name = String(raw ?? '').trim().replace(/\s+/g, ' ').toUpperCase(); // cùng cách chuẩn hóa tên Người mua của danh mục
+    const name = String(raw ?? '').trim().replace(/\s+/g, ' ').toUpperCase(); // cùng cách chuẩn hóa tên Người lập phiếu của danh mục
     const k = normVi(name);
     if (!name || have.has(k)) continue;
     have.add(k);

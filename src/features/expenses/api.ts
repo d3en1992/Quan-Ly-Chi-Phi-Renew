@@ -1,4 +1,4 @@
-// Đọc / ghi cho tab Nhập Chi Phí: danh sách để gợi ý (công trình, loại chi phí, người mua, NCC, ĐVT),
+// Đọc / ghi cho tab Nhập Chi Phí: danh sách để gợi ý (công trình, loại chi phí, người lập phiếu, NCC, ĐVT),
 // hóa đơn đã nhập (để hiện "trong ngày", cảnh báo trùng, gợi ý nội dung), lưu / sửa / xóa mềm hóa đơn.
 // Mỗi lần lưu chỉ ghi đúng các dòng của hóa đơn đó (KẾ HOẠCH mục 4E). RLS trong kho kiểm tra quyền lần nữa.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -63,7 +63,7 @@ export function useLookups() {
     queryFn: async (): Promise<Lookups> => {
       const [projects, catalog, suppliers, workers, profiles] = await Promise.all([
         fetchLive('projects', projectSchema), fetchLive('catalog_items', catalogSchema), fetchLive('suppliers', supplierSchema),
-        // Gợi ý Người mua lấy thêm tên công nhân + tài khoản; không đọc được (thiếu quyền) thì bỏ qua
+        // Gợi ý Người lập phiếu lấy thêm tên công nhân + tài khoản; không đọc được (thiếu quyền) thì bỏ qua
         fetchLive('workers', z.object({ id: z.string(), name: z.string() })).catch(() => [] as { id: string; name: string }[]),
         Promise.resolve(sb.from('profiles').select('display_name')).then((r) => ((r.data ?? []) as { display_name: string | null }[]).map((p) => p.display_name ?? '')).catch(() => [] as string[]),
       ]);
@@ -134,8 +134,8 @@ async function resyncAllocations() {
 }
 
 /**
- * Người mua → id danh mục (kind 'person'). Đã có id thì giữ; có tên thì tìm / thêm vào danh mục;
- * trống cả hai thì Người mua = tên hiển thị của tài khoản đang đăng nhập. Gom theo tên để mỗi tên chỉ thêm 1 lần.
+ * Người lập phiếu → id danh mục (kind 'person'). Đã có id thì giữ; có tên thì tìm / thêm vào danh mục;
+ * trống cả hai thì Người lập phiếu = tên hiển thị của tài khoản đang đăng nhập. Gom theo tên để mỗi tên chỉ thêm 1 lần.
  */
 async function resolveBuyers(list: ExpenseInput[]): Promise<ExpenseInput[]> {
   if (list.every((e) => e.buyerId)) return list;
@@ -262,7 +262,7 @@ export function useSetExpenseImage() {
 
 export type CreatableKind = 'expense_type' | 'person' | 'supplier';
 
-/** "+ Tạo mới" ngay trong ô gợi ý: thêm loại chi phí / người mua / nhà cung cấp, trả về mục vừa tạo */
+/** "+ Tạo mới" ngay trong ô gợi ý: thêm loại chi phí / người lập phiếu / nhà cung cấp, trả về mục vừa tạo */
 export function useCreateLookup() {
   const qc = useQueryClient();
   return useMutation({

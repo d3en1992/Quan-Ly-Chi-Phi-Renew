@@ -1,4 +1,4 @@
-// FORM một hóa đơn: đầu phiếu (ngày, công trình, loại, NCC, người mua, Đã TT) + bảng dòng vật tư kiểu Sheet (LinesGrid, Copy / Dán bảng) + nội dung.
+// FORM một hóa đơn: đầu phiếu (ngày, công trình, loại, NCC, người lập phiếu, Đã TT) + bảng dòng vật tư kiểu Sheet (LinesGrid, Copy / Dán bảng) + nội dung.
 // Dùng chung cho tab HÓA ĐƠN CHI TIẾT, bảng trượt sửa hóa đơn. Mọi phép tính tiền gọi từ invoice-model → src/lib/calc.
 import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { Button, Icon } from '@/components/ui/button';
@@ -124,7 +124,7 @@ export function InvoiceFields({ draft, setDraft, lists, suggestions, description
 
   return (
     <>
-      {/* 13/11/2026: hàng 1 = Ngày (hẹp) + Công trình (dài); hàng 2 = Loại chi phí · NCC · Người mua; nội dung xuống dưới bảng vật tư */}
+      {/* 13/11/2026: hàng 1 = Ngày (hẹp) + Công trình (dài); hàng 2 = Loại chi phí · NCC · Người lập phiếu; nội dung xuống dưới bảng vật tư */}
       {compact ? (
         <div className="grid grid-cols-2 gap-3">
           <Field label="Ngày"><Input type="date" aria-label="Ngày hóa đơn" aria-invalid={isBad('date')} className={u('date')} value={draft.date} onChange={(e) => set('date', e.target.value)} /></Field>
@@ -151,8 +151,8 @@ export function InvoiceFields({ draft, setDraft, lists, suggestions, description
             })}
           />
         </Field>
-        <Field label="Người mua">
-          <Combo aria-label="Người mua" value={draft.buyer} onChange={(v) => set('buyer', v)} items={lists.buyers} groupLabel="Người mua" onCreate={(t) => lists.create('person', t)} invalid={isBad('buyer')} className={u('buyer')} />
+        <Field label="Người lập phiếu">
+          <Combo aria-label="Người lập phiếu" value={draft.buyer} onChange={(v) => set('buyer', v)} items={lists.buyers} groupLabel="Người lập phiếu" onCreate={(t) => lists.create('person', t)} invalid={isBad('buyer')} className={u('buyer')} />
         </Field>
       </div>
       {compact && draft.lines ? null : (

@@ -53,7 +53,7 @@ const addDays = (iso: string, d: number) => { const [y, m, dd] = iso.split('-').
 const PAY_KIND: Record<string, string> = { advance: 'Tạm ứng thầu phụ', progress: 'Thanh toán đợt thầu phụ', supplier_payment: 'Trả nợ NCC' };
 const RECEIPT_KIND: Record<string, string> = { advance: 'Thu tạm ứng', stage: 'Thu giai đoạn', settlement: 'Thu quyết toán', other: 'Thu khác' };
 const SETTLE_KIND: Record<string, string> = { increase: 'Tăng', decrease: 'Giảm', replace: 'Thay thế' };
-const CATALOG_KIND: Record<string, string> = { expense_type: 'Loại chi phí', person: 'Người mua', equipment_name: 'Tên thiết bị', unit: 'Đơn vị tính' };
+const CATALOG_KIND: Record<string, string> = { expense_type: 'Loại chi phí', person: 'Người lập phiếu', equipment_name: 'Tên thiết bị', unit: 'Đơn vị tính' };
 const PLACE: Record<string, string> = { warehouse: 'Kho thiết bị', scaffold: 'Kho giàn giáo' };
 const named = (table: string, type: string, modules: ModuleKey[]): Def => ({ table, tab: 'other', type, modules, cols: 'name', describe: (r) => ({ content: s(r.name) }) });
 

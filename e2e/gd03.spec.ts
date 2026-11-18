@@ -131,7 +131,7 @@ test.describe('Quyền', () => {
   });
 });
 
-test('Thống Kê CP/HĐ: bỏ dải số, Tổng tiền góc phải, Lọc nâng cao ẩn Tháng / Người mua / Thanh toán (13/11/2026; bỏ lọc Nguồn khi gộp tab)', async ({ page }) => {
+test('Thống Kê CP/HĐ: bỏ dải số, Tổng tiền góc phải, Lọc nâng cao ẩn Tháng / Người lập phiếu / Thanh toán (13/11/2026; bỏ lọc Nguồn khi gộp tab)', async ({ page }) => {
   const errors = watchConsole(page);
   for (const size of [{ w: 1440, h: 900 }, { w: 820, h: 1000 }, { w: 390, h: 844 }]) {
     await page.setViewportSize({ width: size.w, height: size.h });
@@ -145,7 +145,7 @@ test('Thống Kê CP/HĐ: bỏ dải số, Tổng tiền góc phải, Lọc nân
     await expect(page.getByLabel('Tháng', { exact: true })).toHaveCount(0);
     await page.getByTestId('stats-adv').click();
     await expect(page.getByLabel('Nguồn', { exact: true })).toHaveCount(0);
-    for (const l of ['Tháng', 'Người mua', 'Thanh toán']) await expect(page.getByLabel(l, { exact: true })).toBeVisible();
+    for (const l of ['Tháng', 'Người lập phiếu', 'Thanh toán']) await expect(page.getByLabel(l, { exact: true })).toBeVisible();
     await page.getByLabel('Thanh toán', { exact: true }).selectOption('credit');
     await expect(page.getByTestId('stats-adv')).toContainText('Lọc nâng cao (1)');
     await page.screenshot({ path: `${SHOTS}/thong-ke-loc-nang-cao-${size.w}.png` });
