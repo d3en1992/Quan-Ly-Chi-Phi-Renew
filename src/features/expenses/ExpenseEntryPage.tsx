@@ -1,4 +1,4 @@
-// Tab NHẬP CHI PHÍ (PAGES.nhap của mẫu): NHẬP NHANH (lưới kiểu Excel + hóa đơn trong ngày) · HÓA ĐƠN CHI TIẾT · CHỤP HÓA ĐƠN (AI đọc ảnh, features/scan).
+// Tab NHẬP CHI PHÍ (PAGES.nhap của mẫu): NHẬP NHANH (lưới kiểu Excel + hóa đơn trong ngày) · HÓA ĐƠN CHI TIẾT. (AI đọc ảnh nằm ở tab Trợ lý AI riêng.)
 // Điện thoại: màn Nhập tay (MP.nhap) ở PhoneEntry.tsx.
 import { useCallback, useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
@@ -17,13 +17,12 @@ import { blankInvoice, checkInvoice, type InvoiceDraft, type InvoiceField } from
 import { findDuplicates, historySuggest, isoToVn, type DupHit } from './logic';
 import { PhoneEntry } from './PhoneEntry';
 import { HasPhotoMark } from '@/features/scan/ReceiptPhoto';
-import { ScanWorkspace } from '@/features/scan/ScanWorkspace';
 import { QuickGrid } from './QuickGrid';
 import type { ExpenseInput } from './schema';
 import { DuplicateDialog, toDupCandidate, today, useLists, type Lists } from './shared';
 
-type Tab = 'quick' | 'detail' | 'scan';
-const TABS: { key: Tab; label: string }[] = [{ key: 'quick', label: 'NHẬP NHANH' }, { key: 'detail', label: 'HÓA ĐƠN CHI TIẾT' }, { key: 'scan', label: 'TRỢ LÝ AI' }];
+type Tab = 'quick' | 'detail';
+const TABS: { key: Tab; label: string }[] = [{ key: 'quick', label: 'NHẬP NHANH' }, { key: 'detail', label: 'HÓA ĐƠN CHI TIẾT' }];
 const SOURCE_SHORT: Record<string, string> = { quick: 'Nhanh', detail: 'Chi tiết', scan: 'Ảnh', import: 'Excel' };
 
 /** Hóa đơn của một ngày, mới nhập đứng trên */
@@ -166,13 +165,11 @@ export function ExpenseEntryPage() {
           {canAdd ? <QuickGrid lists={lists} expenses={expenses} today={todayIso} onActiveDate={onActiveDate} /> : null}
           <DayInvoices date={activeDate} expenses={expenses} lists={lists} onOpen={setEditing} />
         </>
-      ) : tab === 'detail' ? (
+      ) : (
         <>
           {canAdd ? <DetailInvoice lists={lists} expenses={expenses} onSavedDate={setActiveDate} /> : null}
           <DayInvoices date={activeDate} expenses={expenses} lists={lists} onOpen={setEditing} />
         </>
-      ) : (
-        canAdd ? <ScanWorkspace /> : null
       )}
       {sheet}
     </>

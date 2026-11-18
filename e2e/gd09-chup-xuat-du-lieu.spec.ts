@@ -83,8 +83,7 @@ test('Chụp hóa đơn NCC mới (giả lập) → điền sẵn, ô vàng, t�
   await page.setViewportSize({ width: 1440, height: 900 });
   const errors = watchConsole(page);
   await login(page, 'e2e.admin');
-  await page.goto('/nhap-chi-phi');
-  await page.getByRole('tab', { name: 'TRỢ LÝ AI' }).click();
+  await page.goto('/tro-ly-ai');
   await pickImageAndRead(page, { kind: 'Hóa đơn' });
   const form = page.getByTestId('scan-invoice');
   await expect(form).toBeVisible();
@@ -111,8 +110,7 @@ test('Chụp hóa đơn NCC mới (giả lập) → điền sẵn, ô vàng, t�
 test('Chụp hóa đơn chữ mờ (giả lập) → tổng lệch, NCC Mua nợ bỏ tích Đã TT, bổ sung địa chỉ / SĐT', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await login(page, 'e2e.admin');
-  await page.goto('/nhap-chi-phi');
-  await page.getByRole('tab', { name: 'TRỢ LÝ AI' }).click();
+  await page.goto('/tro-ly-ai');
   await pickImageAndRead(page, { kind: 'Hóa đơn', note: 'hóa đơn sắt chữ mờ' });
   await expect(page.getByTestId('printed-total')).toContainText('lệch');
   await expect(page.getByTestId('fill-supplier')).toContainText(AN_PHU);
@@ -257,8 +255,7 @@ for (const size of [{ name: '1440', width: 1440, height: 900 }, { name: '820', w
     await expect(page.getByTestId('export-datasets')).toBeVisible({ timeout: 30_000 });
     expect(await noSideScroll(page)).toBe(true);
     await page.screenshot({ path: `${SHOTS}/${size.name}-xuat-du-lieu.png`, fullPage: true });
-    await page.goto(size.width < 640 ? '/chup' : '/nhap-chi-phi');
-    if (size.width >= 640) await page.getByRole('tab', { name: 'TRỢ LÝ AI' }).click();
+    await page.goto('/tro-ly-ai');
     await expect(page.getByTestId('capture-form')).toBeVisible();
     expect(await noSideScroll(page)).toBe(true);
     await page.screenshot({ path: `${SHOTS}/${size.name}-chup.png`, fullPage: true });
