@@ -195,7 +195,7 @@ test('HĐ thầu phụ: thêm, trả nhanh, Chi Trả hiện "còn phải trả"
   await page.getByRole('combobox', { name: 'Thầu phụ' }).fill(TP);
   await page.keyboard.press('Enter');
   await page.getByLabel('Công trình', { exact: true }).first().selectOption(nhutId);
-  await page.getByLabel('Giá trị HĐ').fill('10000000');
+  await page.getByLabel('Giá trị hợp đồng').fill('10000000');
   await page.getByLabel('Nội dung hợp đồng').fill('Nhân công sơn nước');
   await page.getByTestId('hdtp-save').click();
   await expect(page.getByText(/Đã thêm hợp đồng thầu phụ/)).toBeVisible();

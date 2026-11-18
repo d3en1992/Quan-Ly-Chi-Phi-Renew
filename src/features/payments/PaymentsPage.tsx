@@ -17,7 +17,7 @@ import { copyText } from '@/lib/clipboard';
 import { findByName } from '@/features/expenses/logic';
 import { matchesSearch, todayIso } from '@/features/reports/shared';
 import { KIND_LABEL, MODE_LABEL, useCreateParty, useCreatePayments, usePayData, type PayData, type Payment, type PaymentInput, type PaymentKind } from './api';
-import { autoSubcontractId, blankPayDraft, canEditRow, draftOfPayment, PaymentSheet, paymentZalo, usePayCalc, type PayCalc, type PayDraft } from './shared';
+import { autoSubcontractId, blankPayDraft, projectFilterOptions, canEditRow, draftOfPayment, PaymentSheet, paymentZalo, usePayCalc, type PayCalc, type PayDraft } from './shared';
 
 type Row = { date: string; party: string; project: string; amount: number; note: string };
 const blankRow = (): Row => ({ date: '', party: '', project: '', amount: 0, note: '' });
@@ -131,6 +131,7 @@ export function PaymentsPage() {
   const [project, setProject] = useState('');
   const [q, setQ] = useState('');
   const [draft, setDraft] = useState<PayDraft | null>(null);
+  const [nccOnly, setNccOnly] = useState(false);
 
   const rows = useMemo(() => {
     if (!data) return [];
@@ -147,7 +148,7 @@ export function PaymentsPage() {
   if (query.isPending) return <><PageHeader title="Phiếu Chi" /><Card><LoadingState label="Đang tải phiếu chi…" /></Card></>;
   if (query.isError || !data || !calc) return <><PageHeader title="Phiếu Chi" /><Card><ErrorState error={query.error} onRetry={() => void query.refetch()} /></Card></>;
 
-  const projOpts = data.projects.map((p) => ({ value: p.id, label: p.name }));
+  const projOpts = projectFilterOptions(data, years, project);
   const zalo = async (p: Payment) => { const ok = await copyText(paymentZalo(p, data)); toast(ok ? 'Đã chép — dán vào Zalo' : 'Trình duyệt chặn chép, thử lại', ok ? 'ok' : 'error'); };
   const open = (p: Payment) => setDraft(draftOfPayment(p, data));
   const where = (p: Payment) => {
@@ -158,7 +159,7 @@ export function PaymentsPage() {
   };
   const editing = draft?.id ? data.payments.find((p) => p.id === draft.id) : undefined;
   const sheet = draft ? (
-    <PaymentSheet draft={draft} setDraft={setDraft} data={data} calc={calc} onClose={() => setDraft(null)}
+    <PaymentSheet draft={draft} setDraft={setDraft} data={data} calc={calc} nccOnly={nccOnly} onClose={() => { setDraft(null); setNccOnly(false); }}
       readOnly={!!editing && (!!editing.closure_id || !canEditRow(access, 'payments', editing.created_by))} />
   ) : null;
   const filters = (
@@ -195,7 +196,7 @@ export function PaymentsPage() {
     <>
       <PageHeader title="Phiếu Chi" sub="Phiếu chi cho thầu phụ (tạm ứng, thanh toán đợt) và trả nợ nhà cung cấp"
         actions={<>
-          {canAdd ? <Button data-testid="pay-add" onClick={() => setDraft(blankPayDraft({ kind: 'supplier_payment', mode: 'manual' }))}><Icon name="checklist" />Trả NCC theo hóa đơn…</Button> : null}
+          {canAdd ? <Button data-testid="pay-add" onClick={() => { setNccOnly(true); setDraft(blankPayDraft({ kind: 'supplier_payment', mode: 'manual' })); }}><Icon name="checklist" />Trả NCC theo hóa đơn…</Button> : null}
         </>} />
       {canAdd ? <EntryGrid data={data} calc={calc} /> : null}
       {filters}

@@ -9,7 +9,7 @@ import { Combo } from '@/components/ui/combo';
 import { ConfirmDialog } from '@/components/ui/confirm';
 import { FilterBar, FilterSelect, HBar, KpiStrip, MiniList, MobileCard, MobileRow, SearchBox } from '@/components/ui/data';
 import { Checkbox, Field, Input, MoneyInput, Select } from '@/components/ui/input';
-import { Card, CardHeader, EmptyState, ErrorState, LoadingState, Note, PageHeader, Pill } from '@/components/ui/misc';
+import { Card, CardHeader, EmptyState, ErrorState, LoadingState, Note, Pill } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -26,7 +26,7 @@ import {
   MODE_LABEL, useClosePayable, useCreateParty, useCreatePayments, useDeleteSubcontract, usePayData, useSaveSubcontract, useUndoClosure,
   type Closure, type PayData, type Subcontract,
 } from './api';
-import { blankPayDraft, canEditRow, ItemsEditor, PaymentSheet, usePayCalc, type PayCalc, type PayDraft } from './shared';
+import { blankPayDraft, canEditRow, ItemsEditor, PaymentSheet, projectFilterOptions, usePayCalc, type PayCalc, type PayDraft } from './shared';
 
 export type PayablesTab = 'contracts' | 'suppliers' | 'closures';
 type Ctx = { data: PayData; calc: PayCalc; years: YearFilter; phone: boolean; canAdd: boolean; canPay: boolean; company: string };
@@ -72,12 +72,12 @@ function ContractForm({ ctx, draft, setDraft, onDone }: { ctx: Ctx; draft: Contr
             {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </Select>
         </Field>
-        <Field label="Giá trị HĐ"><MoneyInput aria-label="Giá trị HĐ" value={draft.value} onChange={(v) => set('value', v)} /></Field>
+        <Field label="Giá trị hợp đồng"><MoneyInput aria-label="Giá trị hợp đồng" value={draft.value} onChange={(v) => set('value', v)} /></Field>
         <Field label="Phát sinh"><MoneyInput aria-label="Phát sinh" value={draft.variation} onChange={(v) => set('variation', v)} /></Field>
         <Field label="Nội dung" className="sm:col-span-2"><Input aria-label="Nội dung hợp đồng" value={draft.description} onChange={(e) => set('description', e.target.value)} placeholder="Nhân công sơn nước…" /></Field>
         <div className="sm:col-span-2 lg:col-span-4">
           <ItemsEditor items={draft.items} onChange={(v) => set('items', v)} />
-          {draft.items.length ? <Button size="sm" className="mt-1.5" onClick={() => set('value', contractItemsTotal(draft.items))}>Lấy tổng hạng mục làm Giá trị HĐ</Button> : null}
+          {draft.items.length ? <Button size="sm" className="mt-1.5" onClick={() => set('value', contractItemsTotal(draft.items))}>Lấy tổng hạng mục làm Giá trị hợp đồng</Button> : null}
         </div>
       </div>
       <div className="flex justify-end gap-2 border-t border-line-soft px-4 py-3">
@@ -181,18 +181,18 @@ function ContractsTab({ ctx }: { ctx: Ctx }) {
     <>
       {canAdd && !phone ? (
         <Card>
-          <CardHeader title={draft.id ? 'Sửa HĐ thầu phụ' : 'Thêm HĐ thầu phụ'} />
+          <CardHeader title={draft.id ? 'Sửa hợp đồng thầu phụ' : 'Thêm hợp đồng thầu phụ'} />
           <ContractForm ctx={ctx} draft={draft} setDraft={setDraft} onDone={done} />
         </Card>
       ) : null}
-      {canAdd && phone ? <Button variant="primary" size="lg" onClick={() => { setDraft(blankContract()); setFormOpen(true); }}><Icon name="add" />Thêm HĐ thầu phụ</Button> : null}
+      {canAdd && phone ? <Button variant="primary" size="lg" onClick={() => { setDraft(blankContract()); setFormOpen(true); }}><Icon name="add" />Thêm hợp đồng thầu phụ</Button> : null}
       <FilterBar>
-        <FilterSelect label="Công trình" value={project} onChange={setProject} options={data.projects.map((p) => ({ value: p.id, label: p.name }))} />
+        <FilterSelect label="Công trình" value={project} onChange={setProject} options={projectFilterOptions(data, years, project)} />
         <FilterSelect label="Trạng thái" value={status} onChange={setStatus} options={[{ value: 'debt', label: 'Còn nợ' }, { value: 'done', label: 'Đã trả đủ' }]} />
         <SearchBox value={q} onChange={setQ} placeholder="Tìm thầu phụ…" />
       </FilterBar>
       <KpiStrip items={[
-        { label: 'Tổng giá trị HĐ', value: formatMoney(T.total), sub: `${rows.length} hợp đồng` },
+        { label: 'Tổng giá trị hợp đồng', value: formatMoney(T.total), sub: `${rows.length} hợp đồng` },
         { label: 'Đã trả', value: formatMoney(T.paid), sub: `${Math.round(pct(T.paid, T.total))}%` },
         { label: 'Còn phải trả', value: <span data-testid="hdtp-debt-total">{formatMoney(T.debt)}</span>, tone: T.debt > 0 ? 'neg' : '' },
       ]} />
@@ -214,7 +214,7 @@ function ContractsTab({ ctx }: { ctx: Ctx }) {
         ) : (
           <div className="tbl">
             <table data-testid="hdtp-table">
-              <thead><tr><th style={{ width: 36 }} /><th>Ngày</th><th>Thầu phụ</th><th>Công trình</th><th>Nội dung</th><th className="!text-right">Giá trị HĐ</th><th className="!text-right">Đã trả</th><th style={{ width: 130 }}>Tỉ lệ trả</th><th className="!text-right">Còn phải trả</th></tr></thead>
+              <thead><tr><th style={{ width: 36 }} /><th>Ngày</th><th>Thầu phụ</th><th>Công trình</th><th>Nội dung</th><th className="!text-right">Giá trị hợp đồng</th><th className="!text-right">Đã trả</th><th style={{ width: 130 }}>Tỉ lệ trả</th><th className="!text-right">Còn phải trả</th></tr></thead>
               <tbody>
                 {rows.map(({ h, c }) => (
                   <Fragment key={h.id}>
@@ -238,7 +238,7 @@ function ContractsTab({ ctx }: { ctx: Ctx }) {
         )}
       </Card>
       {phone ? (
-        <Sheet wide open={formOpen} onOpenChange={(o) => { if (!o) done(); }} title={draft.id ? 'Sửa HĐ thầu phụ' : 'Thêm HĐ thầu phụ'}>
+        <Sheet wide open={formOpen} onOpenChange={(o) => { if (!o) done(); }} title={draft.id ? 'Sửa hợp đồng thầu phụ' : 'Thêm hợp đồng thầu phụ'}>
           <div className="-m-4"><ContractForm ctx={ctx} draft={draft} setDraft={setDraft} onDone={done} /></div>
         </Sheet>
       ) : null}
@@ -336,7 +336,7 @@ function StatementSheet({ ctx, supplierId, onClose, onPay }: { ctx: Ctx; supplie
 }
 
 function SuppliersTab({ ctx, onPay }: { ctx: Ctx; onPay: (supplierName: string) => void }) {
-  const { data, calc, phone } = ctx;
+  const { data, calc, years, phone } = ctx;
   const [project, setProject] = useState('');
   const [status, setStatus] = useState('debt');
   const [q, setQ] = useState('');
@@ -352,7 +352,7 @@ function SuppliersTab({ ctx, onPay }: { ctx: Ctx; onPay: (supplierName: string) 
   return (
     <>
       <FilterBar>
-        <FilterSelect label="Công trình" value={project} onChange={setProject} options={data.projects.map((p) => ({ value: p.id, label: p.name }))} />
+        <FilterSelect label="Công trình" value={project} onChange={setProject} options={projectFilterOptions(data, years, project)} />
         <FilterSelect label="Trạng thái" value={status} onChange={setStatus} options={[{ value: 'debt', label: 'Còn nợ' }, { value: 'done', label: 'Hết nợ' }]} />
         <SearchBox value={q} onChange={setQ} placeholder="Tìm nhà cung cấp…" />
       </FilterBar>
@@ -533,20 +533,18 @@ export function PayablesPage({ tab }: { tab: PayablesTab }) {
   const data = query.data;
   const calc = usePayCalc(data);
   const [pay, setPay] = useState<PayDraft | null>(null);
-  const header = <PageHeader title={phone ? 'Công nợ phải trả' : 'Công Nợ Phải Trả'} sub="Công ty còn nợ thầu phụ, nhà cung cấp bao nhiêu" />;
-  if (query.isPending) return <>{header}<Card><LoadingState label="Đang tải công nợ…" /></Card></>;
-  if (query.isError || !data || !calc) return <>{header}<Card><ErrorState error={query.error} onRetry={() => void query.refetch()} /></Card></>;
+  if (query.isPending) return <Card><LoadingState label="Đang tải công nợ…" /></Card>;
+  if (query.isError || !data || !calc) return <><Card><ErrorState error={query.error} onRetry={() => void query.refetch()} /></Card></>;
   const ctx: Ctx = {
     data, calc, years, phone, canAdd: hasLevel(access.permissions, 'payables', 'add'), canPay: hasLevel(access.permissions, 'payments', 'add'),
     company: access.company.short_name || access.company.name,
   };
   return (
     <>
-      {header}
       {tab === 'contracts' ? <ContractsTab ctx={ctx} /> : tab === 'suppliers'
         ? <SuppliersTab ctx={ctx} onPay={(name) => setPay(blankPayDraft({ kind: 'supplier_payment', party: name }))} />
         : <ClosuresTab ctx={ctx} />}
-      {pay ? <PaymentSheet draft={pay} setDraft={setPay} data={data} calc={calc} onClose={() => setPay(null)} /> : null}
+      {pay ? <PaymentSheet draft={pay} setDraft={setPay} data={data} calc={calc} nccOnly onClose={() => setPay(null)} /> : null}
     </>
   );
 }

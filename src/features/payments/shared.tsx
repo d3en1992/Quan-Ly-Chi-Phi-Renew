@@ -12,8 +12,8 @@ import { Note } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
 import {
-  contractItemsTotal, paidByInvoice, subcontractorPairPayables, subcontractPayables, sumOf, supplierPayables,
-  type ContractItem, type PairPayable, type SubcontractPayable, type SupplierPayable,
+  contractItemsTotal, inYear, paidByInvoice, subcontractorPairPayables, subcontractPayables, sumOf, supplierPayables,
+  type ContractItem, type PairPayable, type SubcontractPayable, type SupplierPayable, type YearFilter,
 } from '@/lib/calc';
 import { formatDate, formatMoney } from '@/lib/format';
 import type { ModuleKey } from '@/lib/permissions';
@@ -134,6 +134,23 @@ export function ItemsEditor({ items, onChange, disabled }: { items: ContractItem
   );
 }
 
+/**
+ * Ô lọc "Công trình" của tab Thầu Phụ & NCC: chỉ công trình thuộc năm đang chọn — tạo trong năm, hoặc có
+ * HĐ thầu phụ / phiếu chi / hóa đơn mua nợ trong năm. `keep` = công trình đang chọn (luôn giữ để không mất lựa chọn).
+ */
+export function projectFilterOptions(data: PayData, years: YearFilter, keep = ''): { value: string; label: string }[] {
+  const ids = new Set<string>();
+  if (years.length === 0) for (const p of data.projects) ids.add(p.id);
+  for (const p of data.projects) if (p.created_year !== null && years.includes(p.created_year)) ids.add(p.id);
+  for (const h of data.subcontracts) if (inYear(h.date, years)) ids.add(h.project_id);
+  const payDate = new Map(data.payments.map((x) => [x.id, x.date]));
+  for (const x of data.payments) if (x.project_id && inYear(x.date, years)) ids.add(x.project_id);
+  for (const a of data.allocations) if (inYear(payDate.get(a.payment_id), years)) ids.add(a.project_id);
+  for (const c of data.credits) if (inYear(c.date, years)) ids.add(c.project_id);
+  if (keep) ids.add(keep);
+  return data.projects.filter((p) => ids.has(p.id)).map((p) => ({ value: p.id, label: p.name }));
+}
+
 // ─── Bảng trượt ghi / sửa MỘT phiếu chi ───
 export type PayDraft = {
   id: string | null; kind: PaymentKind; date: string; party: string; project: string; subcontractId: string; amount: number; note: string;
@@ -157,8 +174,9 @@ export function autoSubcontractId(data: PayData, subcontractorId: string, projec
   return list.length === 1 ? list[0]!.id : null;
 }
 
-export function PaymentSheet({ draft, setDraft, data, calc, readOnly, onClose }: {
-  draft: PayDraft; setDraft: (d: PayDraft) => void; data: PayData; calc: PayCalc; readOnly?: boolean; onClose: () => void;
+/** `nccOnly`: mở từ nút "Trả NCC theo hóa đơn…" / "Trả tiền" của NCC — chỉ trả nợ nhà cung cấp, không hiện lựa chọn thầu phụ */
+export function PaymentSheet({ draft, setDraft, data, calc, readOnly, nccOnly, onClose }: {
+  draft: PayDraft; setDraft: (d: PayDraft) => void; data: PayData; calc: PayCalc; readOnly?: boolean; nccOnly?: boolean; onClose: () => void;
 }) {
   const toast = useToast();
   const phone = useLayoutMode() === 'phone';
@@ -211,7 +229,7 @@ export function PaymentSheet({ draft, setDraft, data, calc, readOnly, onClose }:
   };
 
   return (
-    <Sheet wide={ncc && draft.mode === 'manual'} open onOpenChange={(o) => { if (!o) onClose(); }} title={readOnly ? 'Phiếu chi' : draft.id ? 'Sửa phiếu chi' : 'Ghi phiếu chi'}
+    <Sheet wide={ncc && draft.mode === 'manual'} open onOpenChange={(o) => { if (!o) onClose(); }} title={readOnly ? 'Phiếu chi' : draft.id ? 'Sửa phiếu chi' : nccOnly ? 'Trả nợ nhà cung cấp' : 'Ghi phiếu chi'}
       footer={readOnly ? <Button onClick={onClose}>Đóng</Button> : (
         <>
           {draft.id ? <Button variant="danger" disabled={busy} onClick={() => setConfirmDel(true)}><Icon name="delete" />Xóa</Button> : null}
@@ -221,7 +239,7 @@ export function PaymentSheet({ draft, setDraft, data, calc, readOnly, onClose }:
         </>
       )}>
       <fieldset disabled={readOnly} className="grid min-w-0 gap-3">
-        {draft.id && ncc ? <div className="text-[13px] font-semibold">{KIND_LABEL.supplier_payment}</div> : (
+        {nccOnly && ncc && !draft.id ? null : draft.id && ncc ? <div className="text-[13px] font-semibold">{KIND_LABEL.supplier_payment}</div> : (
           <Segmented value={draft.kind} onChange={(k) => setDraft({ ...draft, kind: k, party: (k === 'supplier_payment') === ncc ? draft.party : '', picks: [], mode: 'fifo' })}
             options={(draft.id ? ['advance', 'progress'] as const : ['advance', 'progress', 'supplier_payment'] as const).map((k) => ({ value: k, label: KIND_LABEL[k]! }))} />
         )}

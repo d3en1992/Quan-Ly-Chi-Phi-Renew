@@ -19,7 +19,7 @@ const EXPECT: Record<string, Record<string, string[]>> = {
   giamdoc: { ...ALL_SUBS, caidat: ['danhba', 'danhmuc', 'xuat', 'thungrac'] },
   quanly: { ...ALL_SUBS, caidat: ['danhba', 'danhmuc', 'xuat', 'thungrac'] },
   ketoan: {
-    congtrinh: [], chiphi: ['nhap', 'tracuu'], chamcong: [], thauphu: ['hdtp', 'ncc', 'tattoan', 'phieuchi'],
+    congtrinh: [], chiphi: ['nhap', 'tracuu'], chamcong: [], thauphu: ['hdtp', 'ncc', 'phieuchi', 'tattoan'],
     kehoach: ['tiendo'], trolyai: [], caidat: ['danhba', 'xuat', 'thungrac'],
   },
   chixem: { congtrinh: [], chiphi: ['tracuu'], kehoach: ['tiendo'], caidat: ['xuat'] },
