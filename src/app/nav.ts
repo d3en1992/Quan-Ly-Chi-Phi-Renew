@@ -48,7 +48,7 @@ export const NAV_TABS: NavItem[] = [
     subs: [
       { key: 'hdtp', slug: 'hop-dong', label: 'Thầu phụ', hint: 'Hợp đồng thầu phụ, đã trả, còn nợ', module: 'payables', aka: 'công nợ phải trả' },
       { key: 'ncc', slug: 'ncc', label: 'Nhà cung cấp', short: 'NCC', hint: 'Công nợ nhà cung cấp (hóa đơn mua nợ)', module: 'payables' },
-      { key: 'phieuchi', slug: 'phieu-chi', label: 'Phiếu chi', hint: 'Phiếu chi cho thầu phụ (tạm ứng, thanh toán đợt) và trả nợ nhà cung cấp', module: 'payments', aka: 'chi trả tp ncc' },
+      { key: 'phieuchi', slug: 'phieu-chi', label: 'Phiếu chi', hint: 'Phiếu chi trả thầu phụ và trả nợ nhà cung cấp', module: 'payments', aka: 'chi trả tp ncc' },
       { key: 'tattoan', slug: 'tat-toan', label: 'Tất toán', hint: 'Chốt công nợ đã trả xong', module: 'payables' },
     ],
   },

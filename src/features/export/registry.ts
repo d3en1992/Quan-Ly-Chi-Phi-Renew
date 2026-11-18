@@ -83,7 +83,7 @@ export type Dataset = {
 
 // ───────────── nhãn mã → chữ ─────────────
 const L = {
-  payKind: { advance: 'Tạm ứng TP', progress: 'Thanh toán đợt TP', supplier_payment: 'Trả nợ NCC' } as Record<string, string>,
+  payKind: { advance: 'Trả thầu phụ', progress: 'Trả thầu phụ', supplier_payment: 'Trả nợ NCC' } as Record<string, string>,
   rcKind: { advance: 'Tạm ứng', stage: 'Giai đoạn', settlement: 'Quyết toán', other: 'Khác' } as Record<string, string>,
   stKind: { increase: 'Tăng', decrease: 'Giảm', replace: 'Thay thế' } as Record<string, string>,
   loc: { project: 'Tại công trình', warehouse: 'Kho thiết bị', scaffold: 'Kho giàn giáo' } as Record<string, string>,

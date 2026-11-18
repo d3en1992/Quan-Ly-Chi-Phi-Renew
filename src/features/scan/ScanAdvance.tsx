@@ -1,6 +1,6 @@
 // Nút AI → TIỀN ỨNG / TRẢ TIỀN cho THẦU PHỤ hoặc NHÀ CUNG CẤP (giọng nói "ứng Hà điện nước 5 triệu CT A Nhật",
 // "nhà cung cấp sắt thép An Phú ứng 50 triệu", hoặc ảnh chuyển khoản): điền sẵn phiếu chi.
-// Thầu phụ → Tạm ứng TP / Thanh toán đợt TP. NCC → Trả nợ NCC (có công trình thì chia trong công trình đó, không thì chia hóa đơn cũ nhất trước).
+// Thầu phụ → Trả thầu phụ (Tạm ứng / Thanh toán đợt đã gộp, phiếu mới ghi loại advance). NCC → Trả nợ NCC (có công trình thì chia trong công trình đó, không thì chia hóa đơn cũ nhất trước).
 // Người nhận chưa có trong danh mục → tích "Thêm … mới". Anh kiểm tra rồi mới lưu.
 import { useState } from 'react';
 import type { AdvanceScan, PayMethod } from '@shared/scan';
@@ -31,7 +31,7 @@ export function ScanAdvance({ scan, onDone, onRetake }: Props) {
   const [project, setProject] = useState(scan.project_match);
   const [date, setDate] = useState(scan.date || today());
   const [amount, setAmount] = useState(scan.amount);
-  const [payKind, setPayKind] = useState<'advance' | 'progress'>(scan.pay_kind);
+  const payKind = 'advance' as const;
   const [method, setMethod] = useState<PayMethod>(scan.method);
   const [note, setNote] = useState(scan.note);
   const [addNew, setAddNew] = useState(true);
@@ -80,7 +80,7 @@ export function ScanAdvance({ scan, onDone, onRetake }: Props) {
         mode: 'fifo', picks: [], note: methodNote(method, note),
       }]);
       const label = found?.name ?? name.trim().toUpperCase();
-      toast(`Đã lưu ${isSup ? 'phiếu trả NCC' : payKind === 'advance' ? 'tạm ứng' : 'thanh toán'} ${formatMoney(amount)} cho ${label}${proj ? ` · ${proj.name}` : ''}`);
+      toast(`Đã lưu ${isSup ? 'phiếu trả NCC' : 'phiếu trả thầu phụ'} ${formatMoney(amount)} cho ${label}${proj ? ` · ${proj.name}` : ''}`);
       onDone();
     } catch (e) {
       toast(`Chưa lưu được: ${e instanceof Error ? e.message : String(e)}`, 'error');
@@ -121,11 +121,6 @@ export function ScanAdvance({ scan, onDone, onRetake }: Props) {
           ) : null}
           <Field label="Ngày"><Input type="date" aria-label="Ngày ứng" className={scan.date ? unsure('date') : UNSURE} value={date} onChange={(e) => setDate(e.target.value)} /></Field>
           <Field label="Số tiền (đ) *"><MoneyInput aria-label="Số tiền ứng" className={amount > 0 ? unsure('amount') : UNSURE} value={amount} onChange={setAmount} /></Field>
-          {!isSup ? (
-            <div className="grid gap-1 text-xs font-medium text-muted"><span>Loại phiếu</span>
-              <div><Segmented value={payKind} onChange={setPayKind} options={[{ value: 'advance', label: 'Tạm ứng' }, { value: 'progress', label: 'Thanh toán đợt' }]} /></div>
-            </div>
-          ) : null}
           <div className="grid gap-1 text-xs font-medium text-muted"><span>Hình thức</span>
             <div className={method ? undefined : 'w-fit rounded-lg ring-2 ring-warn'}><Segmented value={method || ('' as 'transfer')} onChange={setMethod} options={METHOD_OPTS} /></div>
           </div>

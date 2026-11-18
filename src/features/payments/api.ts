@@ -46,7 +46,9 @@ export type Party = z.infer<typeof partySchema>;
 export type PayProject = z.infer<typeof projectSchema>;
 export type PaymentKind = 'advance' | 'progress' | 'supplier_payment';
 
-export const KIND_LABEL: Record<string, string> = { advance: 'Tạm ứng TP', progress: 'Thanh toán đợt TP', supplier_payment: 'Trả nợ NCC' };
+// 18/11/2026: gộp Tạm ứng TP + Thanh toán đợt TP thành một mục "Trả thầu phụ" (công thức vốn tính 2 loại như nhau).
+// Kho vẫn giữ 'advance' / 'progress' cho phiếu cũ; phiếu mới ghi 'advance'.
+export const KIND_LABEL: Record<string, string> = { advance: 'Trả thầu phụ', progress: 'Trả thầu phụ', supplier_payment: 'Trả nợ NCC' };
 export const MODE_LABEL: Record<string, string> = { fifo: 'Theo cục (cũ nhất trước)', project: 'Riêng một công trình', manual: 'Theo hóa đơn đã tích' };
 
 export type PayData = {

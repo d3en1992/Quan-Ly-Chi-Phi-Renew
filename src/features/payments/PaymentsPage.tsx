@@ -1,5 +1,5 @@
 // Tab CHI TRẢ TP/NCC (PAGES.nhapung / MP.ung, đổi tên từ "Ứng TP/NCC" — mục 4L): nhập nhiều phiếu chi một lần
-// (Tạm ứng TP · Thanh toán đợt TP · Trả nợ NCC), hiện "còn nợ" ngay khi chọn đối tác, lịch sử phiếu chi (Copy Zalo từng phiếu).
+// (Trả thầu phụ · Trả nợ NCC), hiện "còn nợ" ngay khi chọn đối tác, lịch sử phiếu chi (Copy Zalo từng phiếu).
 import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -22,7 +22,7 @@ import { autoSubcontractId, blankPayDraft, projectFilterOptions, canEditRow, dra
 type Row = { date: string; party: string; project: string; amount: number; note: string };
 const blankRow = (): Row => ({ date: '', party: '', project: '', amount: 0, note: '' });
 const isBlank = (r: Row) => !r.party.trim() && !r.project && !r.amount && !r.note.trim();
-const KINDS: { value: PaymentKind; label: string }[] = (['advance', 'progress', 'supplier_payment'] as const).map((k) => ({ value: k, label: KIND_LABEL[k]! }));
+const KINDS: { value: PaymentKind; label: string }[] = (['advance', 'supplier_payment'] as const).map((k) => ({ value: k, label: KIND_LABEL[k]! }));
 
 /** Lưới nhập nhiều phiếu chi một lần (như bảng "Nhập tiền ứng" của app cũ) */
 function EntryGrid({ data, calc }: { data: PayData; calc: PayCalc }) {
@@ -164,7 +164,7 @@ export function PaymentsPage() {
   ) : null;
   const filters = (
     <FilterBar>
-      <FilterSelect label="Loại" value={kind} onChange={setKind} options={[{ value: 'tp', label: 'Thầu phụ' }, ...KINDS]} />
+      <FilterSelect label="Loại" value={kind} onChange={setKind} options={[{ value: 'tp', label: KIND_LABEL.advance! }, { value: 'supplier_payment', label: KIND_LABEL.supplier_payment! }]} />
       <FilterSelect label="Công trình" value={project} onChange={setProject} options={projOpts} />
       <SearchBox value={q} onChange={setQ} placeholder="Tìm thầu phụ, NCC…" />
     </FilterBar>
@@ -194,7 +194,7 @@ export function PaymentsPage() {
 
   return (
     <>
-      <PageHeader title="Phiếu Chi" sub="Phiếu chi cho thầu phụ (tạm ứng, thanh toán đợt) và trả nợ nhà cung cấp"
+      <PageHeader title="Phiếu Chi" sub="Phiếu chi trả thầu phụ và trả nợ nhà cung cấp"
         actions={<>
           {canAdd ? <Button data-testid="pay-add" onClick={() => { setNccOnly(true); setDraft(blankPayDraft({ kind: 'supplier_payment', mode: 'manual' })); }}><Icon name="checklist" />Trả NCC theo hóa đơn…</Button> : null}
         </>} />

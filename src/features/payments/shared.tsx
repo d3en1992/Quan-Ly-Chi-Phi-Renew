@@ -239,9 +239,9 @@ export function PaymentSheet({ draft, setDraft, data, calc, readOnly, nccOnly, o
         </>
       )}>
       <fieldset disabled={readOnly} className="grid min-w-0 gap-3">
-        {nccOnly && ncc && !draft.id ? null : draft.id && ncc ? <div className="text-[13px] font-semibold">{KIND_LABEL.supplier_payment}</div> : (
+        {nccOnly && ncc && !draft.id ? null : draft.id ? <div className="text-[13px] font-semibold">{KIND_LABEL[draft.kind]}</div> : (
           <Segmented value={draft.kind} onChange={(k) => setDraft({ ...draft, kind: k, party: (k === 'supplier_payment') === ncc ? draft.party : '', picks: [], mode: 'fifo' })}
-            options={(draft.id ? ['advance', 'progress'] as const : ['advance', 'progress', 'supplier_payment'] as const).map((k) => ({ value: k, label: KIND_LABEL[k]! }))} />
+            options={(['advance', 'supplier_payment'] as const).map((k) => ({ value: k, label: KIND_LABEL[k]! }))} />
         )}
         <Field label="Ngày"><Input type="date" aria-label="Ngày" value={draft.date} onChange={(e) => set('date', e.target.value)} /></Field>
         <Field label={ncc ? 'Nhà cung cấp *' : 'Thầu phụ *'}
