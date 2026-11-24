@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { transformSnapshot } from '../../../../scripts/legacy/transform.ts';
 import {
-  allocSummary, benchmarkControl, benchmarkFields, compareToBenchmark, defaultGroupOfType, defaultPillarOfType, floorAreaTotal, groupByWords,
+  allocSummary, benchmarkControl, benchmarkFields, compareBenchmarks, defaultGroupOfType, defaultPillarOfType, floorAreaTotal, groupByWords,
   legacyBucketToGroup, readAllocConfig, readAllocStruct, ruleMatches, splitItems, typeGroupMatrix, type AllocItem, type AllocSource,
 } from '../cost-allocation';
 import { buildProfitIndex, profitContext } from '../profit';
@@ -104,7 +104,6 @@ describe('Tỉ trọng — hàm thuần', () => {
     const dm = benchmarkFields({ id: 'p1', name: 'CT A' }, r, 'Trọn vòng đời');
     expect(dm.ro1).toEqual({ sat: 120_000, bt: 0, nc: 10_500, tp: 20_000, quy: 1_200, khac: 0 });
     expect(dm.dgRo1).toBe(Math.round(r.tongChi / 100));
-    expect(compareToBenchmark(r, dm)).toBeCloseTo(0, 6);
     const ks = benchmarkControl(dm, 100, r);
     expect(ks.soVuot).toBe(0);
     expect(ks.rows.find((x) => x.k === 'quy')!.ns).toBe(120_000);
@@ -162,6 +161,20 @@ describe('Tỉ trọng — hàm thuần', () => {
     expect(run(null).theoNhom[2]).toBe(9);
     expect(run({ nhomLoai: { 'thau phu': 1 } }).theoNhom[2]).toBe(9);
     expect(run(null, { theoHdtp: { h: { nhom: 1 } } }).theoNhom[1]).toBe(9);
+  });
+
+  it('so sánh định mức: % so với mục đầu, gộp loại trùng tên khác hoa thường, phần chưa xếp, nhóm lệch nhất', () => {
+    const r = compareBenchmarks([
+      { dgTong: 1000, dgNhom: { 1: 800, 2: 100, 3: 0, 4: 100 }, dgRo1: 800, dgLoai: { 'Sắt Thép': 400, 'Cũ': 0 } },
+      { dgTong: 1500, dgNhom: { 1: 900, 2: 500, 3: 0, 4: 0 }, dgRo1: 900, dgLoai: { 'SẮT THÉP': 300, 'Thầu Phụ': 700 } },
+      { dgTong: 900, dgNhom: {}, dgRo1: 895, dgLoai: {} }, // định mức đời cũ chỉ có dgRo1
+    ]);
+    expect(r.total.diffPct).toEqual([null, 50, -10]);
+    expect(r.groups.map((g) => [g.key, g.values])).toEqual([['1', [800, 900, 895]], ['2', [100, 500, 0]], ['3', [0, 0, 0]], ['4', [100, 0, 0]], ['0', [0, 100, 0]]]);
+    expect(r.groups[2]!.diffPct).toEqual([null, null, null]);
+    expect(r.types.map((t) => [t.label, t.values])).toEqual([['Thầu Phụ', [0, 700, 0]], ['Sắt Thép', [400, 300, 0]]]);
+    expect(r.topGroup).toEqual([null, { group: 2, delta: 400 }, { group: 2, delta: -100 }]);
+    expect(compareBenchmarks([]).total.values).toEqual([]);
   });
 
   it('chi phí chung phân bổ theo ngày × k, mặc định Nhóm 1, gán tay được', () => {

@@ -548,10 +548,35 @@ export function readBenchmark(data: unknown): Benchmark {
 /** `tytDmCoRo1` */
 export const benchmarkHasPillars = (dm: Pick<Benchmark, 'ro1'> | null | undefined): boolean => !!dm && MAIN_PILLARS.some((t) => Number(dm.ro1[t]) > 0);
 
-/** So đơn giá Nhóm 1 của công trình với định mức: % lệch (dương = cao hơn định mức). Không so được → null */
-export function compareToBenchmark(r: Pick<AllocSummary, 'cpM2N1' | 'tongSan'>, dm: Pick<Benchmark, 'dgRo1'> | null | undefined): number | null {
-  if (!dm || !(dm.dgRo1 > 0) || !(r.tongSan > 0)) return null;
-  return ((r.cpM2N1 - dm.dgRo1) / dm.dgRo1) * 100;
+// ══ SO SÁNH 2–3 CÔNG TRÌNH / ĐỊNH MỨC (đ/m²) — mục đầu tiên là mốc ═══════
+export type CompareRow = { key: string; label: string; values: number[]; /** % lệch so với mốc; mốc = 0 hoặc chính mốc → null */ diffPct: (number | null)[]; max: number };
+export type CompareResult = {
+  total: CompareRow; groups: CompareRow[]; types: CompareRow[];
+  /** nhóm lệch nhiều tiền nhất so với mốc, theo từng mục (mốc → null) */
+  topGroup: ({ group: number; delta: number } | null)[];
+};
+export function compareBenchmarks(items: readonly Pick<Benchmark, 'dgTong' | 'dgNhom' | 'dgRo1' | 'dgLoai'>[]): CompareResult {
+  const row = (key: string, label: string, values: number[]): CompareRow => {
+    const base = values[0] ?? 0;
+    return { key, label, values, max: Math.max(0, ...values), diffPct: values.map((v, i) => (i === 0 || !(base > 0) ? null : ((v - base) / base) * 100)) };
+  };
+  const groupOf = (b: (typeof items)[number], n: number) => b.dgNhom[n] ?? (n === 1 ? b.dgRo1 : 0);
+  // Phần chưa xếp nhóm = tổng − 4 nhóm (bỏ lệch vài đồng do làm tròn)
+  const rest = items.map((b) => { const r = b.dgTong - COST_GROUP_IDS.reduce((s, n) => s + groupOf(b, n), 0); return r > 10 ? r : 0; });
+  const groups = COST_GROUP_IDS.map((n) => row(String(n), String(n), items.map((b) => groupOf(b, n))));
+  if (rest.some((v) => v > 0)) groups.push(row('0', '0', rest));
+  const names = new Map<string, string>();
+  const byType = items.map((b) => {
+    const m = new Map<string, number>();
+    for (const [loai, v] of Object.entries(b.dgLoai)) { const k = typeKey(loai); if (!names.has(k)) names.set(k, loai); m.set(k, (m.get(k) ?? 0) + v); }
+    return m;
+  });
+  const types = [...names].map(([k, label]) => row(k, label, byType.map((m) => m.get(k) ?? 0))).filter((r) => r.max > 0).sort((x, y) => y.max - x.max);
+  const topGroup = items.map((_, i) => {
+    if (i === 0) return null;
+    return groups.map((g) => ({ group: Number(g.key), delta: g.values[i]! - g.values[0]! })).sort((x, y) => Math.abs(y.delta) - Math.abs(x.delta))[0] ?? null;
+  });
+  return { total: row('total', 'total', items.map((b) => b.dgTong)), groups, types, topGroup };
 }
 
 // ══ KIỂM SOÁT ĐỊNH MỨC NHÓM 1 (`tytKiemSoat`) ═════════════════════════

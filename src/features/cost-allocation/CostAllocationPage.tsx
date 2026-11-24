@@ -1,18 +1,18 @@
 // Tab TỈ TRỌNG & ĐỊNH MỨC (PAGES.tytrong / MP.tytrong): PHÂN BỔ CÔNG TRÌNH · ĐỊNH MỨC · CẤU HÌNH RỔ.
 // Chi phí chia 4 NHÓM (6 rổ của Nhóm 1 không hiện trên màn hình từ 24/11/2026).
 // Bảng "giai đoạn × hạng mục" của bản vẽ được thay bằng bảng Loại chi phí × Nhóm (app cũ đã bỏ giai đoạn & hạng mục).
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
 import { Button, Icon } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm';
-import { FilterBar, FilterSelect, HBarList, KpiStrip, PhoneKpis } from '@/components/ui/data';
+import { FilterBar, FilterSelect, KpiStrip, PhoneKpis } from '@/components/ui/data';
 import { Checkbox, Field, Input, Select } from '@/components/ui/input';
 import { Card, CardHeader, EmptyState, ErrorState, LoadingState, Note, PageHeader, Pill } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
 import {
-  ALL_YEARS, allocSummary, benchmarkFields, compareToBenchmark, COST_GROUP_IDS, COST_GROUPS, defaultGroupRules, floorAreaTotal, groupOfType,
+  ALL_YEARS, allocSummary, benchmarkFields, COST_GROUP_IDS, COST_GROUPS, defaultGroupRules, floorAreaTotal, groupOfType,
   readAllocConfig, readBenchmark, stripVi, typeGroupMatrix, typeKey,
   type AllocLine, type AllocPart, type AllocSummary, type FloorRow,
 } from '@/lib/calc';
@@ -24,6 +24,7 @@ import {
   toAllocSource, useAllExpenseLines, useAllocRecords, useCreateBenchmark, useDeleteBenchmark, useSaveConfig, useSaveFloorAreas, useSaveProjectAlloc, useUpdateBenchmark,
   type AllocRecord,
 } from './api';
+import { BenchmarkTab } from './BenchmarkTab';
 
 export type AllocTab = 'alloc' | 'benchmark' | 'config';
 const m2 = (n: number) => (Math.round((n || 0) * 100) / 100).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
@@ -139,11 +140,9 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
   const createDm = useCreateBenchmark(), updateDm = useUpdateBenchmark(), deleteDm = useDeleteBenchmark();
 
   const [pid, setPid] = useState('');
-  const [dmId, setDmId] = useState('');
   const [cell, setCell] = useState<{ loai: string | null; nhom: number | null } | null>(null);
   const [floorOpen, setFloorOpen] = useState(false);
   const [dmName, setDmName] = useState<string | null>(null);
-  const [dmSel, setDmSel] = useState('');
   const [rename, setRename] = useState<{ rec: AllocRecord; name: string } | null>(null);
   const [delDm, setDelDm] = useState<AllocRecord | null>(null);
   const [rule, setRule] = useState({ tuKhoa: '', loai: '', nhom: '2' });
@@ -173,6 +172,15 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
     return [...set].sort((a, b) => a.localeCompare(b, 'vi'));
   }, [report.data]);
 
+  const comparable = useMemo(() => projects.filter((p) => floorAreaTotal(p.floor_areas as FloorRow[]) > 0), [projects]);
+  /** Số liệu định mức mới nhất của 1 công trình (chưa có khối lượng sàn → null) */
+  const buildLive = useCallback((id: string) => {
+    const p = projects.find((x) => x.id === id);
+    if (!p || !src) return null;
+    const r = allocSummary({ projectId: p.id, floorAreas: p.floor_areas as FloorRow[], src, years: ALL_YEARS, projectData: records.data?.find((x) => x.kind === 'project' && x.project_id === p.id)?.data ?? null, configData: configRec?.data ?? null });
+    return r.tongSan > 0 ? benchmarkFields({ id: p.id, name: p.name, kindLabel: KIND_CODE[p.kind ?? ''] ?? '' }, r, 'Trọn vòng đời') : null;
+  }, [projects, src, records.data, configRec]);
+
   const loading = report.isLoading || lines.isLoading || records.isLoading || projectsQ.isLoading;
   const error = report.error || lines.error || records.error || projectsQ.error;
   if (loading) return <LoadingState />;
@@ -180,9 +188,6 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
   if (!project || !sum) return <Card><EmptyState icon="pie_chart" title="Chưa có công trình">Thêm công trình ở tab Công Trình trước.</EmptyState></Card>;
 
   const onErr = (e: Error) => toast(`Chưa lưu được: ${e.message}`, 'error');
-  const dm = benchmarks.find((b) => b.id === dmId) ?? benchmarks.find((b) => b.data.nguonPid === project.id) ?? benchmarks[0];
-  const dmData = dm ? readBenchmark(dm.data) : null;
-  const diff = compareToBenchmark(sum, dmData);
   const unassigned = sum.chuaNhom.reduce((s, l) => s + l.parts.filter((p) => p.nhom === 0).reduce((a, p) => a + p.tien, 0), 0);
   const showZero = sum.theoNhom[0]! > 0;
   const cols = showZero ? [...COST_GROUP_IDS, 0] : [...COST_GROUP_IDS];
@@ -201,7 +206,7 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
   const saveConfig = (changes: Parameters<typeof saveCfg.mutate>[0]['changes'], msg: string) => saveCfg.mutate({ current: configRec, changes }, { onSuccess: () => toast(msg), onError: onErr });
   const projectOpts = projects.map((p) => ({ value: p.id, label: p.name }));
 
-  if (phone) {
+  if (phone && tab !== 'benchmark') {
     return (
       <>
         <Select aria-label="Công trình" value={project.id} onChange={(e) => setPid(e.target.value)}>{projectOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</Select>
@@ -221,7 +226,6 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
     <>
       <FilterBar>
         <FilterSelect label="Công trình" value={project.id} onChange={setPid} options={projectOpts} allLabel={null} />
-        {benchmarks.length ? <FilterSelect label="So với" value={dm?.id ?? ''} onChange={setDmId} options={benchmarks.map((b) => ({ value: b.id, label: b.name ?? 'Định mức' }))} allLabel={null} /> : null}
         <span className="flex-1" />
         <Button onClick={() => setTab('config')}><Icon name="rule" />Luật tự gán ({cfg.nhomLuat.length})</Button>
         {canEdit ? <Button variant="primary" data-testid="tyt-save-benchmark" onClick={() => { if (!(sum.tongSan > 0)) { toast('Công trình chưa có khối lượng sàn — nhập bảng Khối lượng sàn trước.', 'error'); return; } setDmName(`Định mức — ${project.name}`); }}><Icon name="bookmark_add" />Lưu làm định mức</Button> : null}
@@ -231,7 +235,6 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
           { label: 'Tổng chi phí', value: <span data-testid="tyt-total">{formatMoney(sum.tongChi)}</span>, sub: `${pct(sum.tongChi - unassigned, sum.tongChi)}% đã xếp nhóm · mọi năm` },
           { label: 'Tổng sàn quy đổi', value: `${m2(sum.tongSan)} m²` },
           { label: 'Đơn giá / m²', value: perM2(sum.tongChi, sum.tongSan), sub: sum.tongSan > 0 ? `Nhóm 1: ${formatMoney(Math.round(sum.cpM2N1))} đ/m²` : 'chưa có khối lượng sàn' },
-          { label: 'So định mức (Nhóm 1)', value: diff === null ? '—' : <Pill tone={diff > 2 ? 'warn' : diff < -2 ? 'good' : 'neutral'}>{`${diff >= 0 ? '+' : '−'}${Math.abs(diff).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%`}</Pill>, sub: dmData && dmData.dgRo1 > 0 ? `định mức ${formatMoney(dmData.dgRo1)} đ/m²` : 'chưa có định mức' },
           { label: 'Khoản chưa gán', value: String(sum.chuaNhom.length), sub: sum.chuaNhom.length ? formatShortMoney(unassigned) : '', tone: sum.chuaNhom.length ? 'neg' : '' },
         ]} />
       </div>
@@ -308,58 +311,14 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
     </>
   );
 
-  const dmShown = benchmarks.find((b) => b.id === dmSel) ?? benchmarks[0];
-  const dmShownData = dmShown ? readBenchmark(dmShown.data) : null;
   const refreshDm = (rec: AllocRecord) => {
-    const b = readBenchmark(rec.data);
-    const p = projects.find((x) => x.id === b.nguonPid);
-    if (!p || !src) { toast('Không tìm thấy công trình nguồn của định mức này.', 'error'); return; }
-    const r = allocSummary({ projectId: p.id, floorAreas: p.floor_areas as FloorRow[], src, years: ALL_YEARS, projectData: recs.find((x) => x.kind === 'project' && x.project_id === p.id)?.data ?? null, configData: configRec?.data ?? null });
-    if (!(r.tongSan > 0)) { toast('Công trình nguồn chưa có khối lượng sàn.', 'error'); return; }
-    updateDm.mutate({ record: rec, fields: benchmarkFields({ id: p.id, name: p.name, kindLabel: KIND_CODE[p.kind ?? ''] ?? '' }, r, 'Trọn vòng đời') }, { onSuccess: () => toast('Đã cập nhật định mức theo số liệu mới nhất'), onError: onErr });
+    const fields = buildLive(readBenchmark(rec.data).nguonPid);
+    if (!fields) { toast('Không tìm thấy công trình nguồn, hoặc công trình chưa có khối lượng sàn.', 'error'); return; }
+    updateDm.mutate({ record: rec, fields }, { onSuccess: () => toast('Đã cập nhật định mức theo số liệu mới nhất'), onError: onErr });
   };
-  const benchmarkTab = benchmarks.length === 0 ? (
-    <Card><EmptyState icon="bookmark" title="Chưa có định mức nào">Mở tab PHÂN BỔ CÔNG TRÌNH, chọn công trình đã xong rồi bấm "Lưu làm định mức".</EmptyState></Card>
-  ) : (
-    <>
-      <Card>
-        <CardHeader title="Định mức đã lưu" sub="dùng để báo giá công trình mới · bấm một dòng để xem chi tiết" />
-        <div className="tbl" data-testid="tyt-benchmarks">
-          <table>
-            <thead><tr><th>Tên định mức</th><th>Loại CT</th><th className="!text-right">Tổng sàn</th><th className="!text-right">Tổng chi</th><th className="!text-right">Đơn giá tổng</th><th className="!text-right">Nhóm 1</th>{[2, 3, 4].map((n) => <th key={n} className="!text-right">Nhóm {n}</th>)}</tr></thead>
-            <tbody>{benchmarks.map((rec) => {
-              const b = readBenchmark(rec.data);
-              return (
-                <tr key={rec.id} className="cursor-pointer" aria-selected={rec.id === dmShown?.id} onClick={() => setDmSel(rec.id)}>
-                  <td className="whitespace-nowrap"><b className="font-semibold">{rec.name}</b><span className="block text-[11.5px] text-faint">{b.nam}</span></td>
-                  <td>{b.loaiCT || '—'}</td>
-                  <td className="num text-right">{m2(b.tongSan)} m²</td>
-                  <td className="num text-right">{formatMoney(b.tongChi)}</td>
-                  <td className="num text-right"><b>{formatMoney(b.dgTong)}</b></td>
-                  <td className="num text-right">{formatMoney(b.dgRo1)}</td>
-                  {[2, 3, 4].map((n) => <td key={n} className="num text-right text-faint">{formatMoney(b.dgNhom[n] ?? 0)}</td>)}
-                </tr>
-              );
-            })}</tbody>
-          </table>
-        </div>
-      </Card>
-      {dmShown && dmShownData ? (
-        <Card>
-          <CardHeader title="Đơn giá theo loại chi phí (đ/m²)" sub={dmShown.name ?? ''}
-            actions={canEdit ? (
-              <>
-                <Button size="sm" onClick={() => setRename({ rec: dmShown, name: dmShown.name ?? '' })}><Icon name="edit" />Đổi tên</Button>
-                <Button size="sm" disabled={updateDm.isPending} onClick={() => refreshDm(dmShown)}><Icon name="refresh" />Cập nhật từ công trình nguồn</Button>
-                <Button size="sm" variant="ghost-danger" data-testid="tyt-dm-delete" onClick={() => setDelDm(dmShown)}><Icon name="delete" />Xóa</Button>
-              </>
-            ) : null} />
-          <div className="p-3.5">
-            <HBarList items={Object.entries(dmShownData.dgLoai).sort((a, b) => b[1] - a[1]).map(([label, value]) => ({ key: label, label, value, display: formatMoney(value) }))} empty="Định mức này không có số theo loại" />
-          </div>
-        </Card>
-      ) : null}
-    </>
+  const benchmarkTab = (
+    <BenchmarkTab benchmarks={benchmarks} projects={comparable} buildLive={buildLive} canEdit={canEdit} busy={updateDm.isPending}
+      onRename={(rec) => setRename({ rec, name: rec.name ?? '' })} onRefresh={refreshDm} onDelete={setDelDm} />
   );
 
   const configTab = (
@@ -423,7 +382,7 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
 
   return (
     <>
-      <PageHeader title="Tỉ Trọng & Định Mức" sub="Chi phí mỗi công trình chia theo nhóm, loại; lưu thành định mức để báo giá" />
+      {phone ? null : tab === 'benchmark' ? <PageHeader title="Định Mức" sub="So sánh đơn giá giữa các công trình và lưu làm mốc báo giá" /> : <PageHeader title="Tỉ Trọng & Định Mức" sub="Chi phí mỗi công trình chia theo nhóm, loại; lưu thành định mức để báo giá" />}
       {tab === 'alloc' ? allocTab : tab === 'benchmark' ? benchmarkTab : configTab}
 
       {cell ? <LinesSheet key={`${cell.loai}|${cell.nhom}`} canEdit={canEdit} busy={saveAlloc.isPending} showType={cell.loai === null} items={picked} onAssign={assign} onClose={() => setCell(null)}

@@ -156,7 +156,21 @@ test('Tỉ trọng: tổng chi / m² / rổ của công trình, lưu làm địn
   await page.getByTestId('tyt-save-benchmark').click();
   await page.getByTestId('tyt-dm-save').click();
   await expect(page.getByText('Đã lưu định mức')).toBeVisible();
-  await expect(page.getByTestId('tyt-benchmarks').locator('tbody tr', { hasText: CT })).toHaveCount(1);
+  await expect(page.getByTestId('tyt-benchmarks').locator('li', { hasText: CT })).toHaveCount(1);
+  // so sánh: chọn công trình vừa lưu làm mốc A + chính công trình đó (số mới nhất) → bằng nhau
+  await page.getByLabel('Công trình so sánh A').selectOption({ label: CT });
+  await page.getByLabel('Công trình so sánh B').selectOption({ label: `Định mức — ${CT}` });
+  const total = page.locator('[data-compare-row="total"]');
+  await expect(total).toContainText('70.000');
+  await expect(total).toContainText('bằng A');
+  await expect(page.locator('[data-compare-row="2"]')).toContainText('50.000');
+  for (const [w, h, n] of [[1440, 900, 'may-tinh'], [820, 1180, 'may-bang'], [390, 844, 'dien-thoai']] as const) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.waitForTimeout(400);
+    await expect(page.getByTestId('tyt-compare')).toBeVisible();
+    expect(await noSideScroll(page), `kéo ngang ở ${w}`).toBe(true);
+    await page.screenshot({ path: `${SHOTS}/dinh-muc-${n}.png`, fullPage: true });
+  }
   const dm = await one(admin.from('cost_allocations').select('data').eq('kind', 'benchmark').like('name', `%${CT}%`));
   const d = (dm[0] as { data: { dgTong: number; dgRo1: number; ro1: Record<string, number>; dgNhom: Record<string, number> } }).data;
   expect([d.dgTong, d.dgRo1, d.ro1.nc, d.dgNhom['2']]).toEqual([70_000, 20_000, 20_000, 50_000]);
