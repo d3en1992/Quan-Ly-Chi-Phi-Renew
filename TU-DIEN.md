@@ -20,7 +20,7 @@ Menu 9 tab (gộp 13/11/2026, `tai-lieu/KE-HOACH-GOP-TAB.md`). Quyền gắn v�
 | Thu & Lãi › Quyết toán | `/thu-lai/quyet-toan` | `settlements` | `revenue` |
 | Thu & Lãi › Lợi nhuận | `/thu-lai/loi-nhuan` | `profit` | `reports` |
 | Kế Hoạch › Tiến độ | `/ke-hoach/tien-do` | `schedule` | `schedule` |
-| Kế Hoạch › Tỉ trọng / Định mức / Cấu hình rổ | `/ke-hoach/ti-trong`, `/ke-hoach/dinh-muc`, `/ke-hoach/cau-hinh` | `cost_allocation` | `cost-allocation` |
+| Kế Hoạch › Tỉ trọng / Định mức / Cấu hình nhóm | `/ke-hoach/ti-trong`, `/ke-hoach/dinh-muc`, `/ke-hoach/cau-hinh` | `cost_allocation` | `cost-allocation` |
 | Thiết Bị (trước: Theo Dõi TB) | `/thiet-bi` | `equipment` | `equipment` |
 | Dashboard | `/dashboard` | `dashboard` | `reports` |
 | Cài Đặt › Danh bạ | `/cai-dat/danh-ba` | `contacts` | `contacts` |

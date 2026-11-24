@@ -131,8 +131,6 @@ test('Tỉ trọng: tổng chi / m² / rổ của công trình, lưu làm địn
   await openAlloc(page);
   // 5.000.000 hóa đơn Sắt Thép + 2.000.000 lương tuần (4 công × 500.000)
   await expect(page.getByTestId('tyt-total')).toHaveText('7.000.000');
-  await expect(page.locator('[data-bucket="sat"]')).toContainText('50.000 đ/m²');
-  await expect(page.locator('[data-bucket="nc"]')).toContainText('20.000 đ/m²');
   await expect(page.locator('[data-group-total="1"]')).toHaveText('7.000.000');
   await page.screenshot({ path: `${SHOTS}/ti-trong-cong-trinh-1440.png`, fullPage: true });
 

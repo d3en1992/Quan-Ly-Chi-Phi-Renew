@@ -52,6 +52,17 @@ describe('Tỉ trọng — hàm thuần', () => {
     expect(ruleMatches({ loai: '', tuKhoa: '' }, line, { ten: '', mon: false })).toBe(false);
   });
 
+  it('luật mặc định gạch ốp, xà bần áp mọi loại; luật đã lưu chưa sửa thì tự theo, đã sửa thì giữ', () => {
+    const gach = 'gạch ốp, gạch lát, gạch men, gạch granite, đá hoa cương, granite, marble, sàn gỗ';
+    const xaBan = 'xà bần, giải khát, đô thị, giữ công trình';
+    expect(readAllocConfig(null).nhomLuat.filter((l) => l.id === 'nd1' || l.id === 'nd4').map((l) => [l.tuKhoa, l.loai])).toEqual([[gach, ''], [xaBan, '']]);
+    const saved = readAllocConfig({ nhomLuat: [
+      { id: 'nd1', loai: 'Vật Liệu Xây Dựng', tuKhoa: gach, nhom: 2 }, { id: 'nd4', loai: 'Khác', tuKhoa: xaBan, nhom: 1 },
+      { id: 'nd4', loai: 'Khác', tuKhoa: 'xà bần', nhom: 1 }, { id: 'q1', loai: 'Khác', tuKhoa: xaBan, nhom: 1 },
+    ] });
+    expect(saved.nhomLuat.map((l) => l.loai)).toEqual(['', '', 'Khác', 'Khác']);
+  });
+
   it('đọc cấu hình / phân nhóm đời cũ (rổ) → nhóm mới', () => {
     const cfg = readAllocConfig({ roLoai: { 'phu cap an uong': 1, khac: 2 }, roLuat: [{ id: 'rd0', tuKhoa: 'x', ro: 2 }, { id: 'q1', loai: '', tuKhoa: 'thang máy', ro: 2 }] });
     expect(cfg.nhomLoai).toEqual({ khac: 4 });
@@ -233,6 +244,7 @@ describe.skipIf(!ready)('Tỉ trọng — khớp `tytTongHop` của app cũ (ph�
         if (!l) { diffs.push(`${g.ten} · thiếu khoản ${k.key} (${k.tien})`); continue; }
         if (l.tien !== k.tien) diffs.push(`${g.ten} · ${k.key}: ${l.tien} ≠ ${k.tien}`);
         if (/^(thiết kế|sửa máy)/i.test(k.loai)) continue; // đổi nhóm mặc định 4 → 1 (24/11/2026)
+        if (l.parts.some((pt) => pt.nhomRef === 'nd1' || pt.nhomRef === 'nd4')) continue; // 2 luật mặc định nay áp mọi loại
         const nhom = l.parts.map((pt) => pt.nhom + ':' + pt.tien).join(',');
         if (nhom !== k.nhom) diffs.push(`${g.ten} · ${k.key} nhóm: ${nhom} ≠ ${k.nhom}`);
       }

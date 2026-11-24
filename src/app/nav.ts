@@ -66,7 +66,7 @@ export const NAV_TABS: NavItem[] = [
       { key: 'tiendo', slug: 'tien-do', label: 'Tiến độ', hint: 'Kế hoạch thi công, việc trễ, báo cáo Zalo', module: 'schedule' },
       { key: 'titrong', slug: 'ti-trong', label: 'Tỉ trọng', hint: 'Chi phí mỗi công trình chia theo nhóm, loại, rổ', module: 'cost_allocation', aka: 'tỉ trọng định mức' },
       { key: 'dinhmuc', slug: 'dinh-muc', label: 'Định mức', hint: 'Định mức đã lưu, dùng để báo giá công trình mới', module: 'cost_allocation' },
-      { key: 'cauhinh', slug: 'cau-hinh', label: 'Cấu hình rổ', short: 'Cấu hình', hint: 'Loại chi phí → nhóm, rổ; luật theo từ khóa', module: 'cost_allocation' },
+      { key: 'cauhinh', slug: 'cau-hinh', label: 'Cấu hình nhóm', short: 'Cấu hình', hint: 'Loại chi phí → nhóm; luật theo từ khóa', module: 'cost_allocation' },
     ],
   },
   { key: 'thietbi', path: '/thiet-bi', icon: 'build', label: 'Thiết Bị', module: 'equipment' },

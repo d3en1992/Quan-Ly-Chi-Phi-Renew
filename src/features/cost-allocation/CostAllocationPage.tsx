@@ -1,5 +1,5 @@
 // Tab TỈ TRỌNG & ĐỊNH MỨC (PAGES.tytrong / MP.tytrong): PHÂN BỔ CÔNG TRÌNH · ĐỊNH MỨC · CẤU HÌNH RỔ.
-// Theo đúng logic app cũ bản 27/10/2026: chi phí chia 4 NHÓM; Nhóm 1 chia 6 rổ (Sắt / Bê tông / Nhân công / Thầu phụ / Quỹ / Khác).
+// Chi phí chia 4 NHÓM (6 rổ của Nhóm 1 không hiện trên màn hình từ 24/11/2026).
 // Bảng "giai đoạn × hạng mục" của bản vẽ được thay bằng bảng Loại chi phí × Nhóm (app cũ đã bỏ giai đoạn & hạng mục).
 import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
@@ -13,8 +13,8 @@ import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
 import {
   ALL_YEARS, allocSummary, benchmarkFields, compareToBenchmark, COST_GROUP_IDS, COST_GROUPS, defaultGroupRules, floorAreaTotal, groupOfType,
-  PILLAR_ORDER, PILLARS, pillarOfType, readAllocConfig, readBenchmark, stripVi, typeGroupMatrix, typeKey,
-  type AllocLine, type AllocPart, type AllocSummary, type FloorRow, type PillarKey,
+  readAllocConfig, readBenchmark, stripVi, typeGroupMatrix, typeKey,
+  type AllocLine, type AllocPart, type AllocSummary, type FloorRow,
 } from '@/lib/calc';
 import { formatDate, formatMoney, formatShortMoney } from '@/lib/format';
 import { hasLevel } from '@/lib/permissions';
@@ -32,13 +32,12 @@ const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
 const KIND_CODE: Record<string, string> = { new_build: 'CT', renovation: 'SC', small_repair: 'SN' };
 const SRC_LABEL: Record<AllocPart['nhomSrc'], string> = { tay: 'Gán tay', hdtp: 'Theo HĐ thầu phụ', luat: 'Luật từ khóa', loai: 'Theo loại', macdinh: 'Mặc định' };
 const GROUP_OPTS = COST_GROUP_IDS.map((n) => ({ value: String(n), label: `Nhóm ${n} · ${COST_GROUPS[n]!.ngan}` }));
-const pillarLabel = (k: PillarKey) => PILLARS[k].ngan;
 
 type Picked = { line: AllocLine; part: AllocPart };
 
 /** Bảng trượt liệt kê các khoản trong 1 ô / các khoản chưa xếp; gán tay nhóm cho cả khoản */
-function LinesSheet({ title, items, canEdit, busy, onAssign, onClose }: {
-  title: string; items: Picked[]; canEdit: boolean; busy: boolean; onAssign: (keys: string[], group: number) => void; onClose: () => void;
+function LinesSheet({ title, showType, items, canEdit, busy, onAssign, onClose }: {
+  title: string; showType: boolean; items: Picked[]; canEdit: boolean; busy: boolean; onAssign: (keys: string[], group: number) => void; onClose: () => void;
 }) {
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [bulk, setBulk] = useState('');
@@ -72,18 +71,20 @@ function LinesSheet({ title, items, canEdit, busy, onAssign, onClose }: {
         <div className="text-[12.5px] text-muted">{words.length ? `${shown.length} / ${items.length}` : items.length} dòng · tổng <b className="num text-fg">{formatMoney(total)}</b>{canEdit ? ' · gán tay áp cho CẢ khoản (mọi món của hóa đơn đó)' : ''}</div>
         <div className="tbl">
           <table>
-            <thead><tr>{canEdit ? <th /> : null}<th>Ngày</th><th>Nội dung</th><th>Loại</th><th className="!text-right">Số tiền</th><th>Đang xếp</th></tr></thead>
+            <thead><tr>{canEdit ? <th /> : null}<th>Ngày</th><th>Nội dung</th><th className="!text-right">Số tiền</th><th>Đang xếp</th></tr></thead>
             <tbody>
               {shown.map(({ line, part }, i) => (
                 <tr key={line.key + '#' + i} data-line={line.key}>
                   {canEdit ? <td><input type="checkbox" aria-label={`Chọn ${line.nd}`} checked={sel.has(line.key)} onChange={() => toggle(line.key)} /></td> : null}
                   <td className="num">{formatDate(line.ngay)}</td>
-                  <td className="wrap !min-w-0">{part.mon ? part.ten : line.nd}{line.doiTuong ? <span className="block text-[11.5px] text-faint">{line.doiTuong}{part.mon ? ` · ${line.nd}` : ''}</span> : null}</td>
-                  <td className="whitespace-nowrap">{line.loai}</td>
+                  <td className="wrap w-full !max-w-none !min-w-[180px]" title={[part.mon ? part.ten : '', line.doiTuong, line.nd].filter(Boolean).join(' · ')}>
+                    <span className="line-clamp-2">{part.mon ? part.ten : line.nd}</span>
+                    <span className="line-clamp-1 text-[11.5px] text-faint">{[showType ? line.loai : '', line.doiTuong, part.mon ? line.nd : ''].filter(Boolean).join(' · ')}</span>
+                  </td>
                   <td className="num text-right">{formatMoney(part.tien)}</td>
                   <td className="whitespace-nowrap">
                     <Pill tone={part.nhom === 0 ? 'bad' : part.nhomSrc === 'tay' ? 'accent' : 'neutral'}>{part.nhom === 0 ? 'Chưa xếp' : `Nhóm ${part.nhom}`}</Pill>
-                    <span className="mt-0.5 block text-[11.5px] text-faint">{SRC_LABEL[part.nhomSrc]}{part.tru !== null && part.nhom === 1 ? ` · rổ ${pillarLabel(part.tru)}` : ''}</span>
+                    <span className="mt-0.5 block text-[11.5px] text-faint">{SRC_LABEL[part.nhomSrc]}</span>
                   </td>
                 </tr>
               ))}
@@ -127,7 +128,7 @@ function FloorSheet({ project, onClose }: { project: ProjectFull; onClose: () =>
   );
 }
 
-/** Tab con do khung Kế Hoạch chọn (Tỉ trọng / Định mức / Cấu hình rổ); onTabChange = chuyển sang tab con khác */
+/** Tab con do khung Kế Hoạch chọn (Tỉ trọng / Định mức / Cấu hình nhóm); onTabChange = chuyển sang tab con khác */
 export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab; onTabChange: (t: AllocTab) => void }) {
   const phone = useLayoutMode() === 'phone';
   const access = useAccess();
@@ -200,18 +201,6 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
   const saveConfig = (changes: Parameters<typeof saveCfg.mutate>[0]['changes'], msg: string) => saveCfg.mutate({ current: configRec, changes }, { onSuccess: () => toast(msg), onError: onErr });
   const projectOpts = projects.map((p) => ({ value: p.id, label: p.name }));
 
-  const buckets = (
-    <div className="grid grid-cols-2 gap-px border-t border-line-soft bg-line sm:grid-cols-3 xl:grid-cols-6" data-testid="tyt-buckets">
-      {PILLAR_ORDER.map((k) => (
-        <div key={k || 'khac'} className="bg-surface px-3 py-2.5" data-bucket={k || 'khac'}>
-          <small className="block text-[11.5px] text-muted">Rổ {pillarLabel(k)}</small>
-          <b className="num text-[15px]">{formatShortMoney(sum.theoTru[k])}</b>
-          <span className="block text-[11.5px] text-faint">{perM2(sum.theoTru[k], sum.tongSan)} đ/m² · {pct(sum.theoTru[k], sum.tongChi)}%</span>
-        </div>
-      ))}
-    </div>
-  );
-
   if (phone) {
     return (
       <>
@@ -222,10 +211,6 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
           {[...COST_GROUP_IDS, 0].filter((n) => n !== 0 || showZero).map((n) => (
             <div key={n} className="flex justify-between gap-3"><span className={n === 0 ? 'text-bad' : ''}>{COST_GROUPS[n]!.ten}</span><b className="num">{formatShortMoney(sum.theoNhom[n] ?? 0)}</b></div>
           ))}
-        </Card>
-        <Card className="grid gap-1.5 p-3.5 text-[13px]">
-          <div className="text-[11.5px] font-semibold text-muted">6 rổ của Nhóm 1 (đ/m²)</div>
-          {PILLAR_ORDER.map((k) => <div key={k || 'khac'} className="flex justify-between gap-3"><span>{pillarLabel(k)}</span><b className="num">{perM2(sum.theoTru[k], sum.tongSan)}</b></div>)}
         </Card>
         {sum.chuaNhom.length ? <Note icon="warning">{sum.chuaNhom.length} khoản chưa xếp nhóm ({formatMoney(unassigned)}) — xử lý trên máy tính.</Note> : null}
       </>
@@ -270,23 +255,24 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
           {sum.contracts.length ? (
             <Card>
               <CardHeader title="HĐ thầu phụ" sub="tính theo giá trị hợp đồng" />
-              <div className="tbl">
-                <table>
-                  <thead><tr><th>Thầu phụ</th><th className="!text-right">Giá trị HĐ</th><th>Nhóm</th></tr></thead>
-                  <tbody>{sum.contracts.map((h) => (
-                    <tr key={h.id}>
-                      <td>{h.ten}<span className="block text-[11.5px] text-faint">{h.nd || formatDate(h.ngay)} · đã trả {formatShortMoney(sum.daTraHdtp.get(h.id) ?? 0)}</span></td>
-                      <td className="num text-right">{formatShortMoney(h.giaTri)}</td>
-                      <td>
-                        <Select aria-label={`Nhóm của HĐ ${h.ten}`} disabled={!canEdit || saveAlloc.isPending} className="!h-8 !w-[150px]" value={String(sum.st.theoHdtp[h.id]?.nhom ?? '')} onChange={(e) => setContractGroup(h.id, Number(e.target.value))}>
-                          <option value="">Theo loại / luật</option>
-                          {GROUP_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </Select>
-                      </td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
+              <ul data-testid="tyt-contracts">
+                {sum.contracts.map((h) => (
+                  <li key={h.id} className="grid gap-1.5 border-t border-line-soft px-3.5 py-2.5 first:border-t-0">
+                    <div className="flex items-baseline justify-between gap-3 text-[13px]">
+                      <b className="min-w-0 font-semibold break-words">{h.ten}</b>
+                      <b className="num shrink-0">{formatMoney(h.giaTri)}</b>
+                    </div>
+                    <div className="text-[12px] text-muted break-words">{h.nd || formatDate(h.ngay)}</div>
+                    <div className="flex items-center justify-between gap-2">
+                      <Select aria-label={`Nhóm của HĐ ${h.ten}`} disabled={!canEdit || saveAlloc.isPending} className="!h-8 !w-[206px]" value={String(sum.st.theoHdtp[h.id]?.nhom ?? '')} onChange={(e) => setContractGroup(h.id, Number(e.target.value))}>
+                        <option value="">Theo loại / luật</option>
+                        {GROUP_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </Select>
+                      <span className="text-right text-[11.5px] text-faint">đã trả {formatShortMoney(sum.daTraHdtp.get(h.id) ?? 0)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </Card>
           ) : null}
         </div>
@@ -317,8 +303,6 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
               </table>
             </div>
           )}
-          <div className="border-t border-line-soft px-3.5 pt-2 text-[11.5px] font-semibold text-muted">6 rổ của Nhóm 1 (phần thô &amp; nhân công hoàn thiện)</div>
-          {buckets}
         </Card>
       </div>
     </>
@@ -342,7 +326,7 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
         <CardHeader title="Định mức đã lưu" sub="dùng để báo giá công trình mới · bấm một dòng để xem chi tiết" />
         <div className="tbl" data-testid="tyt-benchmarks">
           <table>
-            <thead><tr><th>Tên định mức</th><th>Loại CT</th><th className="!text-right">Tổng sàn</th><th className="!text-right">Tổng chi</th><th className="!text-right">Đơn giá tổng</th><th className="!text-right">Nhóm 1</th>{PILLAR_ORDER.map((k) => <th key={k || 'khac'} className="!text-right">{pillarLabel(k)}</th>)}</tr></thead>
+            <thead><tr><th>Tên định mức</th><th>Loại CT</th><th className="!text-right">Tổng sàn</th><th className="!text-right">Tổng chi</th><th className="!text-right">Đơn giá tổng</th><th className="!text-right">Nhóm 1</th>{[2, 3, 4].map((n) => <th key={n} className="!text-right">Nhóm {n}</th>)}</tr></thead>
             <tbody>{benchmarks.map((rec) => {
               const b = readBenchmark(rec.data);
               return (
@@ -353,7 +337,7 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
                   <td className="num text-right">{formatMoney(b.tongChi)}</td>
                   <td className="num text-right"><b>{formatMoney(b.dgTong)}</b></td>
                   <td className="num text-right">{formatMoney(b.dgRo1)}</td>
-                  {PILLAR_ORDER.map((k) => <td key={k || 'khac'} className="num text-right text-faint">{formatMoney(b.ro1[k === '' ? 'khac' : k] ?? 0)}</td>)}
+                  {[2, 3, 4].map((n) => <td key={n} className="num text-right text-faint">{formatMoney(b.dgNhom[n] ?? 0)}</td>)}
                 </tr>
               );
             })}</tbody>
@@ -379,35 +363,25 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
   );
 
   const configTab = (
-    <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)]">
+    <div className="grid min-w-0 items-start gap-4 xl:grid-cols-2">
       <Card>
-        <CardHeader title="Loại chi phí → nhóm, rổ" sub="dùng chung mọi công trình" />
+        <CardHeader title="Loại chi phí → nhóm" sub="dùng chung mọi công trình" />
         <div className="tbl" data-testid="tyt-type-config">
           <table>
-            <thead><tr><th>Loại chi phí</th><th>Nhóm</th><th>Rổ (khi ở Nhóm 1)</th></tr></thead>
+            <thead><tr><th>Loại chi phí</th><th>Nhóm</th></tr></thead>
             <tbody>{allTypes.map((t) => {
-              const k = typeKey(t), g = groupOfType(t, cfg), pl = pillarOfType(t, cfg);
-              const gDefault = groupOfType(t, null).nhom, pDefault = pillarOfType(t, null).tru;
+              const k = typeKey(t), g = groupOfType(t, cfg);
+              const gDefault = groupOfType(t, null).nhom;
               return (
                 <tr key={t}>
                   <td className="whitespace-nowrap">{t}</td>
                   <td>
-                    <Select aria-label={`Nhóm của ${t}`} disabled={!canEdit || saveCfg.isPending} className="!h-8 !w-[190px]" value={g.src === 'loai' ? String(g.nhom) : ''}
+                    <Select aria-label={`Nhóm của ${t}`} disabled={!canEdit || saveCfg.isPending} className="!h-8 !w-[220px]" value={g.src === 'loai' ? String(g.nhom) : ''}
                       onChange={(e) => { const nhomLoai = { ...cfg.nhomLoai }; if (e.target.value === '') delete nhomLoai[k]; else nhomLoai[k] = Number(e.target.value); saveConfig({ nhomLoai }, `Đã lưu nhóm của "${t}"`); }}>
                       <option value="">Mặc định: {gDefault ? `Nhóm ${gDefault}` : 'Chưa xếp'}</option>
                       {GROUP_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                       <option value="0">Chưa xếp nhóm</option>
                     </Select>
-                  </td>
-                  <td>
-                    {g.nhom === 1 ? (
-                      <Select aria-label={`Rổ của ${t}`} disabled={!canEdit || saveCfg.isPending} className="!h-8 !w-[192px]" value={pl.src === 'loai' ? pl.tru || '-' : ''}
-                        onChange={(e) => { const truLoai = { ...cfg.truLoai }; if (e.target.value === '') delete truLoai[k]; else truLoai[k] = e.target.value === '-' ? '' : e.target.value; saveConfig({ truLoai }, `Đã lưu rổ của "${t}"`); }}>
-                        <option value="">Mặc định: {pillarLabel(pDefault)}</option>
-                        {PILLAR_ORDER.filter((x) => x !== '').map((x) => <option key={x} value={x}>{PILLARS[x].ten}</option>)}
-                        <option value="-">Chưa xếp rổ (Khác)</option>
-                      </Select>
-                    ) : <span className="text-faint">—</span>}
                   </td>
                 </tr>
               );
@@ -449,10 +423,10 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
 
   return (
     <>
-      <PageHeader title="Tỉ Trọng & Định Mức" sub="Chi phí mỗi công trình chia theo nhóm, loại, rổ; lưu thành định mức để báo giá" />
+      <PageHeader title="Tỉ Trọng & Định Mức" sub="Chi phí mỗi công trình chia theo nhóm, loại; lưu thành định mức để báo giá" />
       {tab === 'alloc' ? allocTab : tab === 'benchmark' ? benchmarkTab : configTab}
 
-      {cell ? <LinesSheet key={`${cell.loai}|${cell.nhom}`} canEdit={canEdit} busy={saveAlloc.isPending} items={picked} onAssign={assign} onClose={() => setCell(null)}
+      {cell ? <LinesSheet key={`${cell.loai}|${cell.nhom}`} canEdit={canEdit} busy={saveAlloc.isPending} showType={cell.loai === null} items={picked} onAssign={assign} onClose={() => setCell(null)}
         title={`${cell.loai ?? 'Mọi loại'} · ${cell.nhom === null ? 'mọi nhóm' : cell.nhom === 0 ? 'Chưa xếp nhóm' : COST_GROUPS[cell.nhom]!.ten}`} /> : null}
       {floorOpen ? <FloorSheet project={project} onClose={() => setFloorOpen(false)} /> : null}
       <Sheet open={dmName !== null} onOpenChange={(o) => { if (!o) setDmName(null); }} title="Lưu làm định mức"
@@ -461,7 +435,7 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
           { onSuccess: () => { setDmName(null); toast('Đã lưu định mức'); setTab('benchmark'); }, onError: onErr })}><Icon name="save" />Lưu</Button></>}>
         <div className="grid gap-3">
           <Field label="Tên định mức"><Input aria-label="Tên định mức" value={dmName ?? ''} onChange={(e) => setDmName(e.target.value)} /></Field>
-          <Note>Lưu đơn giá đ/m² của {project.name} (mọi năm): tổng {perM2(sum.tongChi, sum.tongSan)}, Nhóm 1 {formatMoney(Math.round(sum.cpM2N1))}, cùng 6 rổ và từng loại chi phí.</Note>
+          <Note>Lưu đơn giá đ/m² của {project.name} (mọi năm): tổng {perM2(sum.tongChi, sum.tongSan)}, Nhóm 1 {formatMoney(Math.round(sum.cpM2N1))}, cùng từng nhóm và từng loại chi phí.</Note>
         </div>
       </Sheet>
       <Sheet open={!!rename} onOpenChange={(o) => { if (!o) setRename(null); }} title="Đổi tên định mức"

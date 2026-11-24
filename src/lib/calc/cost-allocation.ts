@@ -1,5 +1,5 @@
 // TỈ TRỌNG & ĐỊNH MỨC — chép NGUYÊN logic `tytrong.core.js` của app cũ (bản 27/10/2026: 4 NHÓM chi phí,
-// Nhóm 1 chia 4 trụ cột + Phụ phí + Chưa xếp = "6 rổ" trên màn hình).
+// Nhóm 1 chia 4 trụ cột + Phụ phí + Chưa xếp = "6 rổ"; từ 24/11/2026 màn hình không hiện rổ, số vẫn tính và lưu trong định mức).
 //
 // KHÁC app cũ (anh Tình chốt 24/11/2026) — tính theo GIÁ TRỊ CHI PHÍ, không theo tiền đã trả:
 //   · Vật tư = MỌI hóa đơn (kể cả mua nợ); tiền trả NCC không tính nữa.
@@ -263,11 +263,18 @@ export function legacyBucketToGroup(ro: unknown, txt: unknown): number {
 export type GroupRule = { id: string; loai: string; tuKhoa: string; nhom: number };
 export const DEFAULT_GROUP_RULES: Omit<GroupRule, 'id'>[] = [
   { loai: 'Điện Nước', tuKhoa: 'bóng đèn, đèn led, đèn trang trí, công tắc, ổ cắm, bồn cầu, vòi sen, sen tắm, lavabo, bồn tắm, máy bơm, máy nước nóng, quạt', nhom: 2 },
-  { loai: 'Vật Liệu Xây Dựng', tuKhoa: 'gạch ốp, gạch lát, gạch men, gạch granite, đá hoa cương, granite, marble, sàn gỗ', nhom: 2 },
+  { loai: '', tuKhoa: 'gạch ốp, gạch lát, gạch men, gạch granite, đá hoa cương, granite, marble, sàn gỗ', nhom: 2 },
   { loai: '', tuKhoa: 'thang máy, năng lượng mặt trời, điện mặt trời, smarthome, hồ bơi, hồ cá, sân vườn, rèm cửa, giàn phơi, nội thất', nhom: 3 },
   { loai: '', tuKhoa: 'ép cọc, tháo dỡ', nhom: 4 },
-  { loai: 'Khác', tuKhoa: 'xà bần, giải khát, đô thị, giữ công trình', nhom: 1 },
+  { loai: '', tuKhoa: 'xà bần, giải khát, đô thị, giữ công trình', nhom: 1 },
 ];
+// Loại của luật mặc định trước 24/11/2026 → nay là mọi loại. Luật đã lưu mà người dùng chưa sửa thì tự theo mặc định mới.
+const OLD_RULE_TYPE: Record<string, string> = { nd1: 'Vật Liệu Xây Dựng', nd4: 'Khác' };
+function upgradeRule(l: GroupRule): GroupRule {
+  const d = DEFAULT_GROUP_RULES[Number(l.id.slice(2))];
+  const untouched = OLD_RULE_TYPE[l.id] !== undefined && l.loai === OLD_RULE_TYPE[l.id] && !!d && l.tuKhoa === d.tuKhoa && l.nhom === d.nhom;
+  return untouched ? { ...l, loai: '' } : l;
+}
 export const defaultGroupRules = (): GroupRule[] => DEFAULT_GROUP_RULES.map((l, i) => ({ id: 'nd' + i, ...l }));
 
 // ══ TRỤ CỘT CỦA NHÓM 1 (= 6 rổ: Sắt / Bê tông / Nhân công / Thầu phụ / Phụ phí / Khác) ═══════════
@@ -318,7 +325,7 @@ export function readAllocConfig(data: unknown): AllocConfig {
       if (n !== md) nhomLoai[k] = n;
     }
   }
-  if (r && Array.isArray(r.nhomLuat)) nhomLuat = (r.nhomLuat as Json[]).map((l) => ({ id: String(l.id ?? ''), loai: String(l.loai ?? ''), tuKhoa: String(l.tuKhoa ?? ''), nhom: Number(l.nhom) || 0 }));
+  if (r && Array.isArray(r.nhomLuat)) nhomLuat = (r.nhomLuat as Json[]).map((l) => ({ id: String(l.id ?? ''), loai: String(l.loai ?? ''), tuKhoa: String(l.tuKhoa ?? ''), nhom: Number(l.nhom) || 0 })).map(upgradeRule);
   else {
     nhomLuat = defaultGroupRules();
     if (r && Array.isArray(r.roLuat)) {

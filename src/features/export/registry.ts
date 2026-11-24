@@ -131,7 +131,7 @@ export const DATASETS: Dataset[] = [
   {
     key: 'cost_allocations', label: 'Tỉ trọng / phân bổ', sheet: 'Ti trong', group: 'chi-phi', table: 'cost_allocations', permModule: 'cost_allocation',
     link: { kind: 'direct', field: 'project_id' }, caption: 'Cấu hình nhóm / rổ / định mức (dạng JSON như app cũ) — bảng này không có ngày',
-    columns: [txt('kind', 'LOẠI', 12, (r) => lab({ project: 'Theo công trình', benchmark: 'Định mức', config: 'Cấu hình rổ' }, r.kind)), txt('name', 'TÊN', 24), txt('data', 'DỮ LIỆU', 60, (r) => JSON.stringify(r.data ?? {}).slice(0, 30000))],
+    columns: [txt('kind', 'LOẠI', 12, (r) => lab({ project: 'Theo công trình', benchmark: 'Định mức', config: 'Cấu hình nhóm' }, r.kind)), txt('name', 'TÊN', 24), txt('data', 'DỮ LIỆU', 60, (r) => JSON.stringify(r.data ?? {}).slice(0, 30000))],
   },
 
   // ───── CHẤM CÔNG ─────
