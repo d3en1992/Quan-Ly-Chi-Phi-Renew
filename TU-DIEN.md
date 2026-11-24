@@ -14,7 +14,7 @@ Menu 9 tab (gộp 13/11/2026, `tai-lieu/KE-HOACH-GOP-TAB.md`). Quyền gắn v�
 | Chi Phí › Nhập | `/chi-phi/nhap` | `expenses` | `expenses` |
 | Chi Phí › Tra cứu (trước: Thống Kê CP/HĐ) | `/chi-phi/tra-cuu` | `expense_stats` | `reports` |
 | Chấm Công (+ Tạm ứng lương) | `/cham-cong` | `timesheets` | `timesheets` |
-| Thầu Phụ & NCC › Hợp đồng thầu phụ / Nhà cung cấp / Tất toán (trước: Công Nợ Phải Trả) | `/thau-phu/hop-dong`, `/thau-phu/ncc`, `/thau-phu/tat-toan` | `payables` | `payments` |
+| Thầu Phụ & NCC › Thầu phụ / Nhà cung cấp (trước: Công Nợ Phải Trả) | `/thau-phu/hop-dong`, `/thau-phu/ncc` | `payables` | `payments` |
 | Thầu Phụ & NCC › Phiếu chi (trước: Chi Trả TP/NCC) | `/thau-phu/phieu-chi` | `payments` | `payments` |
 | Thu & Lãi › Hợp đồng chính / Thu tiền (trước: Doanh Thu) | `/thu-lai/hop-dong`, `/thu-lai/thu-tien` | `revenue` | `revenue` |
 | Thu & Lãi › Quyết toán | `/thu-lai/quyet-toan` | `settlements` | `revenue` |
@@ -69,7 +69,7 @@ Menu 9 tab (gộp 13/11/2026, `tai-lieu/KE-HOACH-GOP-TAB.md`). Quyền gắn v�
 | Phiếu chi TP / NCC: Tạm ứng · Thanh toán đợt · Trả nợ NCC | `payment` (`kind`: `advance` / `progress` / `supplier_payment`) |
 | Công nợ phải trả | `payable` |
 | Đã trả (app cũ: Đã ứng) | `paid` |
-| HĐ chính, HĐ thầu phụ, quyết toán, tất toán | `mainContract`, `subcontract`, `settlement`, `payableClosure` |
+| HĐ chính, HĐ thầu phụ, quyết toán | `mainContract`, `subcontract`, `settlement` |
 | Thu tiền, còn phải thu | `receipt`, `receivable` |
 | Phân bổ chi phí chung (C), hệ số k | `overheadAllocation`, `costWeightK` |
 | Tỉ trọng, định mức, rổ | `costAllocation`, `costBenchmark`, `costBucket` |
@@ -89,7 +89,7 @@ Menu 9 tab (gộp 13/11/2026, `tai-lieu/KE-HOACH-GOP-TAB.md`). Quyền gắn v�
 | `ung_v1` loại thầu phụ / NCC | `payments` | `kind`: advance / progress / supplier_payment; `allocation_mode`: fifo / project / manual |
 | (mới) | `payment_allocations` | phiếu chi NCC ↔ hóa đơn, số tiền đã chia |
 | `ung_v1` loại công nhân | `wage_advances` | `direction`: advance (ứng) / repay (trả); `counts_in_net_pay` |
-| `ung_v1` có `autoSettle` | `payable_closures` | tất toán; `undone_at` = đã hoàn tác |
+| `ung_v1` có `autoSettle` | `payable_closures` | tất toán (app bỏ 18/11/2026, kho còn giữ); `undone_at` = đã hoàn tác |
 | `thu_v1` | `receipts` | `kind`: advance (tạm ứng) / stage (giai đoạn) / settlement (quyết toán) / other; `is_auto` |
 | `hopdong_v1` | `main_contracts` | `value`, `extra_value` (giá trị phụ), `legacy_variation` (phát sinh cũ), `items` |
 | `thauphu_v1` | `subcontracts` | |

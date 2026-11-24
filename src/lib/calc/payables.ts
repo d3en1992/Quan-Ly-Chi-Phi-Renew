@@ -112,9 +112,6 @@ export function subcontractPayables(contracts: readonly CalcSubcontract[], payme
 
 // ───────────────────────── GĐ7 ─────────────────────────
 
-/** Còn nợ ≤ 100.000 đ coi như đã trả đủ (`CN_DONE_TOLERANCE` của app cũ) */
-export const PAYABLE_DONE_TOLERANCE = 100_000;
-
 export type CreditInvoice = { id: string; supplier_id: string; project_id: string; date: string | null; created_at?: string | null; amount: number };
 export type SupplierPaymentIn = {
   id: string; supplier_id: string; date: string | null; created_at?: string | null; amount: number; project_id: string | null;
