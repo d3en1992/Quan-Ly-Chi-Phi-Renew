@@ -1,18 +1,22 @@
 // TỈ TRỌNG & ĐỊNH MỨC — chép NGUYÊN logic `tytrong.core.js` của app cũ (bản 27/10/2026: 4 NHÓM chi phí,
 // Nhóm 1 chia 4 trụ cột + Quỹ phụ phí + Chưa xếp = "6 rổ" trên màn hình).
 //
-// Khác app cũ đúng 1 chỗ (KẾ HOẠCH mục 4F): app cũ BỎ hóa đơn của NCC đã có tiền ứng và thay bằng phiếu ứng;
-// app mới bỏ hóa đơn CHƯA tích "Đã TT" và thay bằng phần tiền trả NCC đã chia cho công trình
-// (`payment_allocations`) — trên dữ liệu chuyển từ app cũ hai cách ra cùng số (test so với so-chuan.json).
+// KHÁC app cũ (anh Tình chốt 24/11/2026) — tính theo GIÁ TRỊ CHI PHÍ, không theo tiền đã trả:
+//   · Vật tư = MỌI hóa đơn (kể cả mua nợ); tiền trả NCC không tính nữa.
+//   · Thầu phụ = giá trị HĐ thầu phụ; tiền đã trả chỉ tính khi thầu phụ chưa có HĐ (hoặc HĐ chưa nhập giá trị).
+//   · Thêm chi phí chung CÔNG TY phân bổ (cùng số cột C của Lợi Nhuận), mặc định Nhóm 1.
 //
 // Tên trường trong `cost_allocations.data` (jsonb) GIỮ như app cũ: nhomTay, theoHdtp, nhomLoai, nhomLuat,
 // truLoai, quyMuc, roTay / roLoai / roLuat (đời cũ, tự chuyển khi đọc), dgNhom, dgRo1, ro1…
-import type { CalcExpense, CalcPayment, CalcPaymentAllocation, CalcTimesheetLine, CalcTimesheetWeek, IsoDate } from './types';
-import { weekEnd, type YearFilter, inYear } from './year';
+import { allocateOverhead, companyOverheadCost } from './overhead';
+import { subcontractTotal } from './payables';
+import { buildCostEntries } from './profit';
+import type { CalcExpense, CalcPayment, CalcProject, CalcTimesheetLine, CalcTimesheetWeek, IsoDate } from './types';
+import { weekEnd, type YearFilter, inYear, inYearLoose } from './year';
 import { dayWage } from './timesheet';
 
 export const ALLOC_TYPE_SUBCONTRACT = 'Thầu Phụ'; // loại cho tiền trả thầu phụ
-export const ALLOC_TYPE_SUPPLIER = 'Ứng Nhà Cung Cấp'; // dự phòng khi không đoán được loại của NCC
+export const ALLOC_TYPE_OVERHEAD = 'Chi Phí Chung'; // chi phí chung CÔNG TY phân bổ
 export const ALLOC_TYPE_OTHER = 'Chi Phí Khác'; // hóa đơn thiếu loại
 /** NCC mặc định của dòng sinh từ chấm công (app cũ: CC_DEFAULT_NCC) */
 export const TIMESHEET_PARTY = 'CÔNG TY NGUYỄN HỮU';
@@ -43,7 +47,7 @@ export function floorAreaTotal(rows: readonly FloorRow[] | null | undefined): nu
 }
 
 // ══ CÁC DÒNG CHI PHÍ ═════════════════════════════════════════════════
-export type AllocLineKind = 'inv' | 'cc' | 'ungtp' | 'ungncc';
+export type AllocLineKind = 'inv' | 'cc' | 'hdtp' | 'ungtp' | 'cpc';
 export type AllocItem = { name: string | null; amount: number; quantity?: number | null; unit_price?: number | null };
 export type AllocPart = {
   ten: string; tien: number; mon: boolean;
@@ -51,7 +55,7 @@ export type AllocPart = {
   tru: PillarKey | null; truSrc: string;
 };
 export type AllocLine = {
-  /** khóa ỔN ĐỊNH cho nhomTay: 'inv:<id>' | 'ung:<id phiếu chi>' | 'cc|<chủ nhật>|<id công trình>|<đuôi>' */
+  /** khóa ỔN ĐỊNH cho nhomTay: 'inv:<id>' | 'hdtp:<id HĐ>' | 'ung:<id phiếu chi>' | 'cpc:<id công trình>' | 'cc|<chủ nhật>|<id công trình>|<đuôi>' */
   key: string;
   kind: AllocLineKind;
   ngay: IsoDate;
@@ -77,7 +81,10 @@ export type AllocSource = {
   timesheetWeeks: readonly CalcTimesheetWeek[];
   timesheetLines: readonly CalcTimesheetLine[];
   payments: readonly CalcPayment[];
-  paymentAllocations: readonly CalcPaymentAllocation[];
+  /** mọi công trình (kể cả CÔNG TY) — để phân bổ chi phí chung */
+  projects: readonly CalcProject[];
+  /** mốc thời gian tính số ngày thi công của công trình chưa xong */
+  now: number;
   subcontracts: readonly AllocSubcontract[];
   catalogName: ReadonlyMap<string, string>;
   supplierName: ReadonlyMap<string, string>;
@@ -90,25 +97,16 @@ const vnDayMonth = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 type RawLine = Omit<AllocLine, 'parts' | 'nhomChinh' | 'nhomNhieu'>;
 
 /**
- * `tytCostLines`: các dòng cấu thành TỔNG CHI THỰC TẾ của 1 công trình
- * = hóa đơn Đã TT + lương / HĐ lẻ từ chấm công + tiền trả thầu phụ + tiền trả NCC đã chia cho công trình.
+ * Các dòng cấu thành TỔNG CHI PHÍ của 1 công trình = mọi hóa đơn (cả mua nợ) + lương / HĐ lẻ từ chấm công
+ * + giá trị HĐ thầu phụ (chưa có HĐ → tiền đã trả) + chi phí chung phân bổ.
  */
 export function allocCostLines(projectId: string, src: AllocSource, years: YearFilter): RawLine[] {
   const lines: RawLine[] = [];
-  // Đếm loại chi phí của hóa đơn mua nợ từng NCC → tiền trả NCC xếp vào loại phổ biến nhất của NCC đó
-  const supplierTypes = new Map<string, Map<string, number>>();
 
   for (const e of src.expenses) {
     if (e.project_id !== projectId || !e.date || !inYear(e.date, years)) continue;
     const loai = (e.expense_type_id && src.catalogName.get(e.expense_type_id)) || ALLOC_TYPE_OTHER;
     const supplier = (e.supplier_id && src.supplierName.get(e.supplier_id)) || '';
-    if (!e.paid_at_purchase) {
-      const k = e.supplier_id ?? '';
-      const m = supplierTypes.get(k) ?? new Map<string, number>();
-      m.set(loai, (m.get(loai) ?? 0) + e.amount);
-      supplierTypes.set(k, m);
-      continue;
-    }
     const items = src.expenseLines.get(e.id);
     lines.push({
       key: 'inv:' + e.id, kind: 'inv', ngay: e.date, loai, nd: e.description ?? '',
@@ -148,33 +146,38 @@ export function allocCostLines(projectId: string, src: AllocSource, years: YearF
     }
   }
 
-  const topType = (supplierId: string): string => {
-    const m = supplierTypes.get(supplierId);
-    if (!m) return '';
-    return [...m.keys()].sort((a, b) => m.get(b)! - m.get(a)!)[0] ?? '';
-  };
-  // Phần tiền trả NCC đã chia cho công trình này, gom theo phiếu chi
-  const supplierShare = new Map<string, number>();
-  for (const a of src.paymentAllocations) {
-    if (a.project_id === projectId) supplierShare.set(a.payment_id, (supplierShare.get(a.payment_id) ?? 0) + a.amount);
+  // Thầu phụ: theo giá trị hợp đồng. HĐ thiếu ngày vẫn tính ở mọi năm.
+  const contracts = allocContracts(projectId, src);
+  const noValue = new Set(contracts.filter((h) => !(h.giaTri > 0)).map((h) => h.id));
+  const valued = contracts.filter((h) => h.giaTri > 0);
+  for (const h of valued) {
+    if (!inYearLoose(h.ngay || null, years)) continue;
+    lines.push({
+      key: 'hdtp:' + h.id, kind: 'hdtp', ngay: h.ngay, loai: ALLOC_TYPE_SUBCONTRACT, nd: h.nd || 'Hợp đồng thầu phụ',
+      doiTuong: h.ten, tien: h.giaTri, items: null, hdtpId: h.id, refId: h.id,
+    });
   }
-  for (const p of src.payments) {
-    if (!p.date || !inYear(p.date, years)) continue;
-    if (p.kind === 'supplier_payment') {
-      const tien = supplierShare.get(p.id);
-      if (tien === undefined) continue;
-      const sid = p.supplier_id ?? '';
-      lines.push({
-        key: 'ung:' + p.id, kind: 'ungncc', ngay: p.date, loai: topType(sid) || ALLOC_TYPE_SUPPLIER,
-        nd: p.note || 'Ứng nhà cung cấp', doiTuong: src.supplierName.get(sid) ?? '', tien, items: null, hdtpId: '', refId: p.id,
-      });
-    } else if ((p.kind === 'advance' || p.kind === 'progress') && p.project_id === projectId) {
-      lines.push({
-        key: 'ung:' + p.id, kind: 'ungtp', ngay: p.date, loai: ALLOC_TYPE_SUBCONTRACT,
-        nd: p.note || 'Ứng thầu phụ', doiTuong: (p.subcontractor_id && src.subcontractorName.get(p.subcontractor_id)) || '',
-        tien: p.amount, items: null, hdtpId: p.subcontract_id ?? '', refId: p.id,
-      });
-    }
+  // Tiền trả thầu phụ CHƯA có hợp đồng (hoặc HĐ chưa nhập giá trị) → giữ số đã trả để không sót chi phí
+  for (const p of subcontractPayments(projectId, src, years)) {
+    const doiTuong = (p.subcontractor_id && src.subcontractorName.get(p.subcontractor_id)) || '';
+    const hdtpId = p.subcontract_id ?? '';
+    if (!noValue.has(hdtpId) && contractOfLine({ hdtpId, doiTuong }, valued)) continue;
+    lines.push({
+      key: 'ung:' + p.id, kind: 'ungtp', ngay: p.date!, loai: ALLOC_TYPE_SUBCONTRACT,
+      nd: p.note || 'Trả thầu phụ chưa có hợp đồng', doiTuong, tien: p.amount, items: null, hdtpId, refId: p.id,
+    });
+  }
+
+  // Chi phí chung CÔNG TY phân bổ theo ngày × k (cùng công thức cột C của Lợi Nhuận)
+  const companyIds = new Set(src.projects.filter((p) => p.is_company_overhead).map((p) => p.id));
+  const total = companyOverheadCost(buildCostEntries(src), companyIds, years);
+  const share = allocateOverhead(src.projects, total, years, src.now).find((o) => o.projectId === projectId);
+  const overhead = Math.round(share?.allocated ?? 0);
+  if (share && overhead) {
+    lines.push({
+      key: 'cpc:' + projectId, kind: 'cpc', ngay: '', loai: ALLOC_TYPE_OVERHEAD, nd: `Chi phí chung công ty phân bổ (${share.days} ngày × k ${share.k})`,
+      doiTuong: '', tien: overhead, items: null, hdtpId: '', refId: '',
+    });
   }
 
   // Mới nhất lên đầu
@@ -182,12 +185,17 @@ export function allocCostLines(projectId: string, src: AllocSource, years: YearF
   return lines;
 }
 
+/** Phiếu trả thầu phụ của công trình trong phạm vi năm */
+function subcontractPayments(projectId: string, src: Pick<AllocSource, 'payments'>, years: YearFilter): CalcPayment[] {
+  return src.payments.filter((p) => (p.kind === 'advance' || p.kind === 'progress') && p.project_id === projectId && !!p.date && inYear(p.date, years));
+}
+
 // ══ HỢP ĐỒNG THẦU PHỤ CỦA 1 CÔNG TRÌNH ═══════════════════════════════
 export type AllocContract = { id: string; ten: string; tenKey: string; giaTri: number; ngay: string; nd: string };
 export function allocContracts(projectId: string, src: Pick<AllocSource, 'subcontracts' | 'subcontractorName'>): AllocContract[] {
   return src.subcontracts.filter((r) => r.project_id === projectId).map((r) => {
     const ten = (src.subcontractorName.get(r.subcontractor_id) ?? '').trim();
-    return { id: r.id, ten, tenKey: stripVi(ten), giaTri: (r.value || 0) + (r.legacy_variation || 0), ngay: r.date ?? '', nd: r.description ?? '' };
+    return { id: r.id, ten, tenKey: stripVi(ten), giaTri: subcontractTotal(r), ngay: r.date ?? '', nd: r.description ?? '' };
   });
 }
 
@@ -208,7 +216,7 @@ const GROUP_BY_TYPE: Record<string, number> = {
   'van chuyen': 1, 'xa ban - do rac': 1, 'dien nuoc': 1, 'copha': 1, 'giai khat': 1, 'copha thue': 1,
   'vat tu dien nuoc': 1, 'do be tong': 1, 'be tong tay': 1, 'do thi': 1, 'bao hiem tai nan cn': 1, 'giu cong trinh': 1,
   'ngoai giao': 1, 'thue may moc - thiet bi': 1, 'phu cap an uong': 1, 'thi cong sat thep': 1, 'op lat gach': 1,
-  'thau phu': 1,
+  'thau phu': 1, 'chi phi chung': 1,
   'gach op lat': 2, 'vat tu son nuoc': 2, 'thi cong tran thach cao': 2, 'tiep dia - chong set': 2, 'vat tu dien lanh': 2,
   'thi cong da hoa cuong': 2, 'thi cong dien nuoc': 2,
   'thiet bi gia dung': 3,
@@ -383,6 +391,8 @@ function contractWithGroup(line: RawLine, st: AllocStruct, contracts: readonly A
   if (!contracts.length) return null;
   const ok = (id: string) => !!st.theoHdtp[id] && validGroup(st.theoHdtp[id]!.nhom) > 0;
   if (line.hdtpId && contracts.some((h) => h.id === line.hdtpId) && ok(line.hdtpId)) return line.hdtpId;
+  // Dòng giá trị HĐ chỉ theo nhóm của chính HĐ đó, không mượn HĐ khác cùng tên thầu phụ
+  if (line.kind === 'hdtp') return null;
   const k = stripVi(line.doiTuong);
   const hd = k ? contracts.find((h) => h.tenKey === k && ok(h.id)) : null;
   return hd ? hd.id : null;
@@ -414,6 +424,8 @@ export type AllocSummary = {
   theoLoai: { loai: string; tien: number; soDong: number }[];
   theoNhom: Record<number, number>;
   theoTru: Record<PillarKey, number>;
+  /** tiền ĐÃ TRẢ theo từng HĐ thầu phụ (tham khảo, không cộng vào tổng) */
+  daTraHdtp: Map<string, number>;
   chuaNhom: AllocLine[];
 };
 
@@ -465,26 +477,20 @@ export function allocSummary(args: { projectId: string; floorAreas: readonly Flo
     return { ...l, parts, nhomChinh: Number(keys.sort((a, b) => by[b]! - by[a]!)[0]), nhomNhieu: keys.length > 1 };
   });
 
+  const daTraHdtp = new Map<string, number>();
+  for (const p of subcontractPayments(projectId, src, args.years)) {
+    const hd = contractOfLine({ hdtpId: p.subcontract_id ?? '', doiTuong: (p.subcontractor_id && src.subcontractorName.get(p.subcontractor_id)) || '' }, contracts);
+    if (hd) daTraHdtp.set(hd, (daTraHdtp.get(hd) ?? 0) + p.amount);
+  }
+
   return {
-    st, contracts, cfg, lines, tongChi, tongSan,
+    daTraHdtp, st, contracts, cfg, lines, tongChi, tongSan,
     cpM2: tongSan > 0 ? tongChi / tongSan : 0,
     cpM2N1: tongSan > 0 ? theoNhom[1]! / tongSan : 0,
     theoLoai: [...typeMap.values()].sort((a, b) => b.tien - a.tien),
     theoNhom, theoTru,
     chuaNhom: lines.filter((l) => l.parts.some((pt) => pt.nhom === 0)),
   };
-}
-
-/** `tytHdtpThongKe`: mỗi HĐ thầu phụ có bao nhiêu khoản / tiền, và phần đang xếp nhóm THEO HĐ */
-export function contractStats(r: Pick<AllocSummary, 'contracts' | 'lines'>): Map<string, { soKhoan: number; tien: number; nhan: number; tienNhan: number }> {
-  const m = new Map<string, { soKhoan: number; tien: number; nhan: number; tienNhan: number }>();
-  r.contracts.forEach((h) => m.set(h.id, { soKhoan: 0, tien: 0, nhan: 0, tienNhan: 0 }));
-  for (const l of r.lines) {
-    const hd = contractOfLine(l, r.contracts);
-    if (hd && m.has(hd)) { const o = m.get(hd)!; o.soKhoan++; o.tien += l.tien; }
-    for (const pt of l.parts) if (pt.nhomSrc === 'hdtp' && m.has(pt.nhomRef)) { const o = m.get(pt.nhomRef)!; o.nhan++; o.tienNhan += pt.tien; }
-  }
-  return m;
 }
 
 /** Bảng Loại chi phí × Nhóm (0..4) cho màn PHÂN BỔ: mỗi loại 1 dòng, tiền từng nhóm, sắp theo tổng giảm dần */

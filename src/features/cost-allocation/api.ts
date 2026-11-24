@@ -48,7 +48,7 @@ export function useAllExpenseLines() {
 export function toAllocSource(d: ReportData, expenseLines: ReadonlyMap<string, readonly AllocItem[]>): AllocSource {
   return {
     expenses: d.expenses, expenseLines, timesheetWeeks: d.timesheetWeeks, timesheetLines: d.timesheetLines, payments: d.payments,
-    paymentAllocations: d.paymentAllocations, subcontracts: d.subcontracts, catalogName: d.catalogName, supplierName: d.supplierName,
+    projects: d.projects, now: d.loadedAt, subcontracts: d.subcontracts, catalogName: d.catalogName, supplierName: d.supplierName,
     workerName: d.workerName, subcontractorName: d.subcontractorName,
   };
 }

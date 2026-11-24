@@ -13,7 +13,7 @@ import { Card, CardHeader, EmptyState, ErrorState, LoadingState, Note, PageHeade
 import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
 import {
-  ALL_YEARS, allocSummary, benchmarkFields, compareToBenchmark, contractStats, COST_GROUP_IDS, COST_GROUPS, defaultGroupRules, floorAreaTotal, groupOfType,
+  ALL_YEARS, allocSummary, benchmarkFields, compareToBenchmark, COST_GROUP_IDS, COST_GROUPS, defaultGroupRules, floorAreaTotal, groupOfType,
   PILLAR_ORDER, PILLARS, pillarOfType, readAllocConfig, readBenchmark, toYearFilter, typeGroupMatrix, typeKey,
   type AllocLine, type AllocPart, type AllocSummary, type FloorRow, type PillarKey,
 } from '@/lib/calc';
@@ -161,7 +161,7 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
   const cfg = useMemo(() => readAllocConfig(configRec?.data ?? null), [configRec]);
   const matrix = useMemo(() => (sum ? typeGroupMatrix(sum) : []), [sum]);
   const allTypes = useMemo(() => {
-    const set = new Set<string>(['Nhân Công', 'Hóa Đơn Lẻ', 'Thầu Phụ']);
+    const set = new Set<string>(['Nhân Công', 'Hóa Đơn Lẻ', 'Thầu Phụ', 'Chi Phí Chung']);
     for (const e of report.data?.expenses ?? []) { const t = e.expense_type_id && report.data!.catalogName.get(e.expense_type_id); if (t) set.add(t); }
     return [...set].sort((a, b) => a.localeCompare(b, 'vi'));
   }, [report.data]);
@@ -192,7 +192,6 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
     saveAlloc.mutate({ projectId: project.id, current: projectRec, changes: { theoHdtp } }, { onSuccess: () => toast('Đã lưu nhóm của HĐ thầu phụ'), onError: onErr });
   };
   const saveConfig = (changes: Parameters<typeof saveCfg.mutate>[0]['changes'], msg: string) => saveCfg.mutate({ current: configRec, changes }, { onSuccess: () => toast(msg), onError: onErr });
-  const cStats = contractStats(sum);
   const periodLabel = period === 'life' ? 'Trọn vòng đời' : yearSel === 'all' ? 'Tất cả năm' : yearLabel;
   const projectOpts = projects.map((p) => ({ value: p.id, label: p.name }));
 
@@ -212,7 +211,7 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
     return (
       <>
         <Select aria-label="Công trình" value={project.id} onChange={(e) => setPid(e.target.value)}>{projectOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</Select>
-        <PhoneKpis items={[{ label: 'Tổng sàn', value: `${m2(sum.tongSan)} m²` }, { label: 'Đơn giá / m²', value: perM2(sum.tongChi, sum.tongSan) }, { label: `Tổng chi · ${periodLabel}`, value: formatMoney(sum.tongChi), wide: true }]} />
+        <PhoneKpis items={[{ label: 'Tổng sàn', value: `${m2(sum.tongSan)} m²` }, { label: 'Đơn giá / m²', value: perM2(sum.tongChi, sum.tongSan) }, { label: `Tổng chi phí · ${periodLabel}`, value: formatMoney(sum.tongChi), wide: true }]} />
         <Card className="grid gap-1.5 p-3.5 text-[13px]">
           <div className="text-[11.5px] font-semibold text-muted">Theo nhóm chi phí</div>
           {[...COST_GROUP_IDS, 0].filter((n) => n !== 0 || showZero).map((n) => (
@@ -240,7 +239,7 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
       </FilterBar>
       <div data-testid="tyt-kpis">
         <KpiStrip items={[
-          { label: 'Tổng chi thực tế', value: <span data-testid="tyt-total">{formatMoney(sum.tongChi)}</span>, sub: `${pct(sum.tongChi - unassigned, sum.tongChi)}% đã xếp nhóm · ${periodLabel}` },
+          { label: 'Tổng chi phí', value: <span data-testid="tyt-total">{formatMoney(sum.tongChi)}</span>, sub: `${pct(sum.tongChi - unassigned, sum.tongChi)}% đã xếp nhóm · ${periodLabel}` },
           { label: 'Tổng sàn quy đổi', value: `${m2(sum.tongSan)} m²` },
           { label: 'Đơn giá / m²', value: perM2(sum.tongChi, sum.tongSan), sub: sum.tongSan > 0 ? `Nhóm 1: ${formatMoney(Math.round(sum.cpM2N1))} đ/m²` : 'chưa có khối lượng sàn' },
           { label: 'So định mức (Nhóm 1)', value: diff === null ? '—' : <Pill tone={diff > 2 ? 'warn' : diff < -2 ? 'good' : 'neutral'}>{`${diff >= 0 ? '+' : '−'}${Math.abs(diff).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%`}</Pill>, sub: dmData && dmData.dgRo1 > 0 ? `định mức ${formatMoney(dmData.dgRo1)} đ/m²` : 'chưa có định mức' },
@@ -266,14 +265,14 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
           </Card>
           {sum.contracts.length ? (
             <Card>
-              <CardHeader title="HĐ thầu phụ" sub="mọi khoản của thầu phụ đi theo nhóm đã chọn" />
+              <CardHeader title="HĐ thầu phụ" sub="tính theo giá trị hợp đồng" />
               <div className="tbl">
                 <table>
-                  <thead><tr><th>Thầu phụ</th><th className="!text-right">Đã chi</th><th>Nhóm</th></tr></thead>
+                  <thead><tr><th>Thầu phụ</th><th className="!text-right">Giá trị HĐ</th><th>Nhóm</th></tr></thead>
                   <tbody>{sum.contracts.map((h) => (
                     <tr key={h.id}>
-                      <td>{h.ten}<span className="block text-[11.5px] text-faint">{h.nd || formatDate(h.ngay)} · HĐ {formatShortMoney(h.giaTri)}</span></td>
-                      <td className="num text-right">{formatShortMoney(cStats.get(h.id)?.tien ?? 0)}</td>
+                      <td>{h.ten}<span className="block text-[11.5px] text-faint">{h.nd || formatDate(h.ngay)} · đã trả {formatShortMoney(sum.daTraHdtp.get(h.id) ?? 0)}</span></td>
+                      <td className="num text-right">{formatShortMoney(h.giaTri)}</td>
                       <td>
                         <Select aria-label={`Nhóm của HĐ ${h.ten}`} disabled={!canEdit || saveAlloc.isPending} className="!h-8 !w-[150px]" value={String(sum.st.theoHdtp[h.id]?.nhom ?? '')} onChange={(e) => setContractGroup(h.id, Number(e.target.value))}>
                           <option value="">Theo loại / luật</option>
@@ -288,8 +287,8 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
           ) : null}
         </div>
         <Card>
-          <CardHeader title="Chi theo loại chi phí × nhóm" sub="bấm một ô để xem các khoản chi trong đó và gán tay" />
-          {matrix.length === 0 ? <EmptyState icon="pie_chart" title="Chưa có khoản chi nào trong kỳ này" /> : (
+          <CardHeader title="Chi phí theo loại × nhóm" sub="hóa đơn tính cả mua nợ · thầu phụ theo hợp đồng · bấm một ô để xem các khoản chi trong đó và gán tay" />
+          {matrix.length === 0 ? <EmptyState icon="pie_chart" title="Chưa có khoản chi phí nào trong kỳ này" /> : (
             <div className="tbl" data-testid="tyt-matrix">
               <table>
                 <thead><tr><th>Loại chi phí</th>{cols.map((n) => <th key={n} className="!text-right" title={COST_GROUPS[n]!.mo}>{n === 0 ? 'Chưa xếp' : `${n} · ${COST_GROUPS[n]!.ngan}`}</th>)}<th className="!text-right">Tổng</th><th className="!text-right">đ/m²</th></tr></thead>

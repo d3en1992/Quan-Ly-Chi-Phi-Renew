@@ -7,6 +7,7 @@ import {
   allocSummary, benchmarkControl, benchmarkFields, compareToBenchmark, defaultGroupOfType, defaultPillarOfType, floorAreaTotal, groupByWords,
   legacyBucketToGroup, readAllocConfig, readAllocStruct, ruleMatches, splitItems, typeGroupMatrix, type AllocItem, type AllocSource,
 } from '../cost-allocation';
+import { buildProfitIndex, profitContext } from '../profit';
 import { ALL_YEARS } from '../year';
 
 describe('Tỉ trọng — hàm thuần', () => {
@@ -61,12 +62,12 @@ describe('Tỉ trọng — hàm thuần', () => {
   });
 
   const src = (over: Partial<AllocSource> = {}): AllocSource => ({
-    expenses: [], expenseLines: new Map(), timesheetWeeks: [], timesheetLines: [], payments: [], paymentAllocations: [], subcontracts: [],
+    expenses: [], expenseLines: new Map(), timesheetWeeks: [], timesheetLines: [], payments: [], projects: [], now: Date.UTC(2026, 10, 24), subcontracts: [],
     catalogName: new Map([['t1', 'Sắt Thép'], ['t2', 'Vật Tư Điện Nước'], ['t3', 'Khác']]), supplierName: new Map([['s1', 'VLXD PHƯƠNG']]),
     workerName: new Map([['w1', 'BÍNH']]), subcontractorName: new Map([['tp1', 'TPDN BÉ']]), ...over,
   });
 
-  it('hóa đơn mua nợ không tính; thay bằng phần tiền trả NCC đã chia cho công trình, xếp vào loại phổ biến nhất của NCC', () => {
+  it('tính mọi hóa đơn kể cả mua nợ; tiền trả NCC không tính; thầu phụ chưa có HĐ thì lấy tiền đã trả', () => {
     const r = allocSummary({
       projectId: 'p1', floorAreas: [{ kl: 100 }], years: ALL_YEARS, projectData: null, configData: null,
       src: src({
@@ -79,19 +80,17 @@ describe('Tỉ trọng — hàm thuần', () => {
           { id: 'pay1', kind: 'supplier_payment', date: '2026-02-01', amount: 5_000_000, project_id: null, supplier_id: 's1' },
           { id: 'pay2', kind: 'advance', date: '2026-02-02', amount: 2_000_000, project_id: 'p1', subcontractor_id: 'tp1' },
         ],
-        paymentAllocations: [{ payment_id: 'pay1', expense_id: 'e2', project_id: 'p1', amount: 4_000_000 }, { payment_id: 'pay1', expense_id: null, project_id: 'p2', amount: 1_000_000 }],
         timesheetWeeks: [{ id: 'w', project_id: 'p1', week_start: '2026-01-04' }],
         timesheetLines: [{ week_id: 'w', worker_id: 'w1', day_units: [1, 1, 0.5, 0, 0, 0, 0], daily_wage: 400_000, allowance: 50_000, retail_purchase: 120_000 }],
       }),
     });
-    expect(r.tongChi).toBe(3_000_000 + 4_000_000 + 2_000_000 + 1_050_000 + 120_000);
-    expect(r.lines.map((l) => l.key).sort()).toEqual(['cc|2026-01-04|p1|BÍNH|hdml', 'cc|2026-01-04|p1|nhanCong', 'inv:e1', 'ung:pay1', 'ung:pay2']);
-    expect(r.lines.find((l) => l.key === 'ung:pay1')!.loai).toBe('Sắt Thép');
-    expect(r.theoTru).toEqual({ sat: 7_000_000, bt: 0, nc: 1_050_000, tp: 2_000_000, quy: 120_000, '': 0 });
+    expect(r.tongChi).toBe(3_000_000 + 9_000_000 + 2_000_000 + 1_050_000 + 120_000);
+    expect(r.lines.map((l) => l.key).sort()).toEqual(['cc|2026-01-04|p1|BÍNH|hdml', 'cc|2026-01-04|p1|nhanCong', 'inv:e1', 'inv:e2', 'ung:pay2']);
+    expect(r.theoTru).toEqual({ sat: 12_000_000, bt: 0, nc: 1_050_000, tp: 2_000_000, quy: 120_000, '': 0 });
     expect(r.theoNhom[1]).toBe(r.tongChi);
     expect(r.cpM2).toBe(r.tongChi / 100);
     const dm = benchmarkFields({ id: 'p1', name: 'CT A' }, r, 'Trọn vòng đời');
-    expect(dm.ro1).toEqual({ sat: 70_000, bt: 0, nc: 10_500, tp: 20_000, quy: 1_200, khac: 0 });
+    expect(dm.ro1).toEqual({ sat: 120_000, bt: 0, nc: 10_500, tp: 20_000, quy: 1_200, khac: 0 });
     expect(dm.dgRo1).toBe(Math.round(r.tongChi / 100));
     expect(compareToBenchmark(r, dm)).toBeCloseTo(0, 6);
     const ks = benchmarkControl(dm, 100, r);
@@ -115,11 +114,47 @@ describe('Tỉ trọng — hàm thuần', () => {
         subcontracts: [{ id: 'hd1', project_id: 'p1', subcontractor_id: 'tp1', date: '2026-01-01', value: 10_000, legacy_variation: 0 }],
       }),
     });
-    expect(r.theoNhom).toEqual({ 0: 0, 1: 2_000, 2: 3_000, 3: 1_000, 4: 500 });
+    expect(r.theoNhom).toEqual({ 0: 0, 1: 2_000, 2: 11_000, 3: 1_000, 4: 500 });
     expect(r.lines.find((l) => l.key === 'inv:e2')!.nhomNhieu).toBe(true);
     expect(r.cpM2).toBe(0);
     const m = typeGroupMatrix(r);
     expect(m.reduce((s, x) => s + x.tong, 0)).toBe(r.tongChi);
+    expect(r.daTraHdtp.get('hd1')).toBe(2_000);
+  });
+
+  it('thầu phụ lấy giá trị HĐ (gồm phát sinh), không lấy tiền đã trả; mỗi HĐ theo nhóm riêng; HĐ chưa có giá trị thì lấy tiền đã trả', () => {
+    const pay = (id: string, subId: string, hd: string | null, amount: number) => ({ id, kind: 'advance', date: '2026-02-02', amount, project_id: 'p1', subcontractor_id: subId, subcontract_id: hd });
+    const run = (years: typeof ALL_YEARS) => allocSummary({
+      projectId: 'p1', floorAreas: [], years, projectData: { theoHdtp: { hd1: { nhom: 2 } } }, configData: null,
+      src: src({
+        payments: [pay('a', 'tp1', 'hd1', 25), pay('b', 'tp1', null, 7), pay('c', 'tp1', 'hd0', 5), pay('d', 'tpX', null, 3)],
+        subcontracts: [
+          { id: 'hd1', project_id: 'p1', subcontractor_id: 'tp1', date: '2026-01-01', value: 20, legacy_variation: 1 },
+          { id: 'hd2', project_id: 'p1', subcontractor_id: 'tp1', date: '2025-01-01', value: 100, legacy_variation: 0 },
+          { id: 'hd0', project_id: 'p1', subcontractor_id: 'tp1', date: null, value: 0, legacy_variation: 0 },
+        ],
+      }),
+    });
+    const r = run(ALL_YEARS);
+    expect(Object.fromEntries(r.lines.map((l) => [l.key, l.tien]))).toEqual({ 'hdtp:hd1': 21, 'hdtp:hd2': 100, 'ung:c': 5, 'ung:d': 3 });
+    expect(r.lines.find((l) => l.key === 'hdtp:hd2')!.nhomChinh).toBe(1);
+    expect(r.lines.find((l) => l.key === 'hdtp:hd1')!.nhomChinh).toBe(2);
+    expect(run([2026]).tongChi).toBe(21 + 5 + 3); // HĐ ký 2025 không tính vào năm 2026
+  });
+
+  it('chi phí chung phân bổ theo ngày × k, mặc định Nhóm 1, gán tay được', () => {
+    const proj = (id: string, k: number, company = false) => ({ id, name: id, is_company_overhead: company, start_date: company ? null : '2026-01-01', end_date: company ? null : '2026-01-31', cost_weight_k: k, created_year: 2026 });
+    const run = (projectData: unknown) => allocSummary({
+      projectId: 'p1', floorAreas: [], years: ALL_YEARS, projectData, configData: null,
+      src: src({
+        projects: [proj('cty', 1, true), proj('p1', 1), proj('p2', 2)],
+        expenses: [{ id: 'e', project_id: 'cty', date: '2026-01-05', amount: 1_000, paid_at_purchase: false, expense_type_id: 't3' }],
+      }),
+    });
+    const r = run(null);
+    expect(r.theoLoai).toEqual([{ loai: 'Chi Phí Chung', tien: 333, soDong: 1 }]);
+    expect(r.theoNhom[1]).toBe(333);
+    expect(run({ nhomTay: { 'cpc:p1': 4 } }).theoNhom[4]).toBe(333);
   });
 });
 
@@ -134,7 +169,7 @@ type GoldAlloc = {
 const gold = existsSync(SNAP) && existsSync(GOLD) ? (JSON.parse(readFileSync(GOLD, 'utf8')) as { tyTrong?: Record<string, GoldAlloc> }) : null;
 const ready = !!gold?.tyTrong;
 
-describe.skipIf(!ready)('Tỉ trọng — khớp `tytTongHop` của app cũ (trọn vòng đời, mọi công trình)', () => {
+describe.skipIf(!ready)('Tỉ trọng — khớp `tytTongHop` của app cũ (phần hóa đơn đã trả + chấm công; phần còn lại cố ý khác app cũ)', () => {
   type Row = Record<string, unknown>;
   const load = () => {
     const snapshot = JSON.parse(readFileSync(SNAP, 'utf8')) as Record<string, unknown>;
@@ -150,7 +185,7 @@ describe.skipIf(!ready)('Tỉ trọng — khớp `tytTongHop` của app cũ (tr�
     }
     const source: AllocSource = {
       expenses: live('expenses'), expenseLines, timesheetWeeks: live('timesheet_weeks'), timesheetLines: live('timesheet_lines'),
-      payments: live('payments'), paymentAllocations: live('payment_allocations'), subcontracts: live('subcontracts'),
+      payments: live('payments'), projects: live('projects'), now: Date.now(), subcontracts: live('subcontracts'),
       catalogName: names('catalog_items'), supplierName: names('suppliers'), workerName: names('workers'), subcontractorName: names('subcontractors'),
     };
     const allocs = live<{ kind: string; project_id: string | null; data: unknown }>('cost_allocations');
@@ -165,26 +200,24 @@ describe.skipIf(!ready)('Tỉ trọng — khớp `tytTongHop` của app cũ (tr�
     for (const id of ids) expect(projects.some((p) => p.id === id), gold!.tyTrong![id]!.ten).toBe(true);
   });
 
-  it('tổng chi, tổng sàn, 4 nhóm, 6 rổ, theo loại, từng khoản — lệch 0', () => {
+  it('tổng sàn + từng khoản hóa đơn / chấm công (cùng khóa, tiền, nhóm) — lệch 0; tổng = hóa đơn + HĐ thầu phụ + chi phí chung', () => {
     const diffs: string[] = [];
     for (const id of ids) {
       const g = gold!.tyTrong![id]!;
       const p = projects.find((x) => x.id === id)!;
       const r = allocSummary({ projectId: id, floorAreas: p.floor_areas, src: source, years: ALL_YEARS, projectData: allocs.find((a) => a.kind === 'project' && a.project_id === id)?.data ?? null, configData: config });
       const cmp = (label: string, a: number, b: number) => { if (Math.round(a) !== Math.round(b)) diffs.push(`${g.ten} · ${label}: mới ${a} ≠ cũ ${b}`); };
-      cmp('tổng chi', r.tongChi, g.tongChi);
       if (Math.abs(r.tongSan - g.tongSan) > 1e-9) diffs.push(`${g.ten} · tổng sàn: ${r.tongSan} ≠ ${g.tongSan}`);
-      for (const n of [0, 1, 2, 3, 4]) cmp(`nhóm ${n}`, r.theoNhom[n]!, g.theoNhom[String(n)] ?? 0);
-      for (const k of ['sat', 'bt', 'nc', 'tp', 'quy'] as const) cmp(`rổ ${k}`, r.theoTru[k], g.theoTru[k] ?? 0);
-      cmp('rổ khác', r.theoTru[''], g.theoTru.khac ?? 0);
-      cmp('số khoản chưa xếp', r.chuaNhom.length, g.chuaNhom);
-      const byType = new Map(r.theoLoai.map((o) => [o.loai.toLowerCase(), o]));
-      for (const o of g.theoLoai) cmp(`loại ${o.loai}`, byType.get(o.loai.toLowerCase())?.tien ?? 0, o.tien);
-      cmp('số loại', r.theoLoai.length, g.theoLoai.length);
+      const sumKind = (k: string) => r.lines.reduce((t, l) => t + (l.kind === k ? l.tien : 0), 0);
+      cmp('hóa đơn', sumKind('inv'), source.expenses.reduce((t, e) => t + (e.project_id === id && e.date ? e.amount : 0), 0));
+      cmp('HĐ thầu phụ', sumKind('hdtp'), r.contracts.reduce((t, c) => t + c.giaTri, 0));
+      const ctx = profitContext(buildProfitIndex({ ...source, projects: [...source.projects], expenses: [...source.expenses], timesheetWeeks: [...source.timesheetWeeks], timesheetLines: [...source.timesheetLines], payments: [], paymentAllocations: [], receipts: [], mainContracts: [], settlements: [] }), ALL_YEARS, source.now);
+      cmp('chi phí chung', sumKind('cpc'), ctx.overheadByProject.get(id) ?? 0);
+      cmp('tổng 4 nhóm', [0, 1, 2, 3, 4].reduce((t, n) => t + r.theoNhom[n]!, 0), r.tongChi);
       // từng khoản: cùng khóa (để nhomTay cũ còn dùng được), cùng tiền, cùng cách chia nhóm theo món
       const mine = new Map(r.lines.map((l) => [l.key, l]));
-      cmp('số khoản', r.lines.length, g.khoan.length);
       for (const k of g.khoan) {
+        if (k.key.startsWith('ung:')) continue; // tiền trả thầu phụ / NCC: app mới không tính theo tiền trả nữa
         const l = mine.get(k.key);
         if (!l) { diffs.push(`${g.ten} · thiếu khoản ${k.key} (${k.tien})`); continue; }
         if (l.tien !== k.tien) diffs.push(`${g.ten} · ${k.key}: ${l.tien} ≠ ${k.tien}`);

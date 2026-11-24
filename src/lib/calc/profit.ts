@@ -14,7 +14,7 @@ import type { CalcData, CalcMainContract, CalcProject, CalcReceipt, CalcSettleme
 import { ALL_YEARS, inYear, inYearLoose, isAllYears, yearOf, type YearFilter } from './year';
 
 /** Mọi dòng chi phí: hóa đơn nhập tay + dòng sinh từ chấm công (`buildInvoices`). */
-export function buildCostEntries(data: Pick<CalcData, 'expenses' | 'timesheetWeeks' | 'timesheetLines'>): CostEntry[] {
+export function buildCostEntries(data: { [K in 'expenses' | 'timesheetWeeks' | 'timesheetLines']: Readonly<CalcData[K]> }): CostEntry[] {
   const manual: CostEntry[] = data.expenses.map((e) => ({
     id: e.id, project_id: e.project_id, date: e.date, amount: e.amount || 0, paid_at_purchase: e.paid_at_purchase,
     source: e.source === 'quick' || e.source === 'detail' ? e.source : 'manual', expense: e,
