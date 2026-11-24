@@ -21,6 +21,8 @@ describe('Tỉ trọng — hàm thuần', () => {
     expect(defaultGroupOfType('Gạch Ốp Lát')).toBe(2);
     expect(defaultGroupOfType('Thiết Bị Gia Dụng')).toBe(3);
     expect(defaultGroupOfType('Mua Máy - Thiết Bị')).toBe(4);
+    expect(['Thiết Kế - Xin Phép', 'Thiết Kế / Xin Phép', 'Sửa Máy', 'Chi Phí Chung'].map(defaultGroupOfType)).toEqual([1, 1, 1, 1]);
+    expect(['Thi Công Trần Thạch Cao', 'Thi công thạch cao'].map(defaultGroupOfType)).toEqual([2, 2]);
     expect(defaultGroupOfType('Khác')).toBe(0);
     expect(groupByWords('thang máy gia đình')).toBe(3);
     expect(groupByWords('casong')).toBe(0); // "son" phải là từ nguyên vẹn
@@ -55,7 +57,6 @@ describe('Tỉ trọng — hàm thuần', () => {
     expect(cfg.nhomLoai).toEqual({ khac: 4 });
     expect(cfg.nhomLuat.length).toBe(6);
     expect(cfg.nhomLuat[5]).toMatchObject({ id: 'q1', nhom: 3 });
-    expect(cfg.quyMuc).toBe(50000);
     expect(readAllocConfig(null).coBanGhi).toBe(false);
     const st = readAllocStruct({ roTay: { 'inv:1': 1, 'inv:2': 3 }, theoHdtp: { h1: { ro: 2 }, h2: { nhom: 3 }, h3: {} } }, () => 'thạch cao');
     expect(st).toEqual({ nhomTay: { 'inv:1': 1, 'inv:2': 4 }, theoHdtp: { h1: { nhom: 2 }, h2: { nhom: 3 } } });
@@ -95,7 +96,7 @@ describe('Tỉ trọng — hàm thuần', () => {
     expect(compareToBenchmark(r, dm)).toBeCloseTo(0, 6);
     const ks = benchmarkControl(dm, 100, r);
     expect(ks.soVuot).toBe(0);
-    expect(ks.rows.find((x) => x.k === 'quy')!.ns).toBe(5_000_000);
+    expect(ks.rows.find((x) => x.k === 'quy')!.ns).toBe(120_000);
   });
 
   it('thứ tự xếp nhóm: gán tay → HĐ thầu phụ → luật → loại; hóa đơn nhiều món tách theo món', () => {
@@ -140,6 +141,16 @@ describe('Tỉ trọng — hàm thuần', () => {
     expect(r.lines.find((l) => l.key === 'hdtp:hd2')!.nhomChinh).toBe(1);
     expect(r.lines.find((l) => l.key === 'hdtp:hd1')!.nhomChinh).toBe(2);
     expect(run([2026]).tongChi).toBe(21 + 5 + 3); // HĐ ký 2025 không tính vào năm 2026
+  });
+
+  it('thầu phụ thạch cao mặc định Nhóm 2, trừ khi chọn nhóm ở HĐ', () => {
+    const run = (configData: unknown, projectData: unknown = null) => allocSummary({
+      projectId: 'p1', floorAreas: [], years: ALL_YEARS, projectData, configData,
+      src: src({ subcontracts: [{ id: 'h', project_id: 'p1', subcontractor_id: 'tp1', date: '2026-01-01', value: 9, legacy_variation: 0, description: 'Thi công thạch cao.' }] }),
+    });
+    expect(run(null).theoNhom[2]).toBe(9);
+    expect(run({ nhomLoai: { 'thau phu': 1 } }).theoNhom[2]).toBe(9);
+    expect(run(null, { theoHdtp: { h: { nhom: 1 } } }).theoNhom[1]).toBe(9);
   });
 
   it('chi phí chung phân bổ theo ngày × k, mặc định Nhóm 1, gán tay được', () => {
@@ -221,6 +232,7 @@ describe.skipIf(!ready)('Tỉ trọng — khớp `tytTongHop` của app cũ (ph�
         const l = mine.get(k.key);
         if (!l) { diffs.push(`${g.ten} · thiếu khoản ${k.key} (${k.tien})`); continue; }
         if (l.tien !== k.tien) diffs.push(`${g.ten} · ${k.key}: ${l.tien} ≠ ${k.tien}`);
+        if (/^(thiết kế|sửa máy)/i.test(k.loai)) continue; // đổi nhóm mặc định 4 → 1 (24/11/2026)
         const nhom = l.parts.map((pt) => pt.nhom + ':' + pt.tien).join(',');
         if (nhom !== k.nhom) diffs.push(`${g.ten} · ${k.key} nhóm: ${nhom} ≠ ${k.nhom}`);
       }

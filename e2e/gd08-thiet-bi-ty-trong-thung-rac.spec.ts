@@ -138,6 +138,10 @@ test('Tỉ trọng: tổng chi / m² / rổ của công trình, lưu làm địn
 
   // bấm ô Sắt Thép × Nhóm 1 → gán tay sang Nhóm 2
   await page.getByTestId('tyt-matrix').locator('tbody tr', { hasText: 'Sắt Thép' }).locator('td').nth(1).click();
+  await page.getByTestId('tyt-line-search').fill('không có gì');
+  await expect(page.getByText('Không tìm thấy khoản nào')).toBeVisible();
+  await page.getByTestId('tyt-line-search').fill('gd08 sat 5000000');
+  await page.screenshot({ path: `${SHOTS}/ti-trong-tim-khoan-1440.png` });
   await page.getByLabel(/Chọn E2E GD08 sắt/).check();
   await page.getByLabel('Nhóm gán hàng loạt').selectOption('2');
   await page.getByTestId('tyt-bulk-assign').click();
@@ -146,6 +150,11 @@ test('Tỉ trọng: tổng chi / m² / rổ của công trình, lưu làm địn
   await expect(page.locator('[data-group-total="2"]')).toHaveText('5.000.000');
   await expect(page.locator('[data-group-total="1"]')).toHaveText('2.000.000');
 
+  await expect(page.getByLabel('Kỳ', { exact: true })).toHaveCount(0);
+  await page.goto('/ke-hoach/cau-hinh');
+  await page.getByTestId('tyt-rule-add').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${SHOTS}/cau-hinh-ro-1440.png` });
+  await openAlloc(page);
   await page.getByTestId('tyt-save-benchmark').click();
   await page.getByTestId('tyt-dm-save').click();
   await expect(page.getByText('Đã lưu định mức')).toBeVisible();

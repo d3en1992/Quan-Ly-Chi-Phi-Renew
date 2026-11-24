@@ -4,17 +4,16 @@
 import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
-import { useYears } from '@/app/year';
 import { Button, Icon } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm';
 import { FilterBar, FilterSelect, HBarList, KpiStrip, PhoneKpis } from '@/components/ui/data';
-import { Checkbox, Field, Input, MoneyInput, Select } from '@/components/ui/input';
+import { Checkbox, Field, Input, Select } from '@/components/ui/input';
 import { Card, CardHeader, EmptyState, ErrorState, LoadingState, Note, PageHeader, Pill } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
 import {
   ALL_YEARS, allocSummary, benchmarkFields, compareToBenchmark, COST_GROUP_IDS, COST_GROUPS, defaultGroupRules, floorAreaTotal, groupOfType,
-  PILLAR_ORDER, PILLARS, pillarOfType, readAllocConfig, readBenchmark, toYearFilter, typeGroupMatrix, typeKey,
+  PILLAR_ORDER, PILLARS, pillarOfType, readAllocConfig, readBenchmark, stripVi, typeGroupMatrix, typeKey,
   type AllocLine, type AllocPart, type AllocSummary, type FloorRow, type PillarKey,
 } from '@/lib/calc';
 import { formatDate, formatMoney, formatShortMoney } from '@/lib/format';
@@ -44,12 +43,20 @@ function LinesSheet({ title, items, canEdit, busy, onAssign, onClose }: {
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [bulk, setBulk] = useState('');
   const toggle = (k: string) => setSel((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
-  const total = items.reduce((s, x) => s + x.part.tien, 0);
+  const [q, setQ] = useState('');
+  // Tìm không dấu, mỗi từ khớp ở bất kỳ cột nào; số tiền gõ có hoặc không có dấu chấm
+  const words = stripVi(q).split(/\s+/).filter(Boolean);
+  const shown = !words.length ? items : items.filter(({ line, part }) => {
+    const money = formatMoney(part.tien);
+    const txt = stripVi([formatDate(line.ngay), part.ten, line.nd, line.doiTuong, line.loai, money, money.replace(/\D/g, '')].join(' '));
+    return words.every((x) => txt.includes(x));
+  });
+  const total = shown.reduce((s, x) => s + x.part.tien, 0);
   return (
     <Sheet open onOpenChange={(o) => { if (!o) onClose(); }} title={title} wide
       footer={canEdit ? (
         <>
-          <span className="text-[12.5px] text-muted">Đã chọn {sel.size}</span>
+          <span className="self-center text-[12.5px] text-muted">Đã chọn {sel.size}</span>
           <Select aria-label="Nhóm gán hàng loạt" className="!w-[190px]" value={bulk} onChange={(e) => setBulk(e.target.value)}>
             <option value="">— Chọn nhóm —</option>
             {GROUP_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -61,27 +68,29 @@ function LinesSheet({ title, items, canEdit, busy, onAssign, onClose }: {
         </>
       ) : <Button onClick={onClose}>Đóng</Button>}>
       <div className="grid gap-2">
-        <div className="text-[12.5px] text-muted">{items.length} dòng · tổng <b className="num text-fg">{formatMoney(total)}</b>{canEdit ? ' · gán tay áp cho CẢ khoản (mọi món của hóa đơn đó)' : ''}</div>
+        <Input type="search" data-testid="tyt-line-search" aria-label="Tìm khoản chi" placeholder="Tìm nội dung, nhà cung cấp, ngày, số tiền…" value={q} onChange={(e) => { setQ(e.target.value); setSel(new Set()); }} />
+        <div className="text-[12.5px] text-muted">{words.length ? `${shown.length} / ${items.length}` : items.length} dòng · tổng <b className="num text-fg">{formatMoney(total)}</b>{canEdit ? ' · gán tay áp cho CẢ khoản (mọi món của hóa đơn đó)' : ''}</div>
         <div className="tbl">
           <table>
             <thead><tr>{canEdit ? <th /> : null}<th>Ngày</th><th>Nội dung</th><th>Loại</th><th className="!text-right">Số tiền</th><th>Đang xếp</th></tr></thead>
             <tbody>
-              {items.map(({ line, part }, i) => (
+              {shown.map(({ line, part }, i) => (
                 <tr key={line.key + '#' + i} data-line={line.key}>
                   {canEdit ? <td><input type="checkbox" aria-label={`Chọn ${line.nd}`} checked={sel.has(line.key)} onChange={() => toggle(line.key)} /></td> : null}
                   <td className="num">{formatDate(line.ngay)}</td>
-                  <td>{part.mon ? part.ten : line.nd}{line.doiTuong ? <span className="block text-[11.5px] text-faint">{line.doiTuong}{part.mon ? ` · ${line.nd}` : ''}</span> : null}</td>
+                  <td className="wrap !min-w-0">{part.mon ? part.ten : line.nd}{line.doiTuong ? <span className="block text-[11.5px] text-faint">{line.doiTuong}{part.mon ? ` · ${line.nd}` : ''}</span> : null}</td>
                   <td className="whitespace-nowrap">{line.loai}</td>
                   <td className="num text-right">{formatMoney(part.tien)}</td>
                   <td className="whitespace-nowrap">
                     <Pill tone={part.nhom === 0 ? 'bad' : part.nhomSrc === 'tay' ? 'accent' : 'neutral'}>{part.nhom === 0 ? 'Chưa xếp' : `Nhóm ${part.nhom}`}</Pill>
-                    <span className="ml-1.5 text-[11.5px] text-faint">{SRC_LABEL[part.nhomSrc]}{part.tru !== null && part.nhom === 1 ? ` · rổ ${pillarLabel(part.tru)}` : ''}</span>
+                    <span className="mt-0.5 block text-[11.5px] text-faint">{SRC_LABEL[part.nhomSrc]}{part.tru !== null && part.nhom === 1 ? ` · rổ ${pillarLabel(part.tru)}` : ''}</span>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        {shown.length === 0 ? <div className="py-4 text-center text-[13px] text-muted">Không tìm thấy khoản nào</div> : null}
       </div>
     </Sheet>
   );
@@ -124,13 +133,11 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
   const access = useAccess();
   const toast = useToast();
   const canEdit = hasLevel(access.permissions, 'cost_allocation', 'add');
-  const { years: yearSel, label: yearLabel } = useYears();
   const report = useReportData(), lines = useAllExpenseLines(), records = useAllocRecords(), projectsQ = useProjectsFull();
   const saveAlloc = useSaveProjectAlloc(), saveCfg = useSaveConfig();
   const createDm = useCreateBenchmark(), updateDm = useUpdateBenchmark(), deleteDm = useDeleteBenchmark();
 
   const [pid, setPid] = useState('');
-  const [period, setPeriod] = useState<'life' | 'year'>('life');
   const [dmId, setDmId] = useState('');
   const [cell, setCell] = useState<{ loai: string | null; nhom: number | null } | null>(null);
   const [floorOpen, setFloorOpen] = useState(false);
@@ -139,7 +146,6 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
   const [rename, setRename] = useState<{ rec: AllocRecord; name: string } | null>(null);
   const [delDm, setDelDm] = useState<AllocRecord | null>(null);
   const [rule, setRule] = useState({ tuKhoa: '', loai: '', nhom: '2' });
-  const [fund, setFund] = useState<number | null>(null);
 
   const projects = useMemo(() => (projectsQ.data ?? []).filter((p) => !p.is_company_overhead), [projectsQ.data]);
   const recs = records.data ?? [];
@@ -153,10 +159,10 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
   const project = projects.find((p) => p.id === projectId);
   const projectRec = recs.find((r) => r.kind === 'project' && r.project_id === projectId);
   const src = useMemo(() => (report.data && lines.data ? toAllocSource(report.data, lines.data) : null), [report.data, lines.data]);
-  const years = useMemo(() => (period === 'life' ? ALL_YEARS : toYearFilter(yearSel)), [period, yearSel]);
+  // Luôn tính TRỌN công trình (mọi năm), không theo ô chọn năm
   const sum: AllocSummary | null = useMemo(
-    () => (src && project ? allocSummary({ projectId: project.id, floorAreas: project.floor_areas as FloorRow[], src, years, projectData: projectRec?.data ?? null, configData: configRec?.data ?? null }) : null),
-    [src, project, years, projectRec, configRec],
+    () => (src && project ? allocSummary({ projectId: project.id, floorAreas: project.floor_areas as FloorRow[], src, years: ALL_YEARS, projectData: projectRec?.data ?? null, configData: configRec?.data ?? null }) : null),
+    [src, project, projectRec, configRec],
   );
   const cfg = useMemo(() => readAllocConfig(configRec?.data ?? null), [configRec]);
   const matrix = useMemo(() => (sum ? typeGroupMatrix(sum) : []), [sum]);
@@ -192,7 +198,6 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
     saveAlloc.mutate({ projectId: project.id, current: projectRec, changes: { theoHdtp } }, { onSuccess: () => toast('Đã lưu nhóm của HĐ thầu phụ'), onError: onErr });
   };
   const saveConfig = (changes: Parameters<typeof saveCfg.mutate>[0]['changes'], msg: string) => saveCfg.mutate({ current: configRec, changes }, { onSuccess: () => toast(msg), onError: onErr });
-  const periodLabel = period === 'life' ? 'Trọn vòng đời' : yearSel === 'all' ? 'Tất cả năm' : yearLabel;
   const projectOpts = projects.map((p) => ({ value: p.id, label: p.name }));
 
   const buckets = (
@@ -211,7 +216,7 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
     return (
       <>
         <Select aria-label="Công trình" value={project.id} onChange={(e) => setPid(e.target.value)}>{projectOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</Select>
-        <PhoneKpis items={[{ label: 'Tổng sàn', value: `${m2(sum.tongSan)} m²` }, { label: 'Đơn giá / m²', value: perM2(sum.tongChi, sum.tongSan) }, { label: `Tổng chi phí · ${periodLabel}`, value: formatMoney(sum.tongChi), wide: true }]} />
+        <PhoneKpis items={[{ label: 'Tổng sàn', value: `${m2(sum.tongSan)} m²` }, { label: 'Đơn giá / m²', value: perM2(sum.tongChi, sum.tongSan) }, { label: 'Tổng chi phí', value: formatMoney(sum.tongChi), wide: true }]} />
         <Card className="grid gap-1.5 p-3.5 text-[13px]">
           <div className="text-[11.5px] font-semibold text-muted">Theo nhóm chi phí</div>
           {[...COST_GROUP_IDS, 0].filter((n) => n !== 0 || showZero).map((n) => (
@@ -231,7 +236,6 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
     <>
       <FilterBar>
         <FilterSelect label="Công trình" value={project.id} onChange={setPid} options={projectOpts} allLabel={null} />
-        <FilterSelect label="Kỳ" value={period} onChange={(v) => setPeriod(v as 'life' | 'year')} options={[{ value: 'life', label: 'Trọn vòng đời' }, { value: 'year', label: `Theo năm đang chọn (${yearSel === 'all' ? 'Tất cả' : yearLabel})` }]} allLabel={null} />
         {benchmarks.length ? <FilterSelect label="So với" value={dm?.id ?? ''} onChange={setDmId} options={benchmarks.map((b) => ({ value: b.id, label: b.name ?? 'Định mức' }))} allLabel={null} /> : null}
         <span className="flex-1" />
         <Button onClick={() => setTab('config')}><Icon name="rule" />Luật tự gán ({cfg.nhomLuat.length})</Button>
@@ -239,7 +243,7 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
       </FilterBar>
       <div data-testid="tyt-kpis">
         <KpiStrip items={[
-          { label: 'Tổng chi phí', value: <span data-testid="tyt-total">{formatMoney(sum.tongChi)}</span>, sub: `${pct(sum.tongChi - unassigned, sum.tongChi)}% đã xếp nhóm · ${periodLabel}` },
+          { label: 'Tổng chi phí', value: <span data-testid="tyt-total">{formatMoney(sum.tongChi)}</span>, sub: `${pct(sum.tongChi - unassigned, sum.tongChi)}% đã xếp nhóm · mọi năm` },
           { label: 'Tổng sàn quy đổi', value: `${m2(sum.tongSan)} m²` },
           { label: 'Đơn giá / m²', value: perM2(sum.tongChi, sum.tongSan), sub: sum.tongSan > 0 ? `Nhóm 1: ${formatMoney(Math.round(sum.cpM2N1))} đ/m²` : 'chưa có khối lượng sàn' },
           { label: 'So định mức (Nhóm 1)', value: diff === null ? '—' : <Pill tone={diff > 2 ? 'warn' : diff < -2 ? 'good' : 'neutral'}>{`${diff >= 0 ? '+' : '−'}${Math.abs(diff).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%`}</Pill>, sub: dmData && dmData.dgRo1 > 0 ? `định mức ${formatMoney(dmData.dgRo1)} đ/m²` : 'chưa có định mức' },
@@ -256,7 +260,7 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
                 <table>
                   <thead><tr><th>Tầng / khu</th><th className="!text-right">KL (m²)</th><th className="!text-right">Hệ số</th></tr></thead>
                   <tbody>{(project.floor_areas as FloorRow[]).map((r, i) => (
-                    <tr key={i} className={r.tinh === false ? 'text-faint line-through' : ''}><td>{r.ten}</td><td className="num text-right">{m2(Number(r.kl) || 0)}</td><td className="num text-right">{String(r.heSo ?? 1).replace('.', ',')}</td></tr>
+                    <tr key={i} className={r.tinh === false ? 'text-faint line-through' : ''}><td className="!min-w-0 wrap">{r.ten}</td><td className="num text-right">{m2(Number(r.kl) || 0)}</td><td className="num text-right">{String(r.heSo ?? 1).replace('.', ',')}</td></tr>
                   ))}</tbody>
                   <tfoot><tr className="font-bold [&>td]:bg-surface-2"><td>Tổng sàn</td><td className="num text-right">{m2(sum.tongSan)}</td><td /></tr></tfoot>
                 </table>
@@ -375,7 +379,7 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
   );
 
   const configTab = (
-    <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+    <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)]">
       <Card>
         <CardHeader title="Loại chi phí → nhóm, rổ" sub="dùng chung mọi công trình" />
         <div className="tbl" data-testid="tyt-type-config">
@@ -397,7 +401,7 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
                   </td>
                   <td>
                     {g.nhom === 1 ? (
-                      <Select aria-label={`Rổ của ${t}`} disabled={!canEdit || saveCfg.isPending} className="!h-8 !w-[170px]" value={pl.src === 'loai' ? pl.tru || '-' : ''}
+                      <Select aria-label={`Rổ của ${t}`} disabled={!canEdit || saveCfg.isPending} className="!h-8 !w-[192px]" value={pl.src === 'loai' ? pl.tru || '-' : ''}
                         onChange={(e) => { const truLoai = { ...cfg.truLoai }; if (e.target.value === '') delete truLoai[k]; else truLoai[k] = e.target.value === '-' ? '' : e.target.value; saveConfig({ truLoai }, `Đã lưu rổ của "${t}"`); }}>
                         <option value="">Mặc định: {pillarLabel(pDefault)}</option>
                         {PILLAR_ORDER.filter((x) => x !== '').map((x) => <option key={x} value={x}>{PILLARS[x].ten}</option>)}
@@ -427,22 +431,18 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
         </div>
         {canEdit ? (
           <div className="grid gap-3 border-t border-line-soft p-3.5">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 items-end gap-3">
               <Field label="Từ khóa (cách nhau dấu phẩy)" className="col-span-2"><Input aria-label="Từ khóa luật mới" value={rule.tuKhoa} onChange={(e) => setRule({ ...rule, tuKhoa: e.target.value })} placeholder="chống thấm, sika" /></Field>
               <Field label="Chỉ với loại (bỏ trống = mọi loại)"><Input aria-label="Loại của luật mới" value={rule.loai} onChange={(e) => setRule({ ...rule, loai: e.target.value })} list="tyt-types" /><datalist id="tyt-types">{allTypes.map((t) => <option key={t} value={t} />)}</datalist></Field>
               <Field label="Gán vào"><Select aria-label="Nhóm của luật mới" value={rule.nhom} onChange={(e) => setRule({ ...rule, nhom: e.target.value })}>{GROUP_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</Select></Field>
             </div>
-            <div><Button data-testid="tyt-rule-add" disabled={saveCfg.isPending} onClick={() => {
+            <div className="flex justify-end"><Button variant="primary" data-testid="tyt-rule-add" disabled={saveCfg.isPending} onClick={() => {
               if (!rule.tuKhoa.trim()) { toast('Nhập ít nhất một từ khóa!', 'error'); return; }
               saveConfig({ nhomLuat: [...cfg.nhomLuat, { id: 'q' + Date.now().toString(36), loai: rule.loai.trim(), tuKhoa: rule.tuKhoa.trim(), nhom: Number(rule.nhom) }] }, 'Đã thêm luật');
               setRule({ tuKhoa: '', loai: '', nhom: rule.nhom });
             }}><Icon name="add" />Thêm luật</Button></div>
-            <div className="grid grid-cols-[minmax(0,220px)_auto] items-end gap-2">
-              <Field label="Quỹ phụ phí (đ/m²)" hint="mức chung để kiểm soát rổ Quỹ"><MoneyInput aria-label="Quỹ phụ phí" value={fund ?? cfg.quyMuc} onChange={setFund} /></Field>
-              <Button disabled={fund === null || fund === cfg.quyMuc || saveCfg.isPending} onClick={() => { saveConfig({ quyMuc: fund ?? cfg.quyMuc }, 'Đã lưu mức quỹ'); setFund(null); }}>Lưu mức quỹ</Button>
-            </div>
           </div>
-        ) : <div className="p-3.5 text-[13px] text-muted">Quỹ phụ phí: <b className="num text-fg">{formatMoney(cfg.quyMuc)}</b> đ/m²</div>}
+        ) : null}
       </Card>
     </div>
   );
@@ -457,11 +457,11 @@ export function CostAllocationPage({ tab, onTabChange: setTab }: { tab: AllocTab
       {floorOpen ? <FloorSheet project={project} onClose={() => setFloorOpen(false)} /> : null}
       <Sheet open={dmName !== null} onOpenChange={(o) => { if (!o) setDmName(null); }} title="Lưu làm định mức"
         footer={<><Button onClick={() => setDmName(null)}>Hủy</Button><Button variant="primary" data-testid="tyt-dm-save" disabled={createDm.isPending} onClick={() => createDm.mutate(
-          { name: dmName ?? '', fields: benchmarkFields({ id: project.id, name: project.name, kindLabel: KIND_CODE[project.kind ?? ''] ?? '' }, sum, periodLabel) },
+          { name: dmName ?? '', fields: benchmarkFields({ id: project.id, name: project.name, kindLabel: KIND_CODE[project.kind ?? ''] ?? '' }, sum, 'Trọn vòng đời') },
           { onSuccess: () => { setDmName(null); toast('Đã lưu định mức'); setTab('benchmark'); }, onError: onErr })}><Icon name="save" />Lưu</Button></>}>
         <div className="grid gap-3">
           <Field label="Tên định mức"><Input aria-label="Tên định mức" value={dmName ?? ''} onChange={(e) => setDmName(e.target.value)} /></Field>
-          <Note>Lưu đơn giá đ/m² của {project.name} ({periodLabel}): tổng {perM2(sum.tongChi, sum.tongSan)}, Nhóm 1 {formatMoney(Math.round(sum.cpM2N1))}, cùng 6 rổ và từng loại chi phí.</Note>
+          <Note>Lưu đơn giá đ/m² của {project.name} (mọi năm): tổng {perM2(sum.tongChi, sum.tongSan)}, Nhóm 1 {formatMoney(Math.round(sum.cpM2N1))}, cùng 6 rổ và từng loại chi phí.</Note>
         </div>
       </Sheet>
       <Sheet open={!!rename} onOpenChange={(o) => { if (!o) setRename(null); }} title="Đổi tên định mức"

@@ -1,5 +1,5 @@
 // TỈ TRỌNG & ĐỊNH MỨC — chép NGUYÊN logic `tytrong.core.js` của app cũ (bản 27/10/2026: 4 NHÓM chi phí,
-// Nhóm 1 chia 4 trụ cột + Quỹ phụ phí + Chưa xếp = "6 rổ" trên màn hình).
+// Nhóm 1 chia 4 trụ cột + Phụ phí + Chưa xếp = "6 rổ" trên màn hình).
 //
 // KHÁC app cũ (anh Tình chốt 24/11/2026) — tính theo GIÁ TRỊ CHI PHÍ, không theo tiền đã trả:
 //   · Vật tư = MỌI hóa đơn (kể cả mua nợ); tiền trả NCC không tính nữa.
@@ -7,7 +7,7 @@
 //   · Thêm chi phí chung CÔNG TY phân bổ (cùng số cột C của Lợi Nhuận), mặc định Nhóm 1.
 //
 // Tên trường trong `cost_allocations.data` (jsonb) GIỮ như app cũ: nhomTay, theoHdtp, nhomLoai, nhomLuat,
-// truLoai, quyMuc, roTay / roLoai / roLuat (đời cũ, tự chuyển khi đọc), dgNhom, dgRo1, ro1…
+// truLoai, quyMuc (bỏ dùng 24/11/2026), roTay / roLoai / roLuat (đời cũ, tự chuyển khi đọc), dgNhom, dgRo1, ro1…
 import { allocateOverhead, companyOverheadCost } from './overhead';
 import { subcontractTotal } from './payables';
 import { buildCostEntries } from './profit';
@@ -203,10 +203,10 @@ export function allocContracts(projectId: string, src: Pick<AllocSource, 'subcon
 // THỨ TỰ XẾP NHÓM cho 1 khoản (hoặc 1 MÓN của hóa đơn chi tiết):
 //   ① gán tay → ② HĐ thầu phụ → ③ luật từ khóa (dùng chung) → ④ bảng Loại chi phí → Nhóm → ⑤ mặc định theo tên loại → Chưa xếp.
 export const COST_GROUPS: Record<number, { ten: string; ngan: string; mo: string }> = {
-  1: { ten: 'Phần thô & Nhân công hoàn thiện', ngan: 'Thô & NC', mo: 'Vật tư thô, toàn bộ nhân công, thầu phụ thô, quỹ phụ phí công trường' },
+  1: { ten: 'Phần thô & Nhân công hoàn thiện', ngan: 'Thô & NC', mo: 'Vật tư thô, toàn bộ nhân công, thầu phụ thô, phụ phí công trường, thiết kế - xin phép, sửa máy, chi phí chung' },
   2: { ten: 'Vật tư & Thi công hoàn thiện', ngan: 'Hoàn thiện', mo: 'Gạch ốp lát, TBVS, đèn, cửa · TP điện nước, máy lạnh, chống sét, thạch cao, sơn…' },
   3: { ten: 'Nội thất & Tiện ích bổ sung', ngan: 'Nội thất', mo: 'Đồ gỗ rời & liền tường · thang máy, điện mặt trời, smarthome · sân vườn, hồ bơi…' },
-  4: { ten: 'Chi phí khác ngoài gói chính', ngan: 'Ngoài gói', mo: 'Thiết kế - xin phép, ép cọc, phát sinh chủ nhà, khoản theo dõi riêng / máy móc công ty' },
+  4: { ten: 'Chi phí khác ngoài gói chính', ngan: 'Ngoài gói', mo: 'Ép cọc, phát sinh chủ nhà, khoản theo dõi riêng / máy móc công ty' },
   0: { ten: 'Chưa xếp nhóm', ngan: 'Chưa xếp', mo: 'Cần chọn nhóm' },
 };
 export const COST_GROUP_IDS = [1, 2, 3, 4] as const;
@@ -216,16 +216,16 @@ const GROUP_BY_TYPE: Record<string, number> = {
   'van chuyen': 1, 'xa ban - do rac': 1, 'dien nuoc': 1, 'copha': 1, 'giai khat': 1, 'copha thue': 1,
   'vat tu dien nuoc': 1, 'do be tong': 1, 'be tong tay': 1, 'do thi': 1, 'bao hiem tai nan cn': 1, 'giu cong trinh': 1,
   'ngoai giao': 1, 'thue may moc - thiet bi': 1, 'phu cap an uong': 1, 'thi cong sat thep': 1, 'op lat gach': 1,
-  'thau phu': 1, 'chi phi chung': 1,
-  'gach op lat': 2, 'vat tu son nuoc': 2, 'thi cong tran thach cao': 2, 'tiep dia - chong set': 2, 'vat tu dien lanh': 2,
+  'thau phu': 1, 'chi phi chung': 1, 'thiet ke - xin phep': 1, 'sua may': 1,
+  'gach op lat': 2, 'vat tu son nuoc': 2, 'thi cong tran thach cao': 2, 'thi cong thach cao': 2, 'tiep dia - chong set': 2, 'vat tu dien lanh': 2,
   'thi cong da hoa cuong': 2, 'thi cong dien nuoc': 2,
   'thiet bi gia dung': 3,
-  'thiet ke - xin phep': 4, 'ep coc': 4, 'sua may': 4, 'van phong': 4, 'luong khoi van phong': 4, 'mua may - thiet bi': 4,
+  'ep coc': 4, 'van phong': 4, 'luong khoi van phong': 4, 'mua may - thiet bi': 4,
   'bao hiem xa hoi': 4, 'khao sat - do dat': 4, 'thue phi': 4,
 };
 // Loại lạ → đoán theo TỪ trong tên. Xét Nhóm 4 → 3 → 2 → 1, so theo TỪ NGUYÊN VẸN.
 const GROUP_WORDS: [number, string[]][] = [
-  [4, ['ep coc', 'thiet ke', 'xin phep', 'hoan cong', 'khao sat', 'mua may', 'sua may', 'khau hao', 'van phong',
+  [4, ['ep coc', 'hoan cong', 'khao sat', 'mua may', 'khau hao', 'van phong',
     'bao hiem xa hoi', 'thue phi', 'thao do', 'phat sinh']],
   [3, ['noi that', 'thang may', 'homelift', 'nang luong mat troi', 'dien mat troi', 'smarthome', 'nha thong minh',
     'may lanh trung tam', 'san vuon', 'tieu canh', 'ho ca', 'ho boi', 'rem cua', 'gian phoi', 'gia dung', 'do go', 'tu bep', 'sofa']],
@@ -235,7 +235,7 @@ const GROUP_WORDS: [number, string[]][] = [
     'may lanh', 'dieu hoa', 'chong set', 'tiep dia', 'hoan thien']],
   [1, ['sat thep', 'be tong', 'dao dat', 'san lap', 'nhan cong', 'copha', 'vat lieu', 'vat tu', 'xi mang', 'gach xay', 'cat', 'da',
     'van chuyen', 'thue may', 'giai khat', 'xa ban', 'giu cong trinh', 'hoa don le', 'do thi', 'ngoai giao', 'phu cap',
-    'bao hiem tai nan', 'chong tham', 'dien nuoc', 'thau phu', 'khoan coc', 'gian giao']],
+    'bao hiem tai nan', 'chong tham', 'dien nuoc', 'thau phu', 'khoan coc', 'gian giao', 'thiet ke', 'xin phep', 'sua may']],
 ];
 /** `tytNhomTheoChu`: đoán nhóm theo TỪ trong 1 đoạn chữ. Không đoán được → 0 */
 export function groupByWords(txt: unknown): number {
@@ -270,19 +270,18 @@ export const DEFAULT_GROUP_RULES: Omit<GroupRule, 'id'>[] = [
 ];
 export const defaultGroupRules = (): GroupRule[] => DEFAULT_GROUP_RULES.map((l, i) => ({ id: 'nd' + i, ...l }));
 
-// ══ TRỤ CỘT CỦA NHÓM 1 (= 6 rổ: Sắt / Bê tông / Nhân công / Thầu phụ / Quỹ / Khác) ═══════════
+// ══ TRỤ CỘT CỦA NHÓM 1 (= 6 rổ: Sắt / Bê tông / Nhân công / Thầu phụ / Phụ phí / Khác) ═══════════
 export type PillarKey = 'sat' | 'bt' | 'nc' | 'tp' | 'quy' | '';
 export const PILLARS: Record<PillarKey, { ten: string; ngan: string; mo: string }> = {
   sat: { ten: 'Sắt thép', ngan: 'Sắt', mo: 'Sắt thép, thi công sắt thép' },
   bt: { ten: 'Bê tông & VL thô', ngan: 'Bê tông', mo: 'Bê tông, copha, VLXD thô (cát, đá, xi măng, gạch xây), đào đất, vận chuyển' },
   nc: { ten: 'Nhân công', ngan: 'Nhân công', mo: 'Toàn bộ công thợ thô + hoàn thiện, phụ cấp' },
   tp: { ten: 'Thầu phụ thô & phụ trợ', ngan: 'Thầu phụ', mo: 'Khoán thầu phụ phần thô + vật tư hệ thống âm (điện nước…)' },
-  quy: { ten: 'Quỹ phụ phí', ngan: 'Quỹ', mo: 'Giải khát, xà bần, giữ CT, hóa đơn lẻ, đô thị, ngoại giao' },
+  quy: { ten: 'Phụ phí công trường', ngan: 'Phụ phí', mo: 'Giải khát, xà bần, giữ CT, hóa đơn lẻ, đô thị, ngoại giao' },
   '': { ten: 'Chưa xếp trụ cột', ngan: 'Khác', mo: 'Chọn ở tab CẤU HÌNH RỔ' },
 };
 export const MAIN_PILLARS: PillarKey[] = ['sat', 'bt', 'nc', 'tp'];
 export const PILLAR_ORDER: PillarKey[] = ['sat', 'bt', 'nc', 'tp', 'quy', ''];
-export const DEFAULT_FUND_RATE = 50000;
 
 const FUND_WORDS = ['giai khat', 'xa ban', 'giu cong trinh', 'hoa don le', 'do thi', 'ngoai giao'];
 const PILLAR_WORDS: [PillarKey, string[]][] = [
@@ -301,7 +300,7 @@ export function defaultPillarOfType(type: unknown): PillarKey {
 }
 
 // ══ CẤU HÌNH DÙNG CHUNG + PHÂN NHÓM CỦA 1 CÔNG TRÌNH ══════════════════
-export type AllocConfig = { nhomLoai: Record<string, number>; nhomLuat: GroupRule[]; truLoai: Record<string, string>; quyMuc: number; coBanGhi: boolean };
+export type AllocConfig = { nhomLoai: Record<string, number>; nhomLuat: GroupRule[]; truLoai: Record<string, string>; coBanGhi: boolean };
 type Json = Record<string, unknown>;
 const isObj = (v: unknown): v is Json => !!v && typeof v === 'object' && !Array.isArray(v);
 
@@ -329,11 +328,9 @@ export function readAllocConfig(data: unknown): AllocConfig {
       });
     }
   }
-  const q = r?.quyMuc;
   return {
     nhomLoai, nhomLuat,
     truLoai: r && isObj(r.truLoai) ? Object.fromEntries(Object.entries(r.truLoai).map(([k, v]) => [k, String(v ?? '')])) : {},
-    quyMuc: r && q !== '' && q !== null && q !== undefined && Number(q) >= 0 ? Number(q) : DEFAULT_FUND_RATE,
     coBanGhi: !!r,
   };
 }
@@ -456,11 +453,16 @@ export function allocSummary(args: { projectId: string; floorAreas: readonly Flo
       if (manual) x = { nhom: manual, src: 'tay', ref: '' };
       else if (hd) x = { nhom: Number(st.theoHdtp[hd]!.nhom), src: 'hdtp', ref: hd };
       else if (rule) x = { nhom: validGroup(rule.nhom), src: 'luat', ref: rule.id };
-      else { const m = groupOfType(l.loai, cfg); x = { nhom: m.nhom, src: m.src, ref: '' }; }
+      else {
+        const m = groupOfType(l.loai, cfg);
+        // Thầu phụ thi công thạch cao → Nhóm 2 (hoàn thiện), kể cả khi cả loại "Thầu Phụ" đang để nhóm khác; chọn nhóm ở HĐ hoặc gán tay vẫn ưu tiên hơn
+        const plaster = l.loai === ALLOC_TYPE_SUBCONTRACT && stripVi(`${l.doiTuong} ${l.nd}`).includes('thach cao');
+        x = { nhom: plaster ? 2 : m.nhom, src: plaster ? 'macdinh' : m.src, ref: '' };
+      }
       theoNhom[x.nhom] = (theoNhom[x.nhom] ?? 0) + pt.tien;
       const o: AllocPart = { ...pt, nhom: x.nhom, nhomSrc: x.src, nhomRef: x.ref, tru: null, truSrc: '' };
       if (x.nhom === 1) {
-        // `_tytTruPart`: loại chưa có trụ cột mà nội dung có chữ lặt vặt của quỹ → Quỹ phụ phí
+        // `_tytTruPart`: loại chưa có trụ cột mà nội dung có chữ lặt vặt → Phụ phí công trường
         let t = pillarOfType(l.loai, cfg);
         if (!t.tru) {
           const txt = stripVi((pt.ten || '') + ' ' + (pt.mon ? '' : l.nd || ''));
@@ -547,7 +549,7 @@ export function compareToBenchmark(r: Pick<AllocSummary, 'cpM2N1' | 'tongSan'>, 
 
 // ══ KIỂM SOÁT ĐỊNH MỨC NHÓM 1 (`tytKiemSoat`) ═════════════════════════
 export type ControlRow = { k: PillarKey; ten: string; dg: number; ns: number; tt: number; conLai: number; pct: number; vuot: boolean };
-export function benchmarkControl(dm: Pick<Benchmark, 'ro1'> | null, area: number, r: Pick<AllocSummary, 'theoTru' | 'cfg'>) {
+export function benchmarkControl(dm: Pick<Benchmark, 'ro1'> | null, area: number, r: Pick<AllocSummary, 'theoTru'>) {
   const ro1 = dm?.ro1 ?? {};
   const mk = (k: PillarKey, dg: unknown): ControlRow => {
     const d = Number(dg) || 0;
@@ -556,7 +558,7 @@ export function benchmarkControl(dm: Pick<Benchmark, 'ro1'> | null, area: number
     return { k, ten: PILLARS[k].ten, dg: d, ns, tt, conLai: ns - tt, vuot: tt - ns >= 1000, pct: ns ? (tt / ns) * 100 : tt ? Infinity : 0 };
   };
   const rows = MAIN_PILLARS.map((k) => mk(k, ro1[k]));
-  rows.push(mk('quy', r.cfg.quyMuc));
+  rows.push(mk('quy', ro1.quy));
   const other = mk('', ro1.khac);
   if (other.tt || other.dg) rows.push(other);
   const ns = rows.reduce((s, x) => s + x.ns, 0), tt = rows.reduce((s, x) => s + x.tt, 0);

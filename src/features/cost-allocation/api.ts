@@ -81,14 +81,14 @@ export function useSaveProjectAlloc() {
   });
 }
 
-export type ConfigChanges = Partial<{ nhomLoai: Record<string, number>; nhomLuat: GroupRule[]; truLoai: Record<string, string>; quyMuc: number }>;
+export type ConfigChanges = Partial<{ nhomLoai: Record<string, number>; nhomLuat: GroupRule[]; truLoai: Record<string, string> }>;
 /** `tytSaveNhomCfg`: lần đầu ghi theo tên trường mới thì ghi luôn cả bảng / luật đã chuyển đổi từ rổ cũ */
 export function useSaveConfig() {
   const refresh = useRefresh();
   return useMutation({
     mutationFn: async (v: { current: AllocRecord | undefined; changes: ConfigChanges }) => {
       const base = readAllocConfig(v.current?.data ?? null);
-      const full = { nhomLoai: base.nhomLoai, nhomLuat: base.nhomLuat, truLoai: base.truLoai, quyMuc: base.quyMuc, ...v.changes };
+      const full = { nhomLoai: base.nhomLoai, nhomLuat: base.nhomLuat, truLoai: base.truLoai, ...v.changes };
       if (v.current) {
         const d = v.current.data;
         return updateData(v.current.id, { ...d, ...(d.nhomLoai && d.nhomLuat ? v.changes : full) });
