@@ -1,9 +1,14 @@
 # CLAUDE.md — quy tắc cho AI làm trong `ban-moi`
 
-App quản lý chi phí công trình (bản làm lại). App đang dùng thật vẫn là `../ban-dang-dung` — **chỉ đọc, cấm sửa**.
+App quản lý chi phí công trình (bản làm lại). Từ 13/11/2026 anh coi **bản này là app thật** (bỏ qua GĐ11). App cũ `../ban-dang-dung` — **chỉ đọc, cấm sửa**.
+
+## ⚠️ Bắt buộc: ghi `QLCP-RENEW-INFO.md`
+Sửa / thêm / bỏ bất cứ gì (tính năng, giao diện, công thức, kho, hàm AI, dữ liệu online) thì **ghi vào `QLCP-RENEW-INFO.md` ngay trong phiên đó, trước khi báo xong** — không chờ anh hỏi.
+Mục 9 thêm 1 dòng (ngày, làm gì, file chính, mã commit) · mục 6 trạng thái (đã lên online chưa) · mục 7 việc dở / lỗi, xóa dòng đã xong · mục 8 quyết định nghiệp vụ · mục 2, 3, 5 nếu đổi tab / thư mục / cách chạy.
+Commit / đẩy / deploy xong thì sửa lại dòng "chưa lên online". Câu trả lời cuối nói rõ đã ghi info.
 
 ## Đọc trước khi làm
-1. `QLCP-RENEW-INFO.md` — ngữ cảnh app, trạng thái, việc còn dở (chỉ có trên máy, không lên git). Thay đổi lớn thì cập nhật mục 6–7 của file này.
+1. `QLCP-RENEW-INFO.md` — ngữ cảnh app, trạng thái, việc còn dở (chỉ có trên máy, không lên git).
 2. `KE-HOACH-REFACTOR.md` — chỉ đọc mục 0 (nghiệp vụ), 2 (quy tắc vàng), mục 4 liên quan.
 3. `TU-DIEN.md` — tên tiếng Việt ↔ tên trong code.
 4. `thiet-ke/giao-dien-mau.html` — bản vẽ chuẩn. Tra `tai-lieu/BAN-DO-GIAO-DIEN.md` để đọc đúng đoạn.
@@ -62,7 +67,7 @@ tai-lieu/           bản đồ app cũ, dữ liệu cũ, bản đồ giao diệ
 npm i
 npx supabase start          # Supabase trong Docker
 npm run seed:users          # tạo tinh / chay / lam, mật khẩu tạm ở du-lieu/tai-khoan-tam.txt
-npm run migrate:legacy      # đổ dữ liệu app cũ (du-lieu/snapshot.json) vào Supabase trên máy + báo cáo so sánh
+npm run migrate:legacy      # (CHỈ trên máy — cấm --online, ghi đè dữ liệu thật) đổ dữ liệu app cũ (du-lieu/snapshot.json) vào Supabase trên máy + báo cáo so sánh
 npm run so-chuan            # chạy code app cũ trong Node trên du-lieu/snapshot.json → du-lieu/so-chuan.json (npm test so từng đồng)
 npm run gen:types           # sau khi thêm / sửa migration: npx supabase migration up → sinh lại src/types/db.ts
 npm run dev                 # http://localhost:5173
