@@ -9,11 +9,19 @@ import { Checkbox } from '@/components/ui/input';
 import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
 import { useObjectUrl } from '@/features/scan/CaptureForm';
+import { fetchFile, FileViewer, saveBlob } from '@/features/files/FileViewer';
 import { useAddDoc, useDocUrl, useRemoveDoc, type AttachBucket, type AttachTarget, type Doc } from './api';
 
+const FILES: Record<string, { label: string; icon: string; view?: 'pdf' | 'xlsx' }> = {
+  pdf: { label: 'tệp PDF', icon: 'picture_as_pdf', view: 'pdf' }, xlsx: { label: 'tệp Excel', icon: 'table_view', view: 'xlsx' },
+  xls: { label: 'Tệp Excel (.xls)', icon: 'table_view' }, doc: { label: 'Tệp Word', icon: 'description' }, docx: { label: 'Tệp Word', icon: 'description' },
+};
+
 function DocItem({ bucket, path, alt, onRemove }: { bucket: AttachBucket; path: string; alt: string; onRemove?: () => void }) {
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
   const url = useDocUrl(bucket, path);
-  const ext = path.split('.').pop();
+  const ext = path.split('.').pop() ?? '';
   const remove = onRemove ? <Button size="sm" variant="ghost-danger" aria-label={`Gỡ ${alt}`} onClick={onRemove}><Icon name="delete" />Gỡ</Button> : null;
   if (url.isPending) return <div className="grid h-24 place-items-center rounded-lg bg-surface-2 text-[12.5px] text-muted">Đang tải…</div>;
   if (url.isError) return (
@@ -21,14 +29,20 @@ function DocItem({ bucket, path, alt, onRemove }: { bucket: AttachBucket; path: 
       <Icon name="broken_image" className="text-[18px]" />Không tải được tệp.<Button size="sm" variant="ghost" onClick={() => void url.refetch()}>Thử lại</Button>{remove}
     </div>
   );
-  if (ext !== 'pdf' && ext !== 'xlsx') return (
+  const file = FILES[ext];
+  if (!file) return (
     <div className="grid gap-1"><ZoomableImage src={url.data} alt={alt} className="max-h-[220px]" />{remove ? <div className="text-right">{remove}</div> : null}</div>
   );
+  const name = `${alt.replace(/[\\/:*?"<>|]+/g, '-')}.${ext}`;
+  const download = () => { fetchFile(url.data).then((b) => saveBlob(b, name), (e: Error) => toast(e.message, 'error')); };
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-[13px]" data-testid="doc-file">
-      <Icon name={ext === 'pdf' ? 'picture_as_pdf' : 'table_view'} className="text-accent" />
-      <a href={url.data} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 font-semibold text-accent">{ext === 'pdf' ? 'Mở tệp PDF' : 'Tải tệp Excel'}</a>
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line px-3 py-2 text-[13px]" data-testid="doc-file">
+      <Icon name={file.icon} className="text-accent" />
+      {file.view ? <button type="button" className="min-w-0 flex-1 text-left font-semibold text-accent" data-testid="doc-open" onClick={() => setOpen(true)}>Xem {file.label}</button>
+        : <span className="min-w-0 flex-1 font-semibold">{file.label}</span>}
+      <Button size="sm" variant="ghost" onClick={download}><Icon name="download" />Tải về</Button>
       {remove}
+      {open && file.view ? <FileViewer url={url.data} kind={file.view} name={name} title={alt} onClose={() => setOpen(false)} /> : null}
     </div>
   );
 }
@@ -54,7 +68,7 @@ export function AttachmentList({ target, paths: raw, canEdit, label }: AttachPro
           <Button size="sm" disabled={add.isPending} data-testid="attach-add" onClick={() => input.current?.click()}>
             <Icon name="add_photo_alternate" />{add.isPending ? 'Đang lưu…' : idCard ? 'Thêm ảnh' : 'Thêm ảnh / tệp'}
           </Button>
-          <input ref={input} type="file" accept={idCard ? 'image/*' : 'image/*,application/pdf,.pdf,.xlsx'} className="hidden" aria-label={`Chọn tệp: ${label}`} data-testid="attach-file"
+          <input ref={input} type="file" accept={idCard ? 'image/*' : 'image/*,application/pdf,.pdf,.xlsx,.xls,.doc,.docx'} className="hidden" aria-label={`Chọn tệp: ${label}`} data-testid="attach-file"
             onChange={(e) => {
               const file = e.target.files?.[0];
               e.target.value = '';

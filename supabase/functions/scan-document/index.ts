@@ -62,7 +62,7 @@ const DEFAULT_MODELS = 'gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.8-f
 const DEFAULT_THINKING = 'minimal';
 const PER_MODEL_TIMEOUT_MS = 30_000;
 const TOTAL_BUDGET_MS = 110_000;
-const MAX_BASE64 = 7_000_000; // tổng các tệp ~5 MB — ảnh đã thu nhỏ 1600px chỉ 200–500 KB, ghi âm 60 giây ~2 MB
+const MAX_BASE64 = 21_500_000; // tổng các tệp ~16 MB: PDF nhận tới 15 MB (app gửi bản đã nén nếu nén được), ảnh ~300 KB, ghi âm ~4 MB
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });

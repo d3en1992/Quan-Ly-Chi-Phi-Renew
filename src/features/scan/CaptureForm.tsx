@@ -7,6 +7,7 @@ import { ZoomableImage } from '@/components/ui/image-zoom';
 import { Button, Icon } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { sizeText } from '@/features/files/rules';
 import { ACCEPT_FILES, recordingSupported, type PreparedInput } from './api';
 
 export const KIND_OPTIONS: { value: ScanRequestKind; label: string }[] = [
@@ -112,11 +113,12 @@ export function CaptureForm({ kind, setKind, allowed, note, setNote, input, onPi
       >
         {url ? (
           <ZoomableImage src={url} alt="Ảnh vừa chọn" className="max-h-[320px]" />
-        ) : input ? (
+        ) : input && input.kind !== 'image' ? (
           <div className="grid gap-1 p-4" data-testid="picked-file">
             <Icon name={input.kind === 'pdf' ? 'picture_as_pdf' : 'table_view'} className="text-[34px] text-accent" />
             <span className="break-all font-medium text-fg">{input.name}</span>
-            <span className="text-[12px]">{input.kind === 'sheet' ? `Excel — đã đọc ${input.text.split('\n').length} dòng` : 'Tệp PDF'}</span>
+            <span className="text-[12px]">{input.kind === 'sheet' ? `Excel — đã đọc ${input.text.split('\n').length} dòng` : 'Tệp PDF'} · {sizeText(input.blob.size)}</span>
+            {input.fileNote ? <span className={cn('text-[12px]', input.store ? 'text-good' : 'font-semibold text-warn')} data-testid="file-note">{input.fileNote}{input.store ? '' : ' AI vẫn đọc được.'}</span> : null}
           </div>
         ) : (
           <div className="grid gap-1 p-4">

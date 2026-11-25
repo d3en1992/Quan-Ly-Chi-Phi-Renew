@@ -5,39 +5,44 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
 import { PRIVATE_FK, type ContactKind } from '@/features/contacts/api';
-import { MAX_PDF_BYTES, prepareImage, type PreparedInput } from '@/features/scan/api';
+import { MAX_STORE_BYTES, storableOther, storablePdf } from '@/features/files/rules';
+import { prepareImage, type PreparedInput } from '@/features/scan/api';
 
 const sb = supabase as unknown as SupabaseClient;
 
 export type AttachBucket = 'documents' | 'id-cards';
 export type AttachTable = 'payments' | 'receipts' | 'main_contracts' | 'subcontracts';
 
-const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-const MAX_BYTES = 5 * 1024 * 1024;
+const MIME = {
+  jpg: 'image/jpeg', pdf: 'application/pdf',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel',
+  doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+} as const;
 /** Tệp đã sẵn sàng tải lên kho */
-export type Doc = { blob: Blob; mime: string; ext: 'jpg' | 'pdf' | 'xlsx' };
+export type Doc = { blob: Blob; mime: string; ext: keyof typeof MIME };
+const docOf = (blob: Blob, ext: keyof typeof MIME): Doc => ({ blob, ext, mime: MIME[ext] });
 
 /** Ảnh / PDF / Excel vừa gửi AI → tệp để lưu kèm */
 export function docFromInput(input: PreparedInput | null): Doc | null {
   if (!input) return null;
-  if (input.kind === 'image') return { blob: input.image.blob, mime: 'image/jpeg', ext: 'jpg' };
-  return input.kind === 'pdf' ? { blob: input.blob, mime: 'application/pdf', ext: 'pdf' } : { blob: input.blob, mime: XLSX_MIME, ext: 'xlsx' };
+  if (input.kind === 'image') return docOf(input.image.blob, 'jpg');
+  return input.store ? docOf(input.store, input.kind === 'pdf' ? 'pdf' : 'xlsx') : null;
 }
 
-/** Tệp người dùng chọn (nút "Thêm ảnh / tệp"): ảnh thì thu nhỏ; PDF, Excel giữ nguyên */
+/** Tệp người dùng chọn (nút "Thêm ảnh / tệp"): ảnh thu nhỏ; PDF trên 3 MB thì nén; Excel, Word giữ nguyên */
 async function docFromFile(file: File): Promise<Doc> {
   const lower = file.name.toLowerCase();
-  if (file.type.startsWith('image/')) return { blob: (await prepareImage(file)).blob, mime: 'image/jpeg', ext: 'jpg' };
-  if (file.type === 'application/pdf' || lower.endsWith('.pdf')) {
-    if (file.size > MAX_PDF_BYTES) throw new Error('Tệp PDF lớn quá (trên 4,5 MB).');
-    return { blob: file, mime: 'application/pdf', ext: 'pdf' };
-  }
-  if (lower.endsWith('.xlsx')) return { blob: file, mime: XLSX_MIME, ext: 'xlsx' };
-  throw new Error('Chỉ lưu được ảnh, PDF hoặc Excel .xlsx.');
+  if (file.type.startsWith('image/')) return docOf((await prepareImage(file)).blob, 'jpg');
+  const isPdf = file.type === 'application/pdf' || lower.endsWith('.pdf');
+  const ext = isPdf ? 'pdf' : (/\.(xlsx|xls|docx|doc)$/.exec(lower)?.[1] as 'xlsx' | 'xls' | 'docx' | 'doc' | undefined);
+  if (!ext) throw new Error('Chỉ lưu được ảnh, PDF, Excel hoặc Word.');
+  const s = isPdf ? await storablePdf(file) : await storableOther(file);
+  if (!s.blob) throw new Error(s.note);
+  return docOf(s.blob, ext);
 }
 
 export async function uploadDoc(bucket: AttachBucket, companyId: string, doc: Doc): Promise<string> {
-  if (doc.blob.size > MAX_BYTES) throw new Error('Tệp lớn quá (trên 5 MB) nên không lưu kèm được.');
+  if (doc.blob.size > MAX_STORE_BYTES) throw new Error('Tệp lớn quá (trên 3 MB) nên không lưu kèm được.');
   const path = `${companyId}/${new Date().getFullYear()}/${crypto.randomUUID()}.${doc.ext}`;
   // Bọc lại đúng loại tệp: một số máy để trống loại của file .xlsx
   const { error } = await sb.storage.from(bucket).upload(path, new Blob([doc.blob], { type: doc.mime }), { contentType: doc.mime, upsert: false });

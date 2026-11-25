@@ -36,6 +36,8 @@ export default defineConfig({
         // KHÔNG cất index.html sẵn: trước 16/11/2026 service worker trả index.html cũ trong máy nên F5 / vuốt xuống
         // vẫn ra giao diện cũ, phải kill app. Nay trang (index.html) luôn hỏi Vercel trước (NetworkFirst bên dưới).
         globPatterns: ['**/*.{js,css,png,svg,woff2}'],
+        // Thư viện xem / nén PDF (~1 MB) chỉ tải khi mở PDF lần đầu, không cất sẵn
+        globIgnores: ['**/PdfPages-*', '**/pdf-compress-*'],
         navigateFallback: null,
         runtimeCaching: [
           // Mở trang / F5 / vuốt xuống: lấy index.html mới từ mạng; mạng chậm quá 4 giây hoặc mất mạng mới dùng bản cất trong máy

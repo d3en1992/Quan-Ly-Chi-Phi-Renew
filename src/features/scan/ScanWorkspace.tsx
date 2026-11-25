@@ -102,7 +102,7 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
   const [input, setInput] = useState<PreparedInput | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ resp: ScanResponse; image: PreparedImage | null; doc: Doc | null; fp: Fingerprint | null } | null>(null);
+  const [result, setResult] = useState<{ resp: ScanResponse; image: PreparedImage | null; doc: Doc | null; fp: Fingerprint | null; fileNote: string } | null>(null);
   const [fp, setFp] = useState<Fingerprint | null>(null);
   const [audio, setAudio] = useState<AudioClip | null>(null);
   /** Lần gửi đang chờ; bấm "Thôi chờ" thì tăng số → kết quả về muộn bị bỏ */
@@ -132,7 +132,7 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
       const resp = await withTimeout(askAssistant({ files, text: input?.kind === 'sheet' ? input.text : '', note, kind }));
       if (run.current !== id) return;
       if (resp.warning) toast(resp.warning);
-      setResult({ resp, image: input?.kind === 'image' ? input.image : null, doc: docFromInput(input), fp });
+      setResult({ resp, image: input?.kind === 'image' ? input.image : null, doc: docFromInput(input), fp, fileNote: input && input.kind !== 'image' && !input.store ? input.fileNote : '' });
       // CCCD: bỏ ảnh khỏi ô chọn tệp ngay (ảnh chỉ còn ở màn kiểm tra, bấm Lưu mới lên kho riêng)
       if (resp.kind === 'id_card') setInput(null);
     } catch (e) {
@@ -174,6 +174,7 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
       {r?.transcript ? <Note icon="record_voice_over"><span data-testid="ai-transcript">AI nghe được: “{r.transcript}”</span></Note> : null}
       {r?.question ? <Note icon="help"><b data-testid="ai-question">{r.question}</b></Note> : null}
 
+      {result?.fileNote ? <Note icon="warning"><span data-testid="file-not-stored">{result.fileNote} Phiếu vẫn lưu bình thường, chỉ không kèm tệp.</span></Note> : null}
       <ImageDuplicateNotice fp={result ? (result.resp.kind === 'id_card' || result.resp.kind === 'shop' ? null : result.fp) : fp} />
 
       {!result ? (

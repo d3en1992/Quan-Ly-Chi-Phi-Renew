@@ -6,6 +6,7 @@ import type { ScanRequestKind, ScanResponse } from '@shared/scan';
 import { supabase } from '@/lib/supabase';
 import { LOOKUPS_KEY } from '@/features/expenses/api';
 import { CONTACTS_KEY } from '@/features/contacts/api';
+import { storableOther, storablePdf } from '@/features/files/rules';
 
 const sb = supabase as unknown as SupabaseClient;
 
@@ -49,10 +50,9 @@ const blobToBase64 = (blob: Blob) => new Promise<string>((ok, fail) => {
 export type AiFile = { mime: string; base64: string };
 export type PreparedInput =
   | { kind: 'image'; name: string; image: PreparedImage }
-  | { kind: 'pdf'; name: string; file: AiFile; blob: Blob }
-  | { kind: 'sheet'; name: string; text: string; blob: Blob };
-
-export const MAX_PDF_BYTES = 4_500_000;
+  /** blob = tệp gốc · store = bản để lưu kho (null: không lưu được, lý do ở fileNote) */
+  | { kind: 'pdf'; name: string; file: AiFile; blob: Blob; store: Blob | null; fileNote: string }
+  | { kind: 'sheet'; name: string; text: string; blob: Blob; store: Blob | null; fileNote: string };
 export const ACCEPT_FILES = 'image/*,application/pdf,.pdf,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 /** Excel .xlsx → chữ (mỗi trang tính: các dòng có dữ liệu, ô cách nhau bằng " | "), tối đa ~50.000 ký tự */
@@ -85,11 +85,16 @@ export async function prepareInput(file: File): Promise<PreparedInput> {
   const lower = name.toLowerCase();
   if (file.type.startsWith('image/')) return { kind: 'image', name, image: await prepareImage(file) };
   if (file.type === 'application/pdf' || lower.endsWith('.pdf')) {
-    if (file.size > MAX_PDF_BYTES) throw new Error('Tệp PDF lớn quá (trên 4,5 MB) — gửi bản nhỏ hơn hoặc chụp trang cần đọc.');
-    return { kind: 'pdf', name, file: { mime: 'application/pdf', base64: await blobToBase64(file) }, blob: file };
+    const s = await storablePdf(file);
+    // AI đọc bản nhẹ hơn (chữ vẫn nguyên): nhanh, đỡ nghẽn; không nén được thì gửi bản gốc
+    const forAi = s.blob && s.blob.size < file.size ? s.blob : file;
+    return { kind: 'pdf', name, file: { mime: 'application/pdf', base64: await blobToBase64(forAi) }, blob: file, store: s.blob, fileNote: s.note };
   }
-  if (lower.endsWith('.xlsx')) return { kind: 'sheet', name, text: await sheetToText(file), blob: file };
-  if (lower.endsWith('.xls')) throw new Error('File Excel đời cũ (.xls) chưa đọc được — anh mở rồi lưu lại thành .xlsx hoặc PDF rồi gửi.');
+  if (lower.endsWith('.xlsx')) {
+    const s = await storableOther(file);
+    return { kind: 'sheet', name, text: await sheetToText(file), blob: file, store: s.blob, fileNote: s.note };
+  }
+  if (/\.(xls|docx?)$/.test(lower)) throw new Error('AI chưa đọc được .xls / Word. Anh lưu lại thành .xlsx hoặc PDF rồi gửi; muốn lưu nguyên tệp thì mở phiếu / hợp đồng, bấm “Thêm ảnh / tệp”.');
   throw new Error('Chỉ gửi được ảnh, PDF hoặc Excel .xlsx.');
 }
 
