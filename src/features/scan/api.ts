@@ -12,6 +12,7 @@ const sb = supabase as unknown as SupabaseClient;
 export const MAX_SIDE = 1600;
 export const RECEIPT_BUCKET = 'receipts';
 
+/** blob = bản LƯU KHO (nén 70%, nhẹ) · base64 = bản gửi AI (nén 85%, rõ hơn) — cùng số điểm ảnh */
 export type PreparedImage = { blob: Blob; base64: string; mime: string; width: number; height: number };
 
 /** Thu nhỏ ảnh (cạnh dài ≤ 1600px), nén JPEG — gửi AI nhanh, lưu kho nhẹ (~200–400 KB) */
@@ -26,12 +27,13 @@ export async function prepareImage(file: Blob): Promise<PreparedImage> {
   if (!ctx) throw new Error('Trình duyệt không xử lý được ảnh.');
   ctx.drawImage(bitmap, 0, 0, width, height);
   bitmap.close();
-  const blob = await new Promise<Blob>((ok, fail) => canvas.toBlob((b) => (b ? ok(b) : fail(new Error('Không nén được ảnh.'))), 'image/jpeg', 0.85));
+  const jpeg = (quality: number) => new Promise<Blob>((ok, fail) => canvas.toBlob((b) => (b ? ok(b) : fail(new Error('Không nén được ảnh.'))), 'image/jpeg', quality));
+  const [blob, forAi] = await Promise.all([jpeg(0.7), jpeg(0.85)]);
   const base64 = await new Promise<string>((ok, fail) => {
     const r = new FileReader();
     r.onload = () => ok(String(r.result).replace(/^data:[^,]*,/, ''));
     r.onerror = () => fail(new Error('Không đọc được ảnh.'));
-    r.readAsDataURL(blob);
+    r.readAsDataURL(forAi);
   });
   return { blob, base64, mime: 'image/jpeg', width, height };
 }
