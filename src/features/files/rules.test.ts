@@ -6,8 +6,18 @@ const to = (size: number | null) => async () => (size === null ? null : blob(siz
 const never = async (): Promise<Blob | null> => { throw new Error('không được nén'); };
 
 describe('quy tắc 3 MB / 15 MB', () => {
-  it('tới 3 MB: lưu nguyên, không nén', async () => {
-    expect(await prepareStorable(blob(MAX_STORE_BYTES), true, never)).toEqual({ blob: blob(MAX_STORE_BYTES), note: '' });
+  it('tới 1 MB: lưu nguyên, không nén', async () => {
+    let called = false;
+    expect(await prepareStorable(blob(MB), true, async () => { called = true; return blob(1); })).toEqual({ blob: blob(MB), note: '' });
+    expect(called).toBe(false);
+  });
+  it('PDF 1–3 MB: nhẹ đi ≥ 20% lưu bản nén; ít hơn / không nén được thì lưu nguyên', async () => {
+    expect((await prepareStorable(blob(2 * MB), true, to(MB))).blob?.size).toBe(MB);
+    expect((await prepareStorable(blob(2 * MB), true, to(1.7 * MB)))).toEqual({ blob: blob(2 * MB), note: '' });
+    expect((await prepareStorable(blob(MAX_STORE_BYTES), true, never)).blob?.size).toBe(MAX_STORE_BYTES);
+  });
+  it('Excel / Word tới 3 MB: lưu nguyên', async () => {
+    expect((await prepareStorable(blob(2 * MB), false, never)).blob?.size).toBe(2 * MB);
   });
   it('trên 15 MB: không nhận; đúng 15 MB: nhận', async () => {
     await expect(prepareStorable(blob(MAX_FILE_BYTES + 1), true, never)).rejects.toThrow('15 MB');
