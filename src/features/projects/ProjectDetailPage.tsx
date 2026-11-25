@@ -1,4 +1,4 @@
-// CHI TIẾT CÔNG TRÌNH: dải số, cấu thành A / B / C, 6 tab (Tổng hợp chi phí · Hóa đơn · Nhân công · Thầu phụ · Nhà cung cấp · Thu tiền).
+// CHI TIẾT CÔNG TRÌNH: dải số, cấu thành A / B / C, 4 tab (Tổng hợp chi phí · Hóa đơn · Thầu phụ · Thu tiền).
 // Mọi số lấy từ src/lib/calc (projectNumbers = cùng hàm với tab Lợi Nhuận).
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -8,14 +8,14 @@ import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
 import { Button, Icon } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm';
-import { Money, HBarList, KpiStrip, MiniList, PhoneKpis, signedMoney } from '@/components/ui/data';
+import { Money, HBarList, KpiBoard, MiniList, signedMoney } from '@/components/ui/data';
 import { DropdownContent, DropdownItem, DropdownMenu, DropdownTrigger } from '@/components/ui/dropdown';
 import { Field, Input } from '@/components/ui/input';
 import { Card, CardHeader, EmptyState, ErrorState, LoadingState, Note, PageHeader, Pill, SubTabs } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
-import { ALL_YEARS, collapseBreakdown, inYear, inYearLoose, percentOf, projectCostByType, projectDays, projectK, projectPayroll, projectSubcontracts, projectSuppliers, type YearFilter } from '@/lib/calc';
-import { formatDate, formatMoney, formatShortMoney } from '@/lib/format';
+import { ALL_YEARS, collapseBreakdown, inYear, inYearLoose, percentOf, projectCostByType, projectCostSummary, projectDays, projectK, projectSubcontracts, type YearFilter } from '@/lib/calc';
+import { formatDate, formatMoney } from '@/lib/format';
 import { hasLevel } from '@/lib/permissions';
 import { supabase } from '@/lib/supabase';
 import { buildRows, DetailSheet, PaidPill, SOURCE_LABEL, type Row } from '@/features/reports/ExpenseStatsPage';
@@ -27,7 +27,7 @@ import { ProjectFormSheet } from './ProjectFormSheet';
 import { projectNumbers } from './numbers';
 import { ScheduleLine } from '@/features/schedule/ScheduleLine';
 
-type TabKey = 'summary' | 'invoices' | 'payroll' | 'subs' | 'suppliers' | 'receipts';
+type TabKey = 'summary' | 'invoices' | 'subs' | 'receipts';
 const RECEIPT_KIND: Record<string, string> = { advance: 'Tạm ứng', stage: 'Giai đoạn', settlement: 'Quyết toán', other: 'Khác' };
 
 const receiptSchema = z.object({ id: z.string(), date: z.string(), amount: z.coerce.number(), kind: z.string(), note: z.string().nullable(), created_by: z.string().nullable() });
@@ -93,14 +93,14 @@ function Detail({ data, project, customer }: { data: ReportData; project: Projec
 
   const byType = useMemo(() => collapseBreakdown(projectCostByType(project.id, data, scope, typeName), 8), [data, project.id, scope]); // eslint-disable-line react-hooks/exhaustive-deps
   const subs = useMemo(() => projectSubcontracts(project.id, data.subcontracts, data.payments, scope), [data, project.id, scope]);
-  const subDebt = subs.reduce((s, r) => s + (r.debt > 0 ? r.debt : 0), 0);
+  const cost = projectCostSummary(n, subs);
   const days = projectDays(project, years, data.loadedAt);
   const k = projectK(project);
   const pct = percentOf(n.received, n.revenue.contractValue);
 
   const tabs: { key: TabKey; label: string }[] = [
-    { key: 'summary', label: 'TỔNG HỢP CHI PHÍ' }, { key: 'invoices', label: 'HÓA ĐƠN' }, { key: 'payroll', label: 'NHÂN CÔNG' },
-    { key: 'subs', label: 'THẦU PHỤ' }, { key: 'suppliers', label: 'NHÀ CUNG CẤP' },
+    { key: 'summary', label: 'TỔNG HỢP CHI PHÍ' }, { key: 'invoices', label: 'HÓA ĐƠN' },
+    { key: 'subs', label: 'THẦU PHỤ' },
     ...(money ? [{ key: 'receipts' as TabKey, label: 'THU TIỀN' }] : []),
   ];
 
@@ -139,13 +139,21 @@ function Detail({ data, project, customer }: { data: ReportData; project: Projec
     </div>
   );
 
+  const pctSpent = money ? percentOf(n.spent, n.received) : null;
   const kpis = [
-    money && { label: 'Giá trị hợp đồng', value: formatMoney(n.revenue.contractValue), sub: n.revenue.hasSettlement ? 'đã gồm quyết toán' : '' },
-    money && { label: 'Đã thu', value: formatMoney(n.received), sub: pct === null ? '' : `${pct}%`, tone: 'pos' as const },
-    money && { label: 'Còn phải thu', value: formatMoney(n.revenue.receivable), tone: (n.revenue.receivable > 0 ? 'neg' : '') as 'neg' | '' },
-    { label: 'Tổng đã chi', value: formatMoney(n.spent), sub: [money && percentOf(n.spent, n.received) !== null ? `${percentOf(n.spent, n.received)}% đã thu` : 'A + B + C', n.supplierDebt > 0 ? `còn nợ NCC ${formatMoney(n.supplierDebt)}` : ''].filter(Boolean).join(' · ') },
-    { label: 'Thầu phụ còn phải trả', value: formatMoney(subDebt) },
-    money && { label: 'Lãi / lỗ', value: signedMoney(n.profit), tone: (Math.round(n.profit) >= 0 ? 'pos' : 'neg') as 'pos' | 'neg' },
+    money && { key: 'revenue', lines: [
+      { label: 'Giá trị hợp đồng', value: formatMoney(n.revenue.contractValue), strong: true },
+      { label: pct === null ? 'Đã thu' : `Đã thu (${pct}%)`, value: formatMoney(n.received), tone: 'pos' as const },
+      { label: 'Còn phải thu', value: formatMoney(n.revenue.receivable), tone: (n.revenue.receivable > 0 ? 'neg' : '') as 'neg' | '' },
+    ] },
+    { label: 'Tổng chi phí', value: <span data-testid="kpi-total-cost">{formatMoney(cost.totalCost)}</span>, sub: 'đã chi + còn phải trả' },
+    { label: 'Tổng đã chi', value: formatMoney(n.spent), sub: pctSpent === null ? 'A + B + C' : `${pctSpent}% đã thu` },
+    { key: 'payable', lines: [
+      { label: 'Thầu phụ còn phải trả', value: formatMoney(cost.subcontractDebt) },
+      { label: 'NCC còn phải trả', value: formatMoney(n.supplierDebt) },
+      { label: 'Tổng còn phải trả', value: formatMoney(cost.payable), strong: true },
+    ] },
+    money && { label: 'Lãi / lỗ', value: signedMoney(n.profit), sub: 'đã thu − đã chi', tone: (Math.round(n.profit) >= 0 ? 'pos' : 'neg') as 'pos' | 'neg' },
   ];
 
   return (
@@ -160,13 +168,7 @@ function Detail({ data, project, customer }: { data: ReportData; project: Projec
         <PageHeader title={project.name} sub={sub} actions={actions} />
       )}
       {mode !== 'phone' ? crumb : null}
-      {mode === 'phone' ? (
-        <PhoneKpis items={[
-          ...(money ? [{ label: 'Đã thu', value: formatShortMoney(n.received), tone: 'pos' as const }, { label: 'Còn phải thu', value: formatShortMoney(n.revenue.receivable), tone: 'neg' as const }] : []),
-          { label: n.supplierDebt > 0 ? `Tổng đã chi · nợ NCC ${formatShortMoney(n.supplierDebt)}` : 'Tổng đã chi', value: formatShortMoney(n.spent) },
-          ...(money ? [{ label: 'Lãi / lỗ', value: signedMoney(n.profit), tone: (Math.round(n.profit) >= 0 ? 'pos' : 'neg') as 'pos' | 'neg', wide: true }] : []),
-        ]} />
-      ) : <KpiStrip items={kpis} />}
+      <KpiBoard items={kpis} />
       <Note icon="view_timeline"><ScheduleLine projectId={project.id} /> · {yearLabel}</Note>
       <SubTabs tabs={tabs} value={tab} onChange={setTab} />
 
@@ -188,7 +190,8 @@ function Detail({ data, project, customer }: { data: ReportData; project: Projec
                 <tfoot>
                   <tr className="font-bold"><td>Tổng đã chi <span className="font-normal text-faint">(tính lãi / lỗ)</span></td><td className="num text-right" data-testid="detail-spent">{formatMoney(n.spent)}</td></tr>
                   <tr><td>+ Nợ nhà cung cấp chưa trả</td><td className="text-right"><Money value={n.supplierDebt} /></td></tr>
-                  <tr><td>Tổng chi phí (mọi hóa đơn, tham khảo)</td><td className="num text-right">{formatMoney(n.totalCost)}</td></tr>
+                  <tr><td>+ Nợ thầu phụ <span className="text-faint">(hợp đồng − đã ứng)</span></td><td className="text-right"><Money value={cost.subcontractDebt} /></td></tr>
+                  <tr className="font-bold"><td>Tổng chi phí <span className="font-normal text-faint">(đã chi + nợ NCC + nợ thầu phụ)</span></td><td className="num text-right" data-testid="detail-total-cost">{formatMoney(cost.totalCost)}</td></tr>
                 </tfoot>
               </table>
             </div>
@@ -210,9 +213,7 @@ function Detail({ data, project, customer }: { data: ReportData; project: Projec
         </div>
       ) : null}
       {tab === 'invoices' ? <InvoicesTab data={data} projectId={project.id} years={scope} onOpen={setOpen} /> : null}
-      {tab === 'payroll' ? <PayrollTab data={data} projectId={project.id} years={scope} /> : null}
       {tab === 'subs' ? <SubsTab data={data} rows={subs} /> : null}
-      {tab === 'suppliers' ? <SuppliersTab data={data} projectId={project.id} years={scope} /> : null}
       {tab === 'receipts' && money ? <ReceiptsTab projectId={project.id} years={scope} /> : null}
 
       <ProjectFormSheet open={editing} onClose={() => setEditing(false)} project={project} />
@@ -263,41 +264,6 @@ function InvoicesTab({ data, projectId, years, onOpen }: { data: ReportData; pro
   );
 }
 
-function PayrollTab({ data, projectId, years }: { data: ReportData; projectId: string; years: YearFilter }) {
-  const weeks = useMemo(() => projectPayroll(projectId, data, years), [data, projectId, years]);
-  const phone = useLayoutMode() === 'phone';
-  if (weeks.length === 0) return <Card><EmptyState icon="calendar_month" title="Chưa có chấm công" /></Card>;
-  const dm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
-  const sum = (f: (w: (typeof weeks)[number]) => number) => weeks.reduce((s, w) => s + f(w), 0);
-  const days = (n: number) => n.toLocaleString('vi-VN', { maximumFractionDigits: 1 });
-  if (phone) return (
-    <MiniList items={weeks.map((w) => ({
-      key: w.weekStart, title: `CN ${dm(w.weekStart)} – T7 ${dm(w.weekEnd)}`, value: formatMoney(w.netPay),
-      sub: `${w.workers} thợ · ${days(w.dayUnits)} công`,
-      valueSub: w.extras ? `lương ${formatMoney(w.wage)} + ${formatMoney(w.extras)}` : undefined,
-    }))} footer={{ label: `Tổng ${weeks.length} tuần · ${days(sum((w) => w.dayUnits))} công`, value: formatMoney(sum((w) => w.netPay)) }} />
-  );
-  return (
-    <Card>
-      <div className="tbl">
-        <table>
-          <thead><tr><th>Tuần</th><th className="!text-right">Số thợ</th><th className="!text-right">Tổng công</th><th className="!text-right">Tổng lương</th><th className="!text-right">Phụ cấp + HĐ lẻ</th><th className="!text-right">Thực lãnh</th></tr></thead>
-          <tbody>
-            {weeks.map((w) => (
-              <tr key={w.weekStart}>
-                <td className="whitespace-nowrap">CN {dm(w.weekStart)} – T7 {dm(w.weekEnd)}</td><td className="num text-right">{w.workers}</td>
-                <td className="num text-right">{w.dayUnits.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</td>
-                <td className="text-right"><Money value={w.wage} /></td><td className="text-right"><Money value={w.extras} /></td><td className="text-right"><Money value={w.netPay} /></td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot><tr className="font-bold [&>td]:border-t [&>td]:border-line [&>td]:bg-surface-2"><td>Tổng {weeks.length} tuần</td><td /><td className="num text-right">{sum((w) => w.dayUnits).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</td><td className="num text-right">{formatMoney(sum((w) => w.wage))}</td><td className="num text-right">{formatMoney(sum((w) => w.extras))}</td><td className="num text-right">{formatMoney(sum((w) => w.netPay))}</td></tr></tfoot>
-        </table>
-      </div>
-    </Card>
-  );
-}
-
 function SubsTab({ data, rows }: { data: ReportData; rows: ReturnType<typeof projectSubcontracts> }) {
   const phone = useLayoutMode() === 'phone';
   if (rows.length === 0) return <Card><EmptyState icon="engineering" title="Chưa có hợp đồng thầu phụ" /></Card>;
@@ -320,38 +286,6 @@ function SubsTab({ data, rows }: { data: ReportData; rows: ReturnType<typeof pro
                 <td className="font-semibold">{data.subcontractorName.get(r.subcontractorId) ?? '—'}</td><td className="num">{formatDate(r.date)}</td>
                 <td className="text-right"><Money value={r.total} /></td><td className="text-right"><Money value={r.paid} /></td>
                 <td className="text-right">{Math.round(r.debt) > 0 ? <Money value={r.debt} className="text-bad" /> : <Pill tone="good">Đã trả đủ</Pill>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </Card>
-  );
-}
-
-function SuppliersTab({ data, projectId, years }: { data: ReportData; projectId: string; years: YearFilter }) {
-  const rows = useMemo(() => projectSuppliers(projectId, data, years), [data, projectId, years]);
-  const phone = useLayoutMode() === 'phone';
-  if (rows.length === 0) return <Card><EmptyState icon="storefront" title="Chưa mua của nhà cung cấp nào" /></Card>;
-  if (phone) return (
-    <MiniList items={rows.map((r) => ({
-      key: r.supplierId ?? 'none', title: r.supplierId ? data.supplierName.get(r.supplierId) ?? '—' : 'Không ghi nhà cung cấp',
-      sub: `${r.invoices} hóa đơn · mua ${formatMoney(r.purchased)}`,
-      value: r.debt ? <span className="text-bad">{formatMoney(r.debt)}</span> : <span className="text-faint">—</span>,
-      valueSub: `đã trả ${formatMoney(r.paid)}`,
-    }))} />
-  );
-  return (
-    <Card>
-      <div className="tbl">
-        <table>
-          <thead><tr><th>Nhà cung cấp</th><th className="!text-right">Số hóa đơn</th><th className="!text-right">Tổng mua</th><th className="!text-right">Đã ứng / trả</th><th className="!text-right">Còn nợ</th></tr></thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.supplierId ?? 'none'}>
-                <td>{r.supplierId ? data.supplierName.get(r.supplierId) ?? '—' : 'Không ghi nhà cung cấp'}</td><td className="num text-right">{r.invoices}</td>
-                <td className="text-right"><Money value={r.purchased} /></td><td className="text-right"><Money value={r.paid} /></td>
-                <td className="text-right"><Money value={r.debt} className="text-bad" /></td>
               </tr>
             ))}
           </tbody>

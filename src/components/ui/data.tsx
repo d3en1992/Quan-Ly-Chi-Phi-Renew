@@ -30,6 +30,35 @@ export function KpiStrip({ items }: { items: (Kpi | null | false)[] }) {
   );
 }
 
+export type KpiLine = { label: string; value: ReactNode; tone?: KpiTone; strong?: boolean };
+/** Dải số có ô gom nhiều dòng (nhãn trái, số phải): tự xuống hàng theo bề rộng, dùng cho cả 3 khổ */
+export function KpiBoard({ items }: { items: (Kpi | { key: string; lines: KpiLine[] } | null | false)[] }) {
+  return (
+    <div className="flex shrink-0 flex-wrap gap-px overflow-hidden rounded-[var(--r)] border border-line bg-line">
+      {items.map((k) => {
+        if (!k) return null;
+        if ('lines' in k) return (
+          <dl key={k.key} className="m-0 grid min-w-0 flex-[1.5_1_230px] content-center gap-1 bg-surface px-3 py-2.5 lg:px-3.5">
+            {k.lines.map((l) => (
+              <div key={l.label} className="flex items-baseline justify-between gap-2">
+                <dt className={cn('truncate text-[12px] text-muted', l.strong && 'font-semibold text-fg')}>{l.label}</dt>
+                <dd className={cn('num m-0 shrink-0 text-[14px] font-semibold', l.strong && 'font-bold', toneText(l.tone))}>{l.value}</dd>
+              </div>
+            ))}
+          </dl>
+        );
+        return (
+          <div key={k.label} className="min-w-0 flex-[1_1_150px] bg-surface px-3 py-3 lg:px-3.5">
+            <small className="block truncate text-[11.5px] font-medium text-muted">{k.label}</small>
+            <b className={cn('num block truncate text-[16px] leading-tight font-bold lg:text-[19px]', toneText(k.tone))}>{k.value}</b>
+            <span className="block min-h-[16px] truncate text-[11.5px] text-faint">{k.sub}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Thanh lọc (.filters của mẫu) */
 export function FilterBar({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cn('flex flex-wrap items-center gap-2', className)}>{children}</div>;

@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import type { ShopScan } from '@shared/scan';
 import { useAccess } from '@/app/auth';
+import { ZoomableImage } from '@/components/ui/image-zoom';
 import { Button, Icon } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/input';
 import { Card, ErrorState, LoadingState, Note, Pill } from '@/components/ui/misc';
@@ -57,7 +58,7 @@ export function ScanShop({ scan, image, onDone, onRetake }: Props) {
       <div className="grid gap-3 p-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)] lg:items-start" data-testid="scan-shop">
         {url ? (
           <div className="grid gap-1.5">
-            <img src={url} alt="Ảnh mặt tiền vừa chụp" className="max-h-[300px] w-full rounded-lg bg-surface-2 object-contain" />
+            <ZoomableImage src={url} alt="Ảnh mặt tiền vừa chụp" className="max-h-[300px]" />
             <Checkbox checked={keepImage} onChange={setKeepImage} label="Lưu kèm ảnh mặt tiền vào hồ sơ cửa hàng" />
           </div>
         ) : <Note icon="image_not_supported">Không có ảnh — có thể thêm ảnh sau ở Danh Bạ › Cửa hàng.</Note>}

@@ -42,7 +42,7 @@ test.describe('Công Trình ở 3 khổ màn hình', () => {
       await page.getByTestId('project-card').first().click();
       await expect(page).toHaveURL(/\/cong-trinh\/.+/);
       await expect(page.getByRole('tab', { name: 'TỔNG HỢP CHI PHÍ' })).toBeVisible();
-      for (const tab of ['HÓA ĐƠN', 'NHÂN CÔNG', 'THẦU PHỤ', 'NHÀ CUNG CẤP', 'THU TIỀN', 'TỔNG HỢP CHI PHÍ']) {
+      for (const tab of ['HÓA ĐƠN', 'THẦU PHỤ', 'THU TIỀN', 'TỔNG HỢP CHI PHÍ']) {
         await page.getByRole('tab', { name: tab }).click();
         expect(await noSideScroll(page), `tab ${tab} bị kéo ngang`).toBe(true);
       }

@@ -3,6 +3,7 @@
 // chấm công, Lưu thông tin (CCCD / danh thiếp / bảng hiệu cửa hàng).
 import { useEffect, useRef, useState } from 'react';
 import type { ScanRequestKind } from '@shared/scan';
+import { ZoomableImage } from '@/components/ui/image-zoom';
 import { Button, Icon } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -68,7 +69,7 @@ export function CaptureForm({ kind, setKind, allowed, note, setNote, input, onPi
         onDrop={(e) => { e.preventDefault(); pick(e.dataTransfer.files[0]); }}
       >
         {url ? (
-          <img src={url} alt="Ảnh vừa chọn" className="max-h-[320px] w-full object-contain" />
+          <ZoomableImage src={url} alt="Ảnh vừa chọn" className="max-h-[320px]" />
         ) : input ? (
           <div className="grid gap-1 p-4" data-testid="picked-file">
             <Icon name={input.kind === 'pdf' ? 'picture_as_pdf' : 'table_view'} className="text-[34px] text-accent" />

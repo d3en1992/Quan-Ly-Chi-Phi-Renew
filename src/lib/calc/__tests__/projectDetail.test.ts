@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { transformSnapshot } from '../../../../scripts/legacy/transform.ts';
 import {
-  ALL_YEARS, buildProfitIndex, collapseBreakdown, profitContext, projectCostByType, projectPayroll, projectProfit, projectSubcontracts, projectSuppliers,
+  ALL_YEARS, buildProfitIndex, collapseBreakdown, profitContext, projectCostByType, projectCostSummary, projectProfit, projectSubcontracts,
   type CalcData,
 } from '../index';
 
@@ -35,34 +35,37 @@ describe('chi theo loại của 1 công trình', () => {
   });
 });
 
-describe('nhân công theo tuần', () => {
-  it('cộng công, lương, phụ cấp + HĐ lẻ, thực lãnh', () => {
-    const d = empty();
-    d.timesheetWeeks = [{ id: 'w1', project_id: 'p1', week_start: '2026-10-25' }, { id: 'w2', project_id: 'p2', week_start: '2026-10-25' }];
-    d.timesheetLines = [
-      { week_id: 'w1', day_units: [0, 1, 1, 1, 1, 0.5, 0], daily_wage: 400000, allowance: 20000, retail_purchase: 10000 },
-      { week_id: 'w1', day_units: [0, 1, 1, 0, 0, 0, 0], daily_wage: 500000, allowance: 0, retail_purchase: 0 },
-      { week_id: 'w2', day_units: [0, 1, 0, 0, 0, 0, 0], daily_wage: 999, allowance: 0, retail_purchase: 0 },
-    ];
-    const r = projectPayroll('p1', d, ALL_YEARS);
-    expect(r).toHaveLength(1);
-    expect(r[0]).toMatchObject({ workers: 2, dayUnits: 6.5, wage: 4.5 * 400000 + 2 * 500000, extras: 30000, weekEnd: '2026-10-31' });
-    expect(r[0]!.netPay).toBe(r[0]!.wage + 30000);
-  });
-});
-
-describe('thầu phụ và nhà cung cấp của công trình', () => {
+describe('thầu phụ của công trình', () => {
   it('HĐ thầu phụ: đã trả / còn phải trả', () => {
     const subs = [{ id: 'h1', project_id: 'p1', subcontractor_id: 'tp1', date: '2026-02-01', value: 1000, legacy_variation: 0 }];
     const pays = [{ id: 'a', kind: 'advance', date: '2026-02-05', amount: 400, project_id: 'p1', subcontractor_id: 'tp1', subcontract_id: 'h1' }];
     expect(projectSubcontracts('p1', subs, pays, ALL_YEARS)).toEqual([{ id: 'h1', subcontractorId: 'tp1', date: '2026-02-01', total: 1000, paid: 400, debt: 600 }]);
   });
-  it('NCC: tổng mua, đã trả, còn nợ', () => {
+  it('tổng chi phí = đã chi + nợ NCC + nợ thầu phụ = mọi hóa đơn + HĐ thầu phụ (không HĐ thì tiền đã ứng) + chi phí chung', () => {
     const d = empty();
-    d.expenses = [exp('e1', { amount: 100 }), exp('e2', { paid_at_purchase: false, amount: 500 })];
-    d.payments = [{ id: 'pay1', kind: 'supplier_payment', date: '2026-04-01', amount: 200, project_id: null, supplier_id: 's1' }];
-    d.paymentAllocations = [{ payment_id: 'pay1', expense_id: 'e2', project_id: 'p1', amount: 200 }];
-    expect(projectSuppliers('p1', d, ALL_YEARS)).toEqual([{ supplierId: 's1', invoices: 2, purchased: 600, paid: 300, debt: 300 }]);
+    d.projects = [
+      { id: 'p1', name: 'P1', is_company_overhead: false, start_date: '2026-01-01', end_date: '2026-03-01' },
+      { id: 'cty', name: 'CÔNG TY', is_company_overhead: true },
+    ] as CalcData['projects'];
+    d.expenses = [exp('e1', { amount: 100 }), exp('e2', { paid_at_purchase: false, amount: 500 }), exp('c', { project_id: 'cty', amount: 40 })];
+    const subs = [
+      { id: 'h1', project_id: 'p1', subcontractor_id: 'tp1', date: '2026-02-01', value: 1000, legacy_variation: 0 },
+      { id: 'h2', project_id: 'p1', subcontractor_id: 'tp2', date: '2026-02-01', value: 300, legacy_variation: 0 },
+    ];
+    d.payments = [
+      { id: 'a', kind: 'advance', date: '2026-02-05', amount: 400, project_id: 'p1', subcontractor_id: 'tp1', subcontract_id: 'h1' },
+      { id: 'b', kind: 'advance', date: '2026-02-05', amount: 300, project_id: 'p1', subcontractor_id: 'tp2', subcontract_id: 'h2' },
+      { id: 'c', kind: 'advance', date: '2026-02-05', amount: 70, project_id: 'p1', subcontractor_id: 'tp3' }, // không có HĐ
+      { id: 'n', kind: 'supplier_payment', date: '2026-04-01', amount: 200, project_id: null, supplier_id: 's1' },
+    ];
+    d.paymentAllocations = [{ payment_id: 'n', expense_id: 'e2', project_id: 'p1', amount: 200 }];
+    const n = projectProfit(d.projects[0]!, profitContext(buildProfitIndex(d), ALL_YEARS, Date.parse('2026-11-01')));
+    expect(n.C).toBe(40);
+    const r = projectCostSummary(n, projectSubcontracts('p1', subs, d.payments, ALL_YEARS));
+    expect(r).toEqual({ subcontractDebt: 600, payable: 900, totalCost: (100 + 500) + (1000 + 300 + 70) + 40 });
+  });
+  it('HĐ trả dư không trừ vào nợ HĐ khác', () => {
+    expect(projectCostSummary({ spent: 10, supplierDebt: 5 }, [{ debt: -100 }, { debt: 20 }])).toEqual({ subcontractDebt: 20, payable: 25, totalCost: 35 });
   });
 });
 
