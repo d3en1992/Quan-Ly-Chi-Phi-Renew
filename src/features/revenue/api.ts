@@ -14,12 +14,15 @@ const money = z.coerce.number();
 const contractSchema = z.object({
   id: z.string(), project_id: z.string(), date: z.string().nullable(), value: money, extra_value: money, legacy_variation: money, items: itemsSchema,
   customer_name: z.string().nullable(), description: z.string().nullable(), created_by: z.string().nullable(), created_at: z.string().nullable(),
+  /** Ảnh / PDF / Excel hợp đồng (kho documents, migration …021) */
+  attachment_paths: z.array(z.string()).nullable(),
 });
 const receiptSchema = z.object({
   id: z.string(), project_id: z.string(), date: z.string(), amount: money, kind: z.string(), is_auto: z.boolean(), settlement_id: z.string().nullable(),
   note: z.string().nullable(), created_by: z.string().nullable(), created_at: z.string().nullable(),
   /** Hình thức thu: transfer = chuyển khoản, cash = tiền mặt, null = chưa ghi (migration …017) */
   method: z.enum(['transfer', 'cash']).nullable().optional(),
+  attachment_paths: z.array(z.string()).nullable(),
 });
 const settlementSchema = z.object({
   id: z.string(), project_id: z.string(), date: z.string(), kind: z.string(), amount: money, is_final: z.boolean(), note: z.string().nullable(),
@@ -107,6 +110,8 @@ const softDelete = async (table: string, id: string, what: string) => {
 
 export type ContractInput = {
   id: string | null; projectId: string; date: string; value: number; extra: number; variation: number; description: string; customerName: string; items: ContractItem[];
+  /** Chỉ hợp đồng MỚI: ảnh / tệp đã tải lên kho */
+  attachmentPaths?: string[];
 };
 const contractInputSchema = z.object({
   projectId: z.string().uuid('Chọn công trình'), date: isoDate, value: z.number().int().min(0), extra: z.number().int().min(0), variation: z.number().int(),
@@ -127,7 +132,7 @@ export function useSaveContract() {
         if (error) throw friendly(error);
         if (!data?.length) throw new Error('Không sửa được: hợp đồng do người khác nhập hoặc đã bị xóa.');
       } else {
-        const { error } = await sb.from('main_contracts').insert(row);
+        const { error } = await sb.from('main_contracts').insert({ ...row, attachment_paths: v.attachmentPaths ?? [] });
         if (error) throw friendly(error);
       }
     },
@@ -141,7 +146,7 @@ export function useDeleteContract() {
 
 export type ReceiptMethod = 'transfer' | 'cash';
 /** method: undefined = không đụng (sửa phiếu cũ), null = chưa ghi */
-export type ReceiptInput = { id: string | null; projectId: string; date: string; amount: number; kind: ReceiptKind; note: string; method?: ReceiptMethod | null };
+export type ReceiptInput = { id: string | null; projectId: string; date: string; amount: number; kind: ReceiptKind; note: string; method?: ReceiptMethod | null; attachmentPaths?: string[] };
 const receiptInputSchema = z.object({
   projectId: z.string().uuid('Chọn công trình'), date: isoDate, amount: z.number().int().positive('Nhập số tiền > 0'), kind: z.enum(['advance', 'stage', 'settlement', 'other']),
 });
@@ -164,7 +169,7 @@ export function useSaveReceipt() {
         return v.id;
       }
       const id = crypto.randomUUID();
-      const { error } = await sb.from('receipts').insert({ id, ...row });
+      const { error } = await sb.from('receipts').insert({ id, ...row, attachment_paths: v.attachmentPaths ?? [] });
       if (error) throw friendly(error);
       return id;
     },

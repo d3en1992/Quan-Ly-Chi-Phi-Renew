@@ -1,5 +1,5 @@
 // Tab DANH BẠ: Khách hàng · Công nhân · Nhân viên · Nhà cung cấp · Thầu phụ · Cửa hàng (ShopsPanel — điểm bán vật tư, ảnh mặt tiền).
-// SĐT, CCCD che theo quyền "Xem SĐT, số CCCD" (`see_contact_ids`). Nút Chụp CCCD mở bảng trượt Chụp đa năng (features/scan) — chỉ lưu chữ, không lưu ảnh.
+// SĐT, CCCD che theo quyền "Xem SĐT, số CCCD" (`see_contact_ids`). Nút Chụp CCCD mở bảng trượt Chụp đa năng (features/scan); ảnh CCCD lưu kho riêng id-cards.
 import { useMemo, useState, type ReactNode } from 'react';
 import { useAccess } from '@/app/auth';
 import { useSearchIntent } from '@/app/search-intent';
@@ -153,7 +153,7 @@ export function ContactsPage() {
           </div>
         </Card>
       )}
-      {tab === 'worker' && mode !== 'phone' ? <Note icon="badge">Bấm <b>Chụp CCCD</b>: AI đọc họ tên, ngày sinh, số CCCD, quê quán. <b>Chỉ lưu chữ, không lưu ảnh.</b> Số CCCD che bớt, chỉ vai trò có quyền "Xem SĐT, số CCCD" mới thấy đủ.</Note> : null}
+      {tab === 'worker' && mode !== 'phone' ? <Note icon="badge">Bấm <b>Chụp CCCD</b>: AI đọc họ tên, ngày sinh, số CCCD, quê quán. Ảnh CCCD lưu kèm hồ sơ, chỉ người có quyền xem CCCD mới mở được (bỏ tích nếu không muốn lưu). Số CCCD che bớt, chỉ vai trò có quyền "Xem SĐT, số CCCD" mới thấy đủ.</Note> : null}
       {tab === 'supplier' && mode !== 'phone' ? <Note><b>Mua nợ</b> bật sẵn cho nhà cung cấp từng có tiền ứng trong dữ liệu cũ. Địa chỉ, SĐT sẽ tự điền dần khi chụp hóa đơn.</Note> : null}
       <Sheet open={scanOpen} onOpenChange={setScanOpen} title="Chụp CCCD" wide>
         {scanOpen ? <ScanWorkspace defaultKind="id_card" lockKind compact onSaved={() => setScanOpen(false)} /> : null}

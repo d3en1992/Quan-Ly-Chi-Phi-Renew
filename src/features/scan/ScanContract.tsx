@@ -1,5 +1,7 @@
 // Nút AI → HỢP ĐỒNG / DỰ TOÁN (KẾ HOẠCH 4G): AI đọc chủ đầu tư, địa chỉ, SĐT, giá trị, diện tích từng phần (Móng, Trệt, Lầu…)
 // → gợi ý Khách hàng mới + Hợp đồng chính + bảng khối lượng sàn của công trình (Tỉ Trọng & Định Mức). Anh duyệt rồi mới lưu.
+import { attachToProjectContract, removeDoc, uploadDoc, type Doc } from '@/features/attachments/api';
+import { ScanDocPreview } from '@/features/attachments/Attachments';
 import { useMemo, useState } from 'react';
 import type { ContractScan, FloorAreaScan } from '@shared/scan';
 import { useAccess } from '@/app/auth';
@@ -17,12 +19,13 @@ import { useSaveContract } from '@/features/revenue/api';
 import { contractCustomer } from './model';
 import { UNSURE } from './shared';
 
-type Props = { scan: ContractScan; lists: Lists; onDone: () => void; onRetake: () => void };
+type Props = { scan: ContractScan; doc: Doc | null; lists: Lists; onDone: () => void; onRetake: () => void };
 
 const areaText = (n: number) => (n ? String(n).replace('.', ',') : '');
 const cell = 'h-[34px] w-full min-w-0 border-0 bg-transparent px-2 text-[13px] text-fg focus:outline-2 focus:outline-accent';
 
-export function ScanContract({ scan, lists, onDone, onRetake }: Props) {
+export function ScanContract({ scan, doc, lists, onDone, onRetake }: Props) {
+  const [keep, setKeep] = useState(true);
   const toast = useToast();
   const access = useAccess();
   const canSeeIds = access.special.see_contact_ids;
@@ -50,9 +53,11 @@ export function ScanContract({ scan, lists, onDone, onRetake }: Props) {
     if (!p) { toast('Chọn công trình (công trình mới thì tạo ở tab Công Trình trước).', 'error'); return; }
     if (withContract && c.value <= 0) { toast('Nhập giá trị hợp đồng.', 'error'); return; }
     if (withContract && !existing && addCustomer && !c.customer_name.trim()) { toast('Nhập tên gọi khách hàng.', 'error'); return; }
-    if (!withContract && !withAreas && !(addCustomer && !existing)) { toast('Chưa chọn lưu gì.', 'error'); return; }
+    if (!withContract && !withAreas && !(addCustomer && !existing) && !(doc && keep)) { toast('Chưa chọn lưu gì.', 'error'); return; }
     setBusy(true);
+    let path = '';
     try {
+      if (doc && keep) path = await uploadDoc('documents', access.profile.company_id, doc);
       let name = existing?.name ?? c.customer_name.trim();
       if (!existing && addCustomer && name) {
         await saveContact.mutateAsync({
@@ -65,9 +70,13 @@ export function ScanContract({ scan, lists, onDone, onRetake }: Props) {
       if (withContract) {
         await saveContract.mutateAsync({
           id: null, projectId: p.id, date: c.date || today(), value: c.value, extra: 0, variation: 0,
-          description: c.description, customerName: c.customer_full_name || name, items: [],
+          description: c.description, customerName: c.customer_full_name || name, items: [], attachmentPaths: path ? [path] : [],
         });
         toast(`Đã lưu hợp đồng chính cho ${p.name}`);
+      }
+      if (path && !withContract && !(await attachToProjectContract(p.id, path))) {
+        await removeDoc('documents', path);
+        toast(`${p.name} chưa có hợp đồng chính nên tệp chưa lưu được.`, 'error');
       }
       if (withAreas) {
         const rows = areas.filter((a) => a.name.trim() && a.area > 0).map((a) => ({ ten: a.name.trim(), dvt: 'm2', kl: a.area, heSo: 1, tinh: true }));
@@ -76,6 +85,7 @@ export function ScanContract({ scan, lists, onDone, onRetake }: Props) {
       }
       onDone();
     } catch (e) {
+      if (path) await removeDoc('documents', path);
       toast(`Chưa lưu được: ${e instanceof Error ? e.message : String(e)}`, 'error');
     } finally {
       setBusy(false);
@@ -90,6 +100,7 @@ export function ScanContract({ scan, lists, onDone, onRetake }: Props) {
         {c.low_confidence.length ? <Pill tone="warn">{c.low_confidence.length} ô cần xem lại</Pill> : null}
       </header>
       <div className="grid gap-3 p-4" data-testid="scan-contract">
+        <ScanDocPreview doc={doc} keep={keep} setKeep={setKeep} label="Lưu ảnh / tệp kèm hợp đồng chính (công trình đã có hợp đồng thì bỏ tích “Lưu hợp đồng chính”, tệp gắn vào hợp đồng đó)" />
         <div className="rounded-lg bg-surface-2 px-3 py-2 text-[12.5px]">
           {existing ? <>Khách hàng đã có: <b>{existing.name}</b>{existing.full_name ? ` · ${existing.full_name}` : ''} <Pill tone="good">sẽ gắn vào</Pill></>
             : <Checkbox checked={addCustomer} onChange={setAddCustomer} label={<>Thêm <b>khách hàng mới</b> vào danh bạ{canSeeIds && c.customer_phone ? ' (kèm số điện thoại)' : ''}</>} />}

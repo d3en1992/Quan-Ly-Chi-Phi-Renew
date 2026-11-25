@@ -1,14 +1,18 @@
 // LƯU THÔNG TIN NGƯỜI (nút "Lưu thông tin" / Chụp CCCD ở Danh Bạ, KẾ HOẠCH 4G): AI đọc ảnh CCCD hoặc danh thiếp + lời nói
 // ("Lưu thông tin thầu phụ Đảng, SĐT…") → họ tên, số CCCD, ngày sinh, quê quán, nơi thường trú, SĐT, ghi chú; tự chọn nhóm
 // (khách hàng / công nhân / thầu phụ / nhà cung cấp / nhân viên) theo lời nhắn → tìm người trùng tên → gắn vào người đó hoặc tạo mới.
-// Anh kiểm tra rồi bấm Lưu. CHỈ LƯU CHỮ: ảnh CCCD không bao giờ lên kho (màn cha xóa ảnh khỏi bộ nhớ ngay khi có kết quả).
+// Anh kiểm tra rồi bấm Lưu. Ảnh CCCD lưu kho riêng `id-cards` (từ 25/11/2026), chỉ người có quyền xem SĐT, số CCCD mới mở được; bỏ tích thì chỉ lưu chữ.
+import { useQueryClient } from '@tanstack/react-query';
+import { useAccess } from '@/app/auth';
+import { attachIdImage, removeDoc, uploadDoc, type Doc } from '@/features/attachments/api';
+import { ScanDocPreview } from '@/features/attachments/Attachments';
 import { useMemo, useState } from 'react';
 import type { IdCardScan } from '@shared/scan';
 import { Button, Icon } from '@/components/ui/button';
 import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { Card, ErrorState, LoadingState, Pill } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/toast';
-import { useContacts, useSaveContact, type ContactsData } from '@/features/contacts/api';
+import { CONTACTS_KEY, linkedSubOf, useContacts, useSaveContact, type ContactsData } from '@/features/contacts/api';
 import { contactNameFromSaid, guessContactKind, idCardCandidates, shortNameFromFull, type ContactKindForId } from './model';
 
 const KIND_LABEL: Record<ContactKindForId, string> = {
@@ -22,7 +26,7 @@ const ID_FIELDS: { key: keyof IdCardScan; label: string; type?: string }[] = [
 ];
 const CCCD_KEYS = ['id_number', 'date_of_birth', 'gender', 'hometown', 'permanent_address', 'id_issued_on', 'id_issued_place'] as const;
 
-type Props = { scan: IdCardScan; note: string; onDone: () => void; onRetake: () => void };
+type Props = { scan: IdCardScan; doc: Doc | null; note: string; onDone: () => void; onRetake: () => void };
 
 /** Ghi chú cũ + dòng mới (không lặp dòng đã có) */
 export function appendNote(old: string | null | undefined, lines: readonly string[]): string | null {
@@ -40,7 +44,12 @@ function existingRow(d: ContactsData, kind: ContactKindForId, id: string): { not
   const r = d.suppliers.find((x) => x.id === id); return r && { note: r.note, address: r.address, phone: r.phone };
 }
 
-export function ScanIdCard({ scan, note, onDone, onRetake }: Props) {
+export function ScanIdCard({ scan, doc: rawDoc, note, onDone, onRetake }: Props) {
+  const access = useAccess();
+  const qc = useQueryClient();
+  const doc = rawDoc?.ext === 'jpg' ? rawDoc : null;
+  const [keep, setKeep] = useState(true);
+  const [busy, setBusy] = useState(false);
   const toast = useToast();
   const contacts = useContacts(true);
   const save = useSaveContact();
@@ -65,7 +74,7 @@ export function ScanIdCard({ scan, note, onDone, onRetake }: Props) {
   if (contacts.isError) return <Card><ErrorState error={contacts.error} onRetry={() => void contacts.refetch()} /></Card>;
   const data = contacts.data;
 
-  const doSave = () => {
+  const doSave = async () => {
     const isNew = chosen === 'new';
     const s = (v: string) => v.trim();
     const noteLines = notes.split('\n').map((l) => l.replace(/^[\s\-–•*+·]+/, '').trim()).filter(Boolean);
@@ -96,14 +105,24 @@ export function ScanIdCard({ scan, note, onDone, onRetake }: Props) {
         : { ...(old?.address || !address ? {} : { address }), ...(old?.phone || !phone ? {} : { phone }), note: supNote };
     }
     // Thầu phụ cũng làm công nhân (đã nối sẵn): giữ nguyên nối, không đụng
-    save.mutate({ kind, id: isNew ? null : chosen, fields, priv: Object.keys(priv).length ? (priv as never) : null }, {
-      onSuccess: () => {
-        const name = isNew ? (kind === 'employee' ? full : s(shortName)) : candidates.find((c) => c.id === chosen)?.name;
-        toast(isNew ? `Đã thêm ${KIND_LABEL[kind].toLowerCase()} “${name}”` : `Đã cập nhật thông tin ${KIND_LABEL[kind].toLowerCase()} ${name ?? ''}`);
-        onDone();
-      },
-      onError: (e) => toast(`Chưa lưu được: ${e.message}`, 'error'),
-    });
+    setBusy(true);
+    let path = '';
+    try {
+      if (doc && keep && kind !== 'supplier') path = await uploadDoc('id-cards', access.profile.company_id, doc);
+      const id = await save.mutateAsync({ kind, id: isNew ? null : chosen, fields, priv: Object.keys(priv).length ? (priv as never) : null });
+      if (path && kind !== 'supplier') {
+        // Công nhân đã nối thầu phụ: giấy tờ nằm ở hồ sơ thầu phụ. Gắn ảnh hỏng thì vẫn giữ phần chữ đã lưu.
+        const linked = kind === 'worker' ? linkedSubOf(data, id) : undefined;
+        try { await attachIdImage(linked ? 'subcontractor' : kind, linked?.id ?? id, path); await qc.invalidateQueries({ queryKey: CONTACTS_KEY }); }
+        catch (e) { await removeDoc('id-cards', path); toast(`Đã lưu chữ nhưng chưa lưu được ảnh: ${e instanceof Error ? e.message : String(e)}`, 'error'); }
+      }
+      const name = isNew ? (kind === 'employee' ? full : s(shortName)) : candidates.find((c) => c.id === chosen)?.name;
+      toast(isNew ? `Đã thêm ${KIND_LABEL[kind].toLowerCase()} “${name}”` : `Đã cập nhật thông tin ${KIND_LABEL[kind].toLowerCase()} ${name ?? ''}`);
+      onDone();
+    } catch (e) {
+      if (path) await removeDoc('id-cards', path);
+      toast(`Chưa lưu được: ${e instanceof Error ? e.message : String(e)}`, 'error');
+    } finally { setBusy(false); }
   };
 
   const lowCls = (k: string) => (card.low_confidence.includes(k) ? '!border-warn !bg-warn-soft' : undefined);
@@ -128,9 +147,10 @@ export function ScanIdCard({ scan, note, onDone, onRetake }: Props) {
         {card.doc_type === 'business_card' ? <Pill>Danh thiếp</Pill> : card.doc_type === 'cccd' ? <Pill>CCCD</Pill> : null}
         {card.low_confidence.length ? <Pill tone="warn">{card.low_confidence.length} ô cần xem lại</Pill> : null}
         <div className="flex-1" />
-        <small className="inline-flex items-center gap-1 text-muted"><Icon name="lock" className="text-[15px]" />Ảnh đã bị xóa — chỉ lưu chữ</small>
+        <small className="inline-flex items-center gap-1 text-muted"><Icon name="lock" className="text-[15px]" />Ảnh chỉ người có quyền xem CCCD mở được</small>
       </header>
       <div className="grid gap-3 p-4" data-testid="scan-idcard">
+        {kind !== 'supplier' ? <ScanDocPreview doc={doc} keep={keep} setKeep={setKeep} label="Lưu ảnh giấy tờ vào hồ sơ" /> : null}
         <Field label="Lưu vào nhóm">
           <Select aria-label="Nhóm danh bạ" value={kind} onChange={(e) => { setKind(e.target.value as ContactKindForId); setTarget(null); setNewName(null); }}>
             {(Object.keys(KIND_LABEL) as ContactKindForId[]).map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
@@ -172,7 +192,7 @@ export function ScanIdCard({ scan, note, onDone, onRetake }: Props) {
 
         <div className="flex flex-wrap justify-end gap-2">
           <Button onClick={onRetake}><Icon name="close" />Bỏ</Button>
-          <Button variant="primary" data-testid="idcard-save" disabled={save.isPending} onClick={doSave}><Icon name="save" />{save.isPending ? 'Đang lưu…' : 'Lưu vào danh bạ'}</Button>
+          <Button variant="primary" data-testid="idcard-save" disabled={busy} onClick={() => void doSave()}><Icon name="save" />{busy ? 'Đang lưu…' : 'Lưu vào danh bạ'}</Button>
         </div>
       </div>
     </Card>

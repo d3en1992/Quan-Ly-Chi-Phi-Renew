@@ -27,6 +27,8 @@ const maskedSchema = z.object({
 const privateSchema = z.object({
   customer_id: str, worker_id: str, employee_id: str, subcontractor_id: str, phone: str, id_number: str, date_of_birth: str,
   hometown: str, permanent_address: str, bank_account: str, bank_name: str, bank_holder: str, id_issued_on: str, id_issued_place: str,
+  /** Ảnh CCCD / giấy tờ (kho id-cards, migration …021) */
+  id_image_paths: z.array(z.string()).nullable(),
 });
 
 export type Customer = z.infer<typeof customerSchema>;

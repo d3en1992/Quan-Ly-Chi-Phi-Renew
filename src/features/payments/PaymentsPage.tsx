@@ -1,5 +1,6 @@
 // Tab CHI TRẢ TP/NCC (PAGES.nhapung / MP.ung, đổi tên từ "Ứng TP/NCC" — mục 4L): nhập nhiều phiếu chi một lần
 // (Trả thầu phụ · Trả nợ NCC), hiện "còn nợ" ngay khi chọn đối tác, lịch sử phiếu chi (Copy Zalo từng phiếu).
+import { AttachmentsButton } from '@/features/attachments/Attachments';
 import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -180,7 +181,7 @@ export function PaymentsPage() {
           <div className="grid gap-2">
             {paged.slice.map((p) => (
               <MobileCard key={p.id} onClick={() => open(p)}>
-                <MobileRow><b className="truncate">{data.partyName(p)}</b><b className="num">{formatMoney(p.amount)}</b></MobileRow>
+                <MobileRow><b className="truncate">{data.partyName(p)}</b><span className="flex items-center gap-1"><AttachmentsButton target={{ bucket: 'documents', table: 'payments', id: p.id }} paths={p.attachment_paths} canEdit={canEditRow(access, 'payments', p.created_by)} label="Ảnh / tệp phiếu chi" /><b className="num">{formatMoney(p.amount)}</b></span></MobileRow>
                 <MobileRow meta><span className="truncate">{formatDate(p.date)} · {where(p)}</span><Pill tone={p.kind === 'supplier_payment' ? 'neutral' : 'accent'}>{p.kind === 'supplier_payment' ? 'Nhà cung cấp' : 'Thầu phụ'}</Pill></MobileRow>
               </MobileCard>
             ))}
@@ -219,7 +220,7 @@ export function PaymentsPage() {
                         <td className="max-w-[260px] truncate" title={ncc ? MODE_LABEL[p.allocation_mode] : undefined}>{where(p)}{rest > 0 ? <small className="ml-1 text-warn">chưa chia {formatMoney(rest)}</small> : null}</td>
                         <td className="max-w-[260px] truncate text-muted" title={p.note ?? ''}>{p.note}</td>
                         <td className="num text-right whitespace-nowrap">{formatMoney(p.amount)}</td>
-                        <td><Button size="icon" variant="ghost" aria-label="Copy Zalo phiếu chi" title="Copy tin nhắn Zalo" onClick={(e) => { e.stopPropagation(); void zalo(p); }}><Icon name="chat" /></Button></td>
+                        <td className="text-right whitespace-nowrap"><AttachmentsButton target={{ bucket: 'documents', table: 'payments', id: p.id }} paths={p.attachment_paths} canEdit={canEditRow(access, 'payments', p.created_by)} label="Ảnh / tệp phiếu chi" /><Button size="icon" variant="ghost" aria-label="Copy Zalo phiếu chi" title="Copy tin nhắn Zalo" onClick={(e) => { e.stopPropagation(); void zalo(p); }}><Icon name="chat" /></Button></td>
                       </tr>
                     );
                   })}

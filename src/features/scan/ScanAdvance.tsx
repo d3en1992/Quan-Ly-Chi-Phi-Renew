@@ -2,6 +2,9 @@
 // "nhà cung cấp sắt thép An Phú ứng 50 triệu", hoặc ảnh chuyển khoản): điền sẵn phiếu chi.
 // Thầu phụ → Trả thầu phụ (Tạm ứng / Thanh toán đợt đã gộp, phiếu mới ghi loại advance). NCC → Trả nợ NCC (có công trình thì chia trong công trình đó, không thì chia hóa đơn cũ nhất trước).
 // Người nhận chưa có trong danh mục → tích "Thêm … mới". Anh kiểm tra rồi mới lưu.
+import { useAccess } from '@/app/auth';
+import { removeDoc, uploadDoc, type Doc } from '@/features/attachments/api';
+import { ScanDocPreview } from '@/features/attachments/Attachments';
 import { useState } from 'react';
 import type { AdvanceScan, PayMethod } from '@shared/scan';
 import { Segmented } from '@/components/ui/data';
@@ -16,12 +19,14 @@ import { today } from '@/features/expenses/shared';
 import { useCreateParty, useCreatePayments, usePayData } from '@/features/payments/api';
 import { METHOD_OPTS, UNSURE, methodNote } from './shared';
 
-type Props = { scan: AdvanceScan; onDone: () => void; onRetake: () => void };
+type Props = { scan: AdvanceScan; doc: Doc | null; onDone: () => void; onRetake: () => void };
 type Party = AdvanceScan['party'];
 
 const PARTY_OPTS: { value: Party; label: string }[] = [{ value: 'subcontractor', label: 'Thầu phụ' }, { value: 'supplier', label: 'Nhà cung cấp' }];
 
-export function ScanAdvance({ scan, onDone, onRetake }: Props) {
+export function ScanAdvance({ scan, doc, onDone, onRetake }: Props) {
+  const access = useAccess();
+  const [keep, setKeep] = useState(true);
   const toast = useToast();
   const data = usePayData();
   const create = useCreatePayments();
@@ -62,6 +67,7 @@ export function ScanAdvance({ scan, onDone, onRetake }: Props) {
     if (!name.trim()) { toast(`Chọn ${who}.`, 'error'); return; }
     if (isNew && !addNew) { toast(`${isSup ? 'Nhà cung cấp' : 'Thầu phụ'} chưa có trong danh mục — tích "Thêm ${who} mới" hoặc chọn tên có sẵn.`, 'error'); return; }
     setBusy(true);
+    let path = '';
     try {
       let id = found?.id ?? null;
       if (!id) {
@@ -71,18 +77,21 @@ export function ScanAdvance({ scan, onDone, onRetake }: Props) {
         if (!id) throw new Error(`Đã thêm ${who} nhưng chưa tải lại được — thử lưu lại.`);
         toast(`Đã thêm ${who} “${created}”`);
       }
+      if (doc && keep) path = await uploadDoc('documents', access.profile.company_id, doc);
+      const attachmentPaths = path ? [path] : [];
       await create.mutateAsync([isSup ? {
         // Trả nợ NCC: có công trình → chỉ chia cho hóa đơn của công trình đó; không → chia hóa đơn mua nợ cũ nhất trước
         kind: 'supplier_payment', date, amount, subcontractorId: null, subcontractId: null, supplierId: id,
-        projectId: proj?.id ?? null, mode: proj ? 'project' : 'fifo', picks: [], note: methodNote(method, note),
+        projectId: proj?.id ?? null, mode: proj ? 'project' : 'fifo', picks: [], note: methodNote(method, note), attachmentPaths,
       } : {
         kind: payKind, date, amount, subcontractorId: id, subcontractId: null, supplierId: null, projectId: proj!.id,
-        mode: 'fifo', picks: [], note: methodNote(method, note),
+        mode: 'fifo', picks: [], note: methodNote(method, note), attachmentPaths,
       }]);
       const label = found?.name ?? name.trim().toUpperCase();
       toast(`Đã lưu ${isSup ? 'phiếu trả NCC' : 'phiếu trả thầu phụ'} ${formatMoney(amount)} cho ${label}${proj ? ` · ${proj.name}` : ''}`);
       onDone();
     } catch (e) {
+      if (path) await removeDoc('documents', path);
       toast(`Chưa lưu được: ${e instanceof Error ? e.message : String(e)}`, 'error');
     } finally {
       setBusy(false);
@@ -97,6 +106,7 @@ export function ScanAdvance({ scan, onDone, onRetake }: Props) {
         {scan.low_confidence.length ? <Pill tone="warn">{scan.low_confidence.length} ô cần xem lại</Pill> : null}
       </header>
       <div className="grid gap-3 p-4" data-testid="scan-advance">
+        <ScanDocPreview doc={doc} keep={keep} setKeep={setKeep} label="Lưu ảnh / tệp kèm phiếu chi" />
         <div className="grid gap-2.5 sm:grid-cols-2">
           <div className="grid gap-1 text-xs font-medium text-muted sm:col-span-2"><span>Trả cho</span>
             <div data-testid="advance-party"><Segmented value={party} onChange={switchParty} options={PARTY_OPTS} /></div>

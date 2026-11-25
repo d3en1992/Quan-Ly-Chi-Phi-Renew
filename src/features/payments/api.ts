@@ -16,6 +16,8 @@ const paymentSchema = z.object({
   id: z.string(), kind: z.string(), date: z.string(), amount: money, subcontractor_id: z.string().nullable(), subcontract_id: z.string().nullable(),
   supplier_id: z.string().nullable(), project_id: z.string().nullable(), allocation_mode: z.string(), closure_id: z.string().nullable(),
   note: z.string().nullable(), created_by: z.string().nullable(), created_at: z.string().nullable(),
+  /** Ảnh / tệp kèm phiếu (kho documents, migration …021) */
+  attachment_paths: z.array(z.string()).nullable(),
 });
 const allocationSchema = z.object({ payment_id: z.string(), expense_id: z.string().nullable(), project_id: z.string(), amount: money });
 const itemSchema = z.object({ name: z.string().catch(''), donVi: z.string().catch(''), sl: z.coerce.number().catch(0), donGia: z.coerce.number().catch(0) });
@@ -177,6 +179,8 @@ export type PaymentInput = {
   /** Hóa đơn đã tích (mode = manual) */
   picks: string[];
   note: string;
+  /** Chỉ phiếu MỚI: ảnh / tệp đã tải lên kho */
+  attachmentPaths?: string[];
 };
 export const paymentInputSchema = z.object({
   kind: z.enum(['advance', 'progress', 'supplier_payment']),
@@ -213,7 +217,7 @@ export function useCreatePayments() {
   return useMutation({
     mutationFn: async (inputs: PaymentInput[]) => {
       const list = inputs.map((i) => { const r = paymentInputSchema.safeParse(i); if (!r.success) throw firstIssue(r.error); return i; });
-      const rows = list.map((v) => ({ id: crypto.randomUUID(), ...toRow(v) }));
+      const rows = list.map((v) => ({ id: crypto.randomUUID(), ...toRow(v), attachment_paths: v.attachmentPaths ?? [] }));
       const { error } = await sb.from('payments').insert(rows);
       if (error) throw friendly(error);
       if (list.some((v) => v.kind === 'supplier_payment')) {

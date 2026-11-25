@@ -47,8 +47,8 @@ const blobToBase64 = (blob: Blob) => new Promise<string>((ok, fail) => {
 export type AiFile = { mime: string; base64: string };
 export type PreparedInput =
   | { kind: 'image'; name: string; image: PreparedImage }
-  | { kind: 'pdf'; name: string; file: AiFile }
-  | { kind: 'sheet'; name: string; text: string };
+  | { kind: 'pdf'; name: string; file: AiFile; blob: Blob }
+  | { kind: 'sheet'; name: string; text: string; blob: Blob };
 
 export const MAX_PDF_BYTES = 4_500_000;
 export const ACCEPT_FILES = 'image/*,application/pdf,.pdf,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -84,9 +84,9 @@ export async function prepareInput(file: File): Promise<PreparedInput> {
   if (file.type.startsWith('image/')) return { kind: 'image', name, image: await prepareImage(file) };
   if (file.type === 'application/pdf' || lower.endsWith('.pdf')) {
     if (file.size > MAX_PDF_BYTES) throw new Error('Tệp PDF lớn quá (trên 4,5 MB) — gửi bản nhỏ hơn hoặc chụp trang cần đọc.');
-    return { kind: 'pdf', name, file: { mime: 'application/pdf', base64: await blobToBase64(file) } };
+    return { kind: 'pdf', name, file: { mime: 'application/pdf', base64: await blobToBase64(file) }, blob: file };
   }
-  if (lower.endsWith('.xlsx')) return { kind: 'sheet', name, text: await sheetToText(file) };
+  if (lower.endsWith('.xlsx')) return { kind: 'sheet', name, text: await sheetToText(file), blob: file };
   if (lower.endsWith('.xls')) throw new Error('File Excel đời cũ (.xls) chưa đọc được — anh mở rồi lưu lại thành .xlsx hoặc PDF rồi gửi.');
   throw new Error('Chỉ gửi được ảnh, PDF hoặc Excel .xlsx.');
 }

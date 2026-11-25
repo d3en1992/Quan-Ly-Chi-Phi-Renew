@@ -1,4 +1,7 @@
 // Form thêm / sửa 1 người trong Danh Bạ (bảng trượt). Trường riêng tư (SĐT, CCCD, tài khoản) chỉ hiện khi có quyền "Xem SĐT, số CCCD".
+import { useAccess } from '@/app/auth';
+import { AttachmentList } from '@/features/attachments/Attachments';
+import { hasLevel } from '@/lib/permissions';
 import { useEffect, useState } from 'react';
 import { Sheet } from '@/components/ui/sheet';
 import { Button, Icon } from '@/components/ui/button';
@@ -33,7 +36,7 @@ export const workerNameFromSub = (name: string) => name.trim().replace(/^(TP[A-Z
 
 function initial(kind: ContactKind, id: string | null, data: ContactsData): Form {
   const priv = (id && data.priv.get(privateOwnerId(data, kind, id))) || ({} as Partial<PrivateFields>);
-  const p = Object.fromEntries(PRIV_KEYS.map((k) => [k, (priv as Record<string, string | null>)[k] ?? '']));
+  const p = Object.fromEntries(PRIV_KEYS.map((k) => [k, (priv as unknown as Record<string, string | null>)[k] ?? '']));
   if (kind === 'customer') { const r = data.customers.find((x) => x.id === id); return { name: r?.name ?? '', full_name: r?.full_name ?? '', address: r?.address ?? '', email: r?.email ?? '', tax_code: r?.tax_code ?? '', note: r?.note ?? '', ...p }; }
   if (kind === 'worker') { const r = data.workers.find((x) => x.id === id); return { name: r?.name ?? '', role: r?.role ?? 'T', full_name: r?.full_name ?? '', note: r?.note ?? '', ...p }; }
   if (kind === 'employee') { const r = data.employees.find((x) => x.id === id); return { full_name: r?.full_name ?? '', title: r?.title ?? '', started_on: r?.started_on ?? '', note: r?.note ?? '', ...p }; }
@@ -46,6 +49,7 @@ function initial(kind: ContactKind, id: string | null, data: ContactsData): Form
 export function ContactForm({ open, onClose, kind, id, data, canSeeIds, onOpen }: Props) {
   const toast = useToast();
   const save = useSaveContact();
+  const access = useAccess();
   const [f, setF] = useState<Form>({});
   const [error, setError] = useState('');
   useEffect(() => { if (open) { setF(initial(kind, id, data)); setError(''); } }, [open, kind, id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -131,6 +135,9 @@ export function ContactForm({ open, onClose, kind, id, data, canSeeIds, onOpen }
         </>
       ) : null}
       {canSeeIds ? privKeys.map((k) => text(k, PRIV_LABEL[k], k === 'date_of_birth' ? { type: 'date' } : {})) : privKeys.length ? <div className="rounded-lg bg-surface-2 px-3 py-2 text-[12.5px] text-muted">SĐT, CCCD, tài khoản nhận lương chỉ hiện và sửa được với tài khoản có quyền "Xem SĐT, số CCCD".</div> : null}
+      {id && canSeeIds && kind !== 'supplier' && !linkedSub ? (
+        <AttachmentList target={{ bucket: 'id-cards', kind, id }} paths={data.priv.get(id)?.id_image_paths} canEdit={hasLevel(access.permissions, 'contacts', 'add')} label="Ảnh CCCD / giấy tờ" />
+      ) : null}
       {text('note', 'Ghi chú')}
       {error ? <div role="alert" className="rounded-lg bg-bad-soft px-3 py-2 text-[13px] text-bad">{error}</div> : null}
     </Sheet>

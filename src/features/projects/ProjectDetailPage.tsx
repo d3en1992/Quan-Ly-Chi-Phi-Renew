@@ -1,5 +1,6 @@
 // CHI TIẾT CÔNG TRÌNH: dải số, cấu thành A / B / C, 4 tab (Tổng hợp chi phí · Hóa đơn · Thầu phụ · Thu tiền).
 // Mọi số lấy từ src/lib/calc (projectNumbers = cùng hàm với tab Lợi Nhuận).
+import { AttachmentsButton } from '@/features/attachments/Attachments';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -30,14 +31,14 @@ import { ScheduleLine } from '@/features/schedule/ScheduleLine';
 type TabKey = 'summary' | 'invoices' | 'subs' | 'receipts';
 const RECEIPT_KIND: Record<string, string> = { advance: 'Tạm ứng', stage: 'Giai đoạn', settlement: 'Quyết toán', other: 'Khác' };
 
-const receiptSchema = z.object({ id: z.string(), date: z.string(), amount: z.coerce.number(), kind: z.string(), note: z.string().nullable(), created_by: z.string().nullable() });
+const receiptSchema = z.object({ id: z.string(), date: z.string(), amount: z.coerce.number(), kind: z.string(), note: z.string().nullable(), created_by: z.string().nullable(), attachment_paths: z.array(z.string()).nullable() });
 
 function useReceipts(projectId: string, enabled: boolean) {
   return useQuery({
     queryKey: ['project-receipts', projectId],
     enabled,
     queryFn: async () => {
-      const { data, error } = await supabase.from('receipts').select('id,date,amount,kind,note,created_by').eq('project_id', projectId).is('deleted_at', null).order('date', { ascending: false });
+      const { data, error } = await supabase.from('receipts').select('id,date,amount,kind,note,created_by,attachment_paths').eq('project_id', projectId).is('deleted_at', null).order('date', { ascending: false });
       if (error) throw new Error(`Không đọc được phiếu thu: ${error.message}`);
       return z.array(receiptSchema).parse(data ?? []);
     },
@@ -307,6 +308,7 @@ function ReceiptsTab({ projectId, years }: { projectId: string; years: YearFilte
     <MiniList items={q.data.map((r) => ({
       key: r.id, title: <span className="flex flex-wrap items-center gap-1.5"><span className="num">{formatDate(r.date)}</span><Pill tone={r.kind === 'advance' ? 'warn' : r.kind === 'settlement' ? 'accent' : 'good'}>{RECEIPT_KIND[r.kind] ?? r.kind}</Pill></span>,
       sub: r.note || undefined,
+      trail: <AttachmentsButton target={{ bucket: 'documents', table: 'receipts', id: r.id }} paths={r.attachment_paths} canEdit={false} label="Ảnh / tệp phiếu thu" />,
       value: formatMoney(r.amount),
     }))} footer={{ label: `Tổng ${q.data.length} lần thu`, value: formatMoney(total) }} />
   );
@@ -319,7 +321,7 @@ function ReceiptsTab({ projectId, years }: { projectId: string; years: YearFilte
             {q.data.map((r) => (
               <tr key={r.id}>
                 <td className="num">{formatDate(r.date)}</td><td><Pill tone={r.kind === 'advance' ? 'warn' : r.kind === 'settlement' ? 'accent' : 'good'}>{RECEIPT_KIND[r.kind] ?? r.kind}</Pill></td>
-                <td className="text-muted">{r.note}</td><td className="text-right"><Money value={r.amount} /></td>
+                <td className="text-muted">{r.note}</td><td className="text-right whitespace-nowrap"><AttachmentsButton target={{ bucket: 'documents', table: 'receipts', id: r.id }} paths={r.attachment_paths} canEdit={false} label="Ảnh / tệp phiếu thu" /><Money value={r.amount} /></td>
               </tr>
             ))}
           </tbody>

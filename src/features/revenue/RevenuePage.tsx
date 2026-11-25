@@ -1,5 +1,6 @@
 // Tab DOANH THU (PAGES.doanhthu / MP.doanhthu): HỢP ĐỒNG CHÍNH (form bên trái + danh sách, hạng mục, copy / dán khối lượng)
 // và THU TIỀN (form phiếu thu, tiến độ thu theo công trình, sổ thu, ảnh phiếu thu). Phiếu thu tự động từ quyết toán chỉ xem.
+import { AttachmentList, AttachmentsButton } from '@/features/attachments/Attachments';
 import { useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -82,6 +83,7 @@ function ContractsTab({ ctx }: { ctx: Ctx }) {
         </div>
         <div className="col-span-2 text-[13px] text-muted">Tổng hợp đồng: <b className="num text-fg" data-testid="hdc-total">{formatMoney(total)}</b> đ{draft.id ? <Pill tone="accent">Đang sửa hợp đồng đã có</Pill> : null}</div>
       </fieldset>
+      {existing ? <div className="px-4 pb-3"><AttachmentList target={{ bucket: 'documents', table: 'main_contracts', id: existing.id }} paths={existing.attachment_paths} canEdit={editable} label="Ảnh / tệp hợp đồng" /></div> : null}
       {editable ? (
         <div className="flex flex-wrap justify-end gap-2 border-t border-line-soft px-4 py-3">
           {draft.id ? <Button variant="ghost-danger" onClick={() => setConfirm(true)}><Icon name="delete" />Xóa</Button> : null}
@@ -104,7 +106,7 @@ function ContractsTab({ ctx }: { ctx: Ctx }) {
         <div className="grid gap-2 p-2">
           {rows.map((c) => (
             <MobileCard key={c.id} onClick={() => open(c)}>
-              <MobileRow><b className="truncate">{data.projectName(c.project_id)}</b><b className="num">{formatShortMoney(mainContractTotal(c))}</b></MobileRow>
+              <MobileRow><b className="truncate">{data.projectName(c.project_id)}</b><span className="flex items-center gap-1"><AttachmentsButton target={{ bucket: 'documents', table: 'main_contracts', id: c.id }} paths={c.attachment_paths} canEdit={canEditRow(access, 'revenue', c.created_by)} label="Ảnh / tệp hợp đồng" /><b className="num">{formatShortMoney(mainContractTotal(c))}</b></span></MobileRow>
               <MobileRow meta><span className="truncate">{formatDate(c.date)} · {data.ownerOf(c.project_id) || '—'}</span></MobileRow>
             </MobileCard>
           ))}
@@ -117,7 +119,7 @@ function ContractsTab({ ctx }: { ctx: Ctx }) {
               {rows.map((c) => (
                 <tr key={c.id} className="cursor-pointer" tabIndex={0} onClick={() => open(c)} onKeyDown={(e) => { if (e.key === 'Enter') open(c); }}>
                   <td className="num whitespace-nowrap">{formatDate(c.date)}</td>
-                  <td className="max-w-[280px] truncate">{data.projectName(c.project_id)}</td>
+                  <td className="max-w-[280px] truncate">{data.projectName(c.project_id)}<AttachmentsButton target={{ bucket: 'documents', table: 'main_contracts', id: c.id }} paths={c.attachment_paths} canEdit={canEditRow(access, 'revenue', c.created_by)} label="Ảnh / tệp hợp đồng" /></td>
                   <td className="num text-right">{formatMoney(c.value)}</td>
                   <td className="num text-right">{c.extra_value ? formatMoney(c.extra_value) : <Dash />}</td>
                   <td className="num text-right"><b>{formatMoney(mainContractTotal(c))}</b></td>
@@ -220,6 +222,7 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
         <Field label="Số tiền" className="col-span-2"><MoneyInput aria-label="Số tiền thu" value={draft.amount} onChange={(v) => set('amount', v)} /></Field>
         <Field label="Ghi chú" className="col-span-2"><Input aria-label="Ghi chú" value={draft.note} onChange={(e) => set('note', e.target.value)} placeholder="Đợt 3 — xong sàn tầng 2" /></Field>
         {after ? <div className="col-span-2 text-[13px] text-muted">Còn phải thu công trình này sau phiếu: <b className={`num ${after.receivable < 0 ? 'text-warn' : 'text-fg'}`} data-testid="thu-after">{formatMoney(after.receivable)}</b>{after.receivable < 0 ? ' (thu vượt giá trị hợp đồng)' : ''}</div> : null}
+        {draft.id ? <div className="col-span-2"><AttachmentList target={{ bucket: 'documents', table: 'receipts', id: draft.id }} paths={data.receipts.find((r) => r.id === draft.id)?.attachment_paths} canEdit label="Ảnh / tệp phiếu thu" /></div> : null}
       </div>
       <div className="flex flex-wrap justify-end gap-2 border-t border-line-soft px-4 py-3">
         {draft.id ? <Button variant="ghost-danger" onClick={() => setConfirm(true)}><Icon name="delete" />Xóa</Button> : null}
@@ -254,7 +257,7 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
         <div className="grid gap-2">
           {ledger.slice(0, 20).map((r) => (
             <MobileCard key={r.id} onClick={() => open(r)}>
-              <MobileRow><b className="num">{formatMoney(r.amount)}</b><span>{kindPill(r)}</span></MobileRow>
+              <MobileRow><b className="num">{formatMoney(r.amount)}</b><span className="flex items-center gap-1"><AttachmentsButton target={{ bucket: 'documents', table: 'receipts', id: r.id }} paths={r.attachment_paths} canEdit={!r.is_auto && canEditRow(access, 'revenue', r.created_by)} label="Ảnh / tệp phiếu thu" />{kindPill(r)}</span></MobileRow>
               <MobileRow meta><span className="truncate">{formatDate(r.date)} · {data.projectName(r.project_id)}{r.note ? ` · ${r.note}` : ''}</span></MobileRow>
             </MobileCard>
           ))}
@@ -304,7 +307,7 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
                         <td className="max-w-[220px] truncate">{data.projectName(r.project_id)}</td>
                         <td className="whitespace-nowrap">{kindPill(r)}</td>
                         <td className="max-w-[200px] truncate text-muted" title={r.note ?? ''}>{r.note}</td>
-                        <td className="num text-right whitespace-nowrap">{formatMoney(r.amount)}</td>
+                        <td className="num text-right whitespace-nowrap"><AttachmentsButton target={{ bucket: 'documents', table: 'receipts', id: r.id }} paths={r.attachment_paths} canEdit={!r.is_auto && canEditRow(access, 'revenue', r.created_by)} label="Ảnh / tệp phiếu thu" />{formatMoney(r.amount)}</td>
                       </tr>
                     ))}
                   </tbody>

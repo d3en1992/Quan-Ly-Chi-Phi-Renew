@@ -1,5 +1,8 @@
 // Nút AI → THU TIỀN KHÁCH (giọng nói "anh Nhật đưa 100 triệu" hoặc ảnh chuyển khoản khách gửi): điền sẵn phiếu thu.
 // Chưa rõ chuyển khoản hay tiền mặt → ô Hình thức viền vàng, phải chọn mới lưu. Anh kiểm tra rồi mới lưu.
+import { useAccess } from '@/app/auth';
+import { removeDoc, uploadDoc, type Doc } from '@/features/attachments/api';
+import { ScanDocPreview } from '@/features/attachments/Attachments';
 import { useMemo, useState } from 'react';
 import type { PayMethod, ReceiptScan } from '@shared/scan';
 import { Segmented } from '@/components/ui/data';
@@ -14,11 +17,14 @@ import { today } from '@/features/expenses/shared';
 import { RECEIPT_KIND, useRevData, useSaveReceipt, type ReceiptKind } from '@/features/revenue/api';
 import { METHOD_OPTS, UNSURE } from './shared';
 
-type Props = { scan: ReceiptScan; onDone: () => void; onRetake: () => void };
+type Props = { scan: ReceiptScan; doc: Doc | null; onDone: () => void; onRetake: () => void };
 
 const KIND_OPTS = (['advance', 'stage', 'settlement', 'other'] as const).map((k) => ({ value: k, label: RECEIPT_KIND[k]?.label ?? k }));
 
-export function ScanReceipt({ scan, onDone, onRetake }: Props) {
+export function ScanReceipt({ scan, doc, onDone, onRetake }: Props) {
+  const access = useAccess();
+  const [keep, setKeep] = useState(true);
+  const [busy, setBusy] = useState(false);
   const toast = useToast();
   const data = useRevData();
   const save = useSaveReceipt();
@@ -41,14 +47,21 @@ export function ScanReceipt({ scan, onDone, onRetake }: Props) {
   const p = findByName(project, d.projectOptions);
   const unsure = (k: string) => (scan.low_confidence.includes(k) ? UNSURE : undefined);
 
-  const submit = () => {
+  const submit = async () => {
     if (!p) { toast('Chọn công trình.', 'error'); return; }
     if (amount <= 0) { toast('Nhập số tiền.', 'error'); return; }
     if (!method) { toast('Chọn chuyển khoản hay tiền mặt.', 'error'); return; }
-    save.mutate({ id: null, projectId: p.id, date, amount, kind, note, method }, {
-      onSuccess: () => { toast(`Đã lưu phiếu thu ${formatMoney(amount)} · ${p.name}`); onDone(); },
-      onError: (e) => toast(`Chưa lưu được: ${e.message}`, 'error'),
-    });
+    setBusy(true);
+    let path = '';
+    try {
+      if (doc && keep) path = await uploadDoc('documents', access.profile.company_id, doc);
+      await save.mutateAsync({ id: null, projectId: p.id, date, amount, kind, note, method, attachmentPaths: path ? [path] : [] });
+      toast(`Đã lưu phiếu thu ${formatMoney(amount)} · ${p.name}`);
+      onDone();
+    } catch (e) {
+      if (path) await removeDoc('documents', path);
+      toast(`Chưa lưu được: ${e instanceof Error ? e.message : String(e)}`, 'error');
+    } finally { setBusy(false); }
   };
 
   return (
@@ -59,6 +72,7 @@ export function ScanReceipt({ scan, onDone, onRetake }: Props) {
         {scan.customer_text ? <Pill>Khách: {scan.customer_match || scan.customer_text}</Pill> : null}
       </header>
       <div className="grid gap-3 p-4" data-testid="scan-receipt">
+        <ScanDocPreview doc={doc} keep={keep} setKeep={setKeep} label="Lưu ảnh / tệp kèm phiếu thu" />
         <div className="grid gap-2.5 sm:grid-cols-2">
           <Field label="Công trình *" className="sm:col-span-2">
             <Combo aria-label="Công trình" value={project} onChange={setProject} items={d.projectOptions} groupLabel="Công trình" className={p ? unsure('project_match') : UNSURE} />
@@ -80,7 +94,7 @@ export function ScanReceipt({ scan, onDone, onRetake }: Props) {
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           <Button onClick={onRetake}><Icon name="close" />Bỏ</Button>
-          <Button variant="primary" data-testid="receipt-save" disabled={save.isPending} onClick={submit}><Icon name="save" />{save.isPending ? 'Đang lưu…' : 'Lưu phiếu thu'}</Button>
+          <Button variant="primary" data-testid="receipt-save" disabled={busy} onClick={() => void submit()}><Icon name="save" />{busy ? 'Đang lưu…' : 'Lưu phiếu thu'}</Button>
         </div>
       </div>
     </Card>

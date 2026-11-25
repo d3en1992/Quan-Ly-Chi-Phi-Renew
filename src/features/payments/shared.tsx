@@ -1,5 +1,6 @@
 // Mảnh dùng chung của Chi Trả TP/NCC và Công Nợ Phải Trả: số liệu suy ra (công nợ theo cặp, theo NCC, theo hóa đơn),
 // bảng trượt ghi / sửa MỘT phiếu chi (có "Trả cho công trình…" và tích từng hóa đơn — mục 4J), bảng hạng mục hợp đồng, ảnh phiếu chi.
+import { AttachmentList } from '@/features/attachments/Attachments';
 import { useMemo, useState } from 'react';
 import type { MyAccess } from '@/app/auth';
 import { Button, Icon } from '@/components/ui/button';
@@ -331,6 +332,7 @@ export function PaymentSheet({ draft, setDraft, data, calc, readOnly, nccOnly, o
         <Field label="Số tiền"><MoneyInput aria-label="Số tiền" value={draft.amount} onChange={(v) => set('amount', v)} /></Field>
         <Field label="Nội dung"><Input aria-label="Nội dung" value={draft.note} onChange={(e) => set('note', e.target.value)} placeholder={ncc ? 'Trả tiền vật tư đợt…' : 'Ứng đợt 2, thanh toán đợt cuối…'} /></Field>
       </fieldset>
+      {editing ? <AttachmentList target={{ bucket: 'documents', table: 'payments', id: editing.id }} paths={editing.attachment_paths} canEdit={!readOnly} label="Ảnh / tệp phiếu chi" /> : null}
       <ConfirmDialog open={confirmDel} onOpenChange={setConfirmDel} title="Xóa phiếu chi?" danger busy={del.isPending} confirmLabel="Xóa"
         message={<>Xóa phiếu chi {formatMoney(draft.amount)} ngày {formatDate(draft.date)} của {draft.party}. Phiếu vào Thùng rác{ncc ? '; tiền các phiếu còn lại sẽ được chia lại' : ''}.</>}
         onConfirm={() => { if (!draft.id) return; del.mutate({ id: draft.id, kind: draft.kind }, { onSuccess: () => { toast('Đã xóa phiếu chi'); onClose(); }, onError: (e) => { setConfirmDel(false); toast(`Chưa xóa được: ${e.message}`, 'error'); } }); }} />

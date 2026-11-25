@@ -125,7 +125,7 @@ test('Chụp hóa đơn chữ mờ (giả lập) → tổng lệch, NCC Mua nợ
   expect(s.address ?? '').not.toBe('');
 });
 
-test('Chụp CCCD ở Danh Bạ (giả lập) → tạo công nhân mới, chỉ lưu chữ', async ({ page }) => {
+test('Chụp CCCD ở Danh Bạ (giả lập) → tạo công nhân mới', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await login(page, 'e2e.admin');
   await page.goto('/danh-ba');
@@ -144,7 +144,7 @@ test('Chụp CCCD ở Danh Bạ (giả lập) → tạo công nhân mới, chỉ
   expect(w.full_name).toBe('NGUYỄN THỊ HIỀN');
   const p = (await admin.from('contact_private').select('id_number, hometown, date_of_birth').eq('worker_id', w.id).single()).data!;
   expect(p).toMatchObject({ id_number: '079188000123', hometown: 'Bến Tre', date_of_birth: '1988-04-12' });
-  // Không có ảnh CCCD nào trong kho
+  // Ảnh CCCD chỉ ở kho riêng id-cards (từ 25/11/2026), không lẫn vào kho receipts
   const list = await admin.storage.from('receipts').list(COMPANY, { limit: 100 });
   expect((list.data ?? []).every((f) => !/cccd/i.test(f.name))).toBe(true);
 });

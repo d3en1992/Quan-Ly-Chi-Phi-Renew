@@ -1,6 +1,7 @@
 // Tab CÔNG NỢ PHẢI TRẢ (PAGES.congno / MP.congno — công ty nợ thầu phụ, nhà cung cấp; mục 4L):
 // THẦU PHỤ (hợp đồng thầu phụ, master–detail, trả nhanh) · NHÀ CUNG CẤP (sổ nợ theo NCC + Đối chiếu, mục 4J).
 // (Tất toán đã bỏ 18/11/2026: không ảnh hưởng số liệu; trả nốt dùng "Trả thêm", xem đã xong dùng lọc "Đã trả đủ".)
+import { AttachmentsButton } from '@/features/attachments/Attachments';
 import { Fragment, useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -127,11 +128,12 @@ function ContractDetail({ ctx, h, debt, onEdit }: { ctx: Ctx; h: Subcontract; de
         {list.length && ctx.phone ? (
           <MiniList testId="hdtp-history" items={list.map((p) => ({
             key: p.id, title: formatDate(p.date), value: formatMoney(p.amount),
+            trail: <AttachmentsButton target={{ bucket: 'documents', table: 'payments', id: p.id }} paths={p.attachment_paths} canEdit={canEditRow(access, 'payments', p.created_by)} label="Ảnh / tệp phiếu chi" />,
             sub: <>{p.note}{!p.subcontract_id ? <span className="text-faint"> · chung cặp</span> : null}</>,
           }))} footer={list.length > 1 ? { label: `${list.length} lần trả`, value: formatMoney(sumOf(list, (p) => p.amount)) } : undefined} />
         ) : list.length ? (
           <table><thead><tr><th>Ngày</th><th>Nội dung</th><th className="!text-right">Số tiền</th></tr></thead>
-            <tbody>{list.map((p) => <tr key={p.id}><td className="num whitespace-nowrap">{formatDate(p.date)}</td><td className="text-muted">{p.note}{!p.subcontract_id ? <small className="ml-1 text-faint">(chung cặp)</small> : null}</td><td className="num text-right">{formatMoney(p.amount)}</td></tr>)}</tbody></table>
+            <tbody>{list.map((p) => <tr key={p.id}><td className="num whitespace-nowrap">{formatDate(p.date)}</td><td className="text-muted">{p.note}{!p.subcontract_id ? <small className="ml-1 text-faint">(chung cặp)</small> : null}</td><td className="num text-right whitespace-nowrap"><AttachmentsButton target={{ bucket: 'documents', table: 'payments', id: p.id }} paths={p.attachment_paths} canEdit={canEditRow(access, 'payments', p.created_by)} label="Ảnh / tệp phiếu chi" />{formatMoney(p.amount)}</td></tr>)}</tbody></table>
         ) : <span className="text-[13px] text-muted">Chưa trả lần nào</span>}
         {h.items.length ? <div className="mt-2 text-xs text-muted">Hạng mục: {h.items.map((i) => `${i.name} (${String(i.sl).replace('.', ',')} ${i.donVi})`).join(' · ')}</div> : null}
         <div className="mt-2 flex flex-wrap gap-2">
@@ -250,6 +252,7 @@ function ContractsTab({ ctx }: { ctx: Ctx }) {
 // ───────────────────────── NHÀ CUNG CẤP ─────────────────────────
 function StatementSheet({ ctx, supplierId, onClose, onPay }: { ctx: Ctx; supplierId: string; onClose: () => void; onPay: () => void }) {
   const { data, calc } = ctx;
+  const access = useAccess();
   const name = data.supplierName(supplierId);
   const invoices = useMemo(() => data.credits.filter((c) => c.supplier_id === supplierId), [data, supplierId]);
   const payments = useMemo(() => data.payments.filter((p) => p.supplier_id === supplierId).sort((a, b) => a.date.localeCompare(b.date)), [data, supplierId]);
@@ -305,7 +308,7 @@ function StatementSheet({ ctx, supplierId, onClose, onPay }: { ctx: Ctx; supplie
         <MiniList items={payments.map((p) => {
           const rest = p.amount - (allocated.get(p.id) ?? 0);
           return {
-            key: p.id, title: formatDate(p.date), value: formatMoney(p.amount),
+            key: p.id, title: formatDate(p.date), value: formatMoney(p.amount), trail: <AttachmentsButton target={{ bucket: 'documents', table: 'payments', id: p.id }} paths={p.attachment_paths} canEdit={canEditRow(access, 'payments', p.created_by)} label="Ảnh / tệp phiếu chi" />,
             sub: [p.allocation_mode === 'project' ? data.projectName(p.project_id) : MODE_LABEL[p.allocation_mode], p.note].filter(Boolean).join(' · '),
             valueSub: rest > 0 ? <span className="text-warn">chưa chia {formatMoney(rest)}</span> : undefined,
           };
@@ -322,7 +325,7 @@ function StatementSheet({ ctx, supplierId, onClose, onPay }: { ctx: Ctx; supplie
                     <td className="num whitespace-nowrap">{formatDate(p.date)}</td>
                     <td className="max-w-[170px] truncate">{p.allocation_mode === 'project' ? data.projectName(p.project_id) : MODE_LABEL[p.allocation_mode]}</td>
                     <td className="max-w-[150px] truncate text-muted">{p.note}</td>
-                    <td className="num text-right">{formatMoney(p.amount)}</td>
+                    <td className="num text-right whitespace-nowrap"><AttachmentsButton target={{ bucket: 'documents', table: 'payments', id: p.id }} paths={p.attachment_paths} canEdit={canEditRow(access, 'payments', p.created_by)} label="Ảnh / tệp phiếu chi" />{formatMoney(p.amount)}</td>
                     <td className="num text-right">{rest > 0 ? <span className="text-warn">{formatMoney(rest)}</span> : <Dash />}</td>
                   </tr>
                 );
