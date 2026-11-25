@@ -3,14 +3,14 @@
 // Không import gì để chạy được ở cả hai nơi.
 //
 // Đầu vào: ảnh / PDF / chữ (Excel đã đổi thành chữ ở trình duyệt) / ghi âm giọng nói + ghi chú. AI tự nhận 1 trong các loại:
-// hóa đơn (chi tiết, hoặc sổ cộng tiền), tiền ứng thầu phụ, thu tiền khách, hợp đồng / dự toán, danh sách vật tư cần mua, phiếu chấm công,
+// hóa đơn (chi tiết, hoặc sổ cộng tiền), tiền ứng thầu phụ, thu tiền khách, hợp đồng / dự toán, hợp đồng thầu phụ, phiếu chấm công,
 // LƯU THÔNG TIN: CCCD / danh thiếp (id_card → Danh Bạ: khách hàng, công nhân, thầu phụ, nhà cung cấp, nhân viên) và ảnh bảng hiệu cửa hàng
 // (shop → Danh Bạ › Cửa hàng). Nút "Lưu thông tin" = kind 'save_info' (AI chọn giữa id_card và shop).
 
-export type ScanKind = 'invoice' | 'advance' | 'receipt' | 'contract' | 'material_list' | 'timesheet' | 'id_card' | 'shop';
+export type ScanKind = 'invoice' | 'advance' | 'receipt' | 'contract' | 'subcontract' | 'timesheet' | 'id_card' | 'shop';
 export type ScanRequestKind = 'auto' | 'save_info' | ScanKind;
 /** Các loại nút AI tự nhận (khi "AI tự nhận") — mỗi loại còn lọc theo quyền */
-export const AUTO_KINDS: readonly ScanKind[] = ['invoice', 'advance', 'receipt', 'contract', 'material_list', 'timesheet', 'id_card', 'shop'];
+export const AUTO_KINDS: readonly ScanKind[] = ['invoice', 'advance', 'receipt', 'contract', 'subcontract', 'timesheet', 'id_card', 'shop'];
 /** Nút "Lưu thông tin": giấy tờ / danh thiếp người, hoặc bảng hiệu cửa hàng */
 export const SAVE_INFO_KINDS: readonly ScanKind[] = ['id_card', 'shop'];
 
@@ -89,16 +89,17 @@ export type ContractScan = {
   is_estimate: boolean;
   low_confidence: string[];
 };
-export type MaterialItem = { name: string; quantity: number; unit: string; note: string };
-/** Danh sách vật tư cần mua (tin nhắn Zalo, giấy ghi tay) → bảng để copy gửi nhà cung cấp; KHÔNG lưu vào chi phí */
-export type MaterialListScan = {
-  title: string;
-  /** NCC hợp với loại hàng (vd cốp pha → cửa hàng cốp pha) nếu có trong danh mục */
-  supplier_match: string;
+export type SubcontractItem = { name: string; unit: string; quantity: number; unit_price: number };
+/** Hợp đồng / báo giá GIAO KHOÁN cho thầu phụ */
+export type SubcontractScan = {
+  date: string; value: number;
+  /** Tên thầu phụ như đọc / nghe được */
+  subcontractor_text: string;
+  subcontractor_match: string;
   project_match: string;
-  /** Ghi chú giao hàng ("Giao qua chùa") */
-  delivery_note: string;
-  items: MaterialItem[];
+  description: string;
+  items: SubcontractItem[];
+  low_confidence: string[];
 };
 /** 1 dòng công nhân trên phiếu chấm công tuần */
 export type TimesheetRowScan = {
@@ -170,7 +171,7 @@ export type ScanResult =
   | { kind: 'advance'; advance: AdvanceScan }
   | { kind: 'receipt'; receipt: ReceiptScan }
   | { kind: 'contract'; contract: ContractScan }
-  | { kind: 'material_list'; material_list: MaterialListScan }
+  | { kind: 'subcontract'; subcontract: SubcontractScan }
   | { kind: 'timesheet'; timesheet: TimesheetScan }
   | { kind: 'id_card'; id_card: IdCardScan }
   | { kind: 'shop'; shop: ShopScan };
@@ -204,6 +205,8 @@ export type ScanContext = {
   worker_hints?: Record<string, string>;
   /** Chấm công ~120 ngày gần nhất — để đoán công trình theo tổ thợ (guessProjectFromCrew) */
   recent_timesheets?: TimesheetHistoryRow[];
+  /** Tên hay ghi trên phiếu (foldVi) → tên công nhân: { 'son heo': 'SƠN MT' } */
+  worker_aliases?: Record<string, string>;
   /** Hôm nay (YYYY-MM-DD, giờ VN) — để AI đoán năm khi phiếu ghi thiếu, hiểu "hôm nay / hôm qua" */
   today?: string;
 };
@@ -219,7 +222,7 @@ const KIND_TEXT: Record<ScanRequestKind, string> = {
   advance: 'Đây là TIỀN ỨNG / thanh toán cho THẦU PHỤ (advance).',
   receipt: 'Đây là THU TIỀN của KHÁCH HÀNG (receipt).',
   contract: 'Đây là HỢP ĐỒNG thi công hoặc DỰ TOÁN công trình (contract).',
-  material_list: 'Đây là DANH SÁCH VẬT TƯ CẦN MUA (material_list).',
+  subcontract: 'Đây là HỢP ĐỒNG / báo giá GIAO KHOÁN cho THẦU PHỤ (subcontract).',
   timesheet: 'Đây là PHIẾU CHẤM CÔNG tuần của tổ thợ (timesheet).',
   id_card: 'Đây là CĂN CƯỚC CÔNG DÂN / danh thiếp / thông tin một NGƯỜI để lưu danh bạ (id_card). Đọc cả hai mặt nếu có.',
   shop: 'Đây là ẢNH MẶT TIỀN / BẢNG HIỆU CỬA HÀNG vật tư để lưu danh bạ cửa hàng (shop).',
@@ -232,7 +235,7 @@ const KIND_RULES: Record<ScanKind, string> = {
   advance: '- "advance": tiền ỨNG / TRẢ cho THẦU PHỤ hoặc NHÀ CUNG CẤP (vd "ứng Hà điện nước 5 triệu", "ứng Đỏ 6tr", "trả sắt thép An Phú 50 triệu", "nhà cung cấp An Phú ứng 50 triệu"), hoặc ẢNH CHUYỂN KHOẢN ngân hàng mà người NHẬN là thầu phụ / cửa hàng. KHÔNG phải hóa đơn mua hàng (không có tên hàng, số lượng).',
   receipt: '- "receipt": KHÁCH HÀNG / chủ nhà đưa tiền / chuyển tiền cho công ty (vd "anh Nhật đưa 100 triệu", "khách chuyển 200tr"), hoặc ảnh chuyển khoản mà người GỬI là khách hàng.',
   contract: '- "contract": hợp đồng thi công với chủ nhà, hoặc bảng DỰ TOÁN công trình (có diện tích Móng, Trệt, Lầu, Mái… và đơn giá / m²).',
-  material_list: '- "material_list": danh sách vật tư CẦN MUA do thợ / cai gửi (tin nhắn Zalo, chữ viết trên ván, giấy), chưa có giá tiền.',
+  subcontract: '- "subcontract": hợp đồng / báo giá GIAO KHOÁN cho thầu phụ (điện nước, sơn, sắt, cốp pha, thạch cao, nhôm kính, ép cọc…): công ty Nguyễn Hữu là bên GIAO (bên A), thầu phụ là bên NHẬN (bên B), có hạng mục / khối lượng / đơn giá. Công ty Nguyễn Hữu là bên NHẬN thi công cho chủ nhà thì là contract.',
   timesheet: '- "timesheet": PHIẾU CHẤM CÔNG tuần (mẫu in có logo NH, bảng TT | TÊN | T/P | CN | T2 … T7 | TIỀN CÔNG, viết tay tên thợ và dấu x / số 1 / số 0), có thể kèm phần GHI CHÚ (MUA ĐỒ) hoặc trang SỔ GHI NHẬT KÝ CÔNG TRÌNH ghi tiền mua lẻ. Dù có ghi tiền mua đồ vẫn là timesheet, KHÔNG phải invoice.',
   id_card: '- "id_card": ảnh CĂN CƯỚC CÔNG DÂN / CMND, DANH THIẾP, hoặc lời nhắn "lưu thông tin / lưu số" của một NGƯỜI (khách hàng, công nhân, thầu phụ, nhà cung cấp, nhân viên) — không có tiền.',
   shop: '- "shop": ảnh chụp MẶT TIỀN / BẢNG HIỆU một cửa hàng (vật liệu xây dựng, điện nước, sắt thép, sơn…) để lưu lại địa chỉ — KHÔNG phải hóa đơn (không có bảng hàng + số tiền).',
@@ -289,12 +292,15 @@ const TPL: Record<ScanKind, string> = {
   "is_estimate": false,        // true nếu là bảng dự toán (chưa phải hợp đồng ký)
   "low_confidence": []
  }`,
-  material_list: ` "material_list": {
-  "title": "",                 // tiêu đề ngắn, vd "Vật tư điện" / "Ván cốp pha"
-  "supplier_match": "",        // NCC hợp với loại hàng trong DANH MỤC (vd cốp pha → cửa hàng cốp pha), không chắc thì ""
-  "project_match": "",
-  "delivery_note": "",         // ghi chú giao hàng nếu có (vd "Giao qua chùa")
-  "items": [{"name": "", "quantity": 0, "unit": "", "note": ""}]
+  subcontract: ` "subcontract": {
+  "date": "YYYY-MM-DD",
+  "value": 0,                  // tổng giá trị hợp đồng, đồng
+  "subcontractor_text": "",    // LUÔN chép tên bên nhận khoán như đọc / nghe được
+  "subcontractor_match": "",   // tên trong DANH MỤC Thầu phụ nếu cùng người, không chắc thì ""
+  "project_match": "",         // tên công trình trong DANH MỤC
+  "description": "",           // nội dung ngắn (vd "Nhân công sơn nước")
+  "items": [{"name": "", "unit": "", "quantity": 0, "unit_price": 0}],  // từng hạng mục, bỏ dòng TỔNG
+  "low_confidence": []
  }`,
   timesheet: ` "timesheet": {
   "week_start": "",            // YYYY-MM-DD của CHỦ NHẬT đầu tuần nếu phiếu có ghi ngày / tuần; không ghi thì ""
@@ -390,13 +396,11 @@ const CONTRACT_RULES = [
   '- Số điện thoại chủ nhà chỉ chữ số. Tên gọi ngắn (customer_name) kiểu "A Nhật", "Cô Sáu", "C Hương".',
 ];
 
-const MATERIAL_RULES = [
-  'DANH SÁCH VẬT TƯ:',
-  '- Chép ĐÚNG số lượng người ta ghi, mỗi loại / mỗi quy cách 1 dòng; tên vật tư viết rõ ràng, có dấu, đủ quy cách để cửa hàng soạn hàng.',
-  '- Tin nhắn sửa lại ở sau ("Đèn ốp trần 24w: 6 cái thôi nha") thay cho số lượng trước đó của cùng món. Tin nhắn giao hàng ("Giao qua chùa") ghi vào delivery_note, không thành dòng.',
-  '- Nhiều màu ghi chung ("Dây 1.5: 4 cuộn (xanh, đỏ, vàng, đen)"): số cuộn bằng số màu thì tách mỗi màu 1 dòng 1 cuộn (Dây điện 1.5 màu xanh – 1 cuộn …); không bằng thì giữ 1 dòng và ghi màu vào note.',
-  '- Ký hiệu trên ván / giấy của cai: "45:8T" / "45 8T" = Ván cốp pha 45 cm – 8 tấm; "T" = tấm, "c" = cây, "b" = bao. Số đứng trước dấu ":" là bề rộng ván (cm), số sau là số lượng. Ghi chú của người dùng nói "cốp pha" / "copha" thì đây là ván cốp pha.',
-  '- Viết tắt điện nước: "công tắt" = công tắc, "ổ cắm đôi 2 chấu", "rcbo" = RCBO, "đèn 6 tấc" = đèn tuýp 0,6 m. Giữ nguyên thông số (24w, 32A, 2P, m36…).',
+const SUBCONTRACT_RULES = [
+  'HỢP ĐỒNG THẦU PHỤ:',
+  '- value = tổng giá trị hợp đồng (dòng tổng cuối, đã gồm thuế nếu có). items: mỗi hạng mục 1 dòng (tên, đơn vị, khối lượng, đơn giá), không ghi dòng TỔNG / VAT.',
+  '- Không ghi tổng mà có khối lượng × đơn giá thì value = tổng các hạng mục. Không có số tiền nào thì value = 0 và hỏi lại trong "question".',
+  '- Ghi chú hay gọi thầu phụ kèm lĩnh vực: "Hà điện nước" = thầu phụ Hà (điện nước).',
 ];
 
 const TIMESHEET_RULES = [
@@ -405,7 +409,7 @@ const TIMESHEET_RULES = [
   '- days luôn đủ 7 số theo thứ tự CN, T2, T3, T4, T5, T6, T7. Dóng ô theo TIÊU ĐỀ CỘT in trên phiếu — nhiều phiếu bỏ trống cột CN (CN = 0), đừng dồn các dấu sang trái.',
   '- Dấu "x", "X", dấu tích, số "1" = 1 công. Số "0", chữ "o", vòng tròn, ô TÔ ĐEN / gạch bỏ (ghi nhầm), ô trống = 0. "0,5", "1/2", dấu "/" (nửa chữ x) = 0.5. Số lẻ "1,1" "1,2" "1,3" "1,30" (1 công + tăng ca) → chép đúng số: 1.1, 1.2, 1.3, 1.3.',
   '- Ô nào dấu mờ, viết đè, khó phân biệt x với 0 → ghi tên cột đó ("T5") vào low_confidence của dòng.',
-  '- worker_match: so tên viết tay với DANH MỤC Công nhân (không phân biệt hoa thường). Nhiều người cùng tên (vd "SƠN", "SƠN HEO") thì chọn người gần đây làm CÙNG công trình / cùng tổ với những người khác trên phiếu (xem phần trong ngoặc); vẫn không chắc thì "".',
+  '- worker_match: so tên viết tay với DANH MỤC Công nhân (không phân biệt hoa thường). Cai hay ghi TÊN NGẮN ("Sơn" thay cho "SƠN MT", "Thanh" thay cho "THANH L"): chọn người gần đây làm CÙNG công trình / cùng tổ với những người khác trên phiếu (xem phần trong ngoặc); không chắc thì "". Ô name luôn chép ĐÚNG như viết trên phiếu.',
   '- purchases: mọi khoản MUA ĐỒ / trả tiền ghi ở phần GHI CHÚ (MUA ĐỒ), ở các dòng trống trong bảng, cột TIỀN CÔNG hoặc trang nhật ký: name = tên món (vd "Nước uống", "Đinh thép"), amount = số tiền. "42K" = 42000, "210K" = 210000, "80.000" = 80000, "190000" = 190000. Dòng TỔNG (vd "Tổng: 565K", số dưới gạch ngang) KHÔNG phải một khoản — ghi vào purchase_total. KHÔNG tự cộng.',
   '- Câu không có tiền ("Tăng ca bốc ngói 30 phút", "Ông Hoàng quận 12 làm chủ nhật 3 công") ghi vào note.',
   '- project_match: theo ghi chú người dùng; không có thì theo công trình mà cai / tổ thợ trên phiếu gần đây chấm công (xem phần trong ngoặc ở DANH MỤC Công nhân).',
@@ -444,7 +448,7 @@ export function buildPrompt(kind: ScanRequestKind, note: string, ctx: ScanContex
     has('invoice') ? INVOICE_RULES.join('\n') : '',
     has('advance') || has('receipt') ? MONEY_RULES.join('\n') : '',
     has('contract') ? CONTRACT_RULES.join('\n') : '',
-    has('material_list') ? MATERIAL_RULES.join('\n') : '',
+    has('subcontract') ? SUBCONTRACT_RULES.join('\n') : '',
     has('timesheet') ? TIMESHEET_RULES.join('\n') : '',
     has('id_card') ? INFO_RULES.join('\n') : '',
     has('shop') ? SHOP_RULES.join('\n') : '',
@@ -463,10 +467,10 @@ export function buildPrompt(kind: ScanRequestKind, note: string, ctx: ScanContex
     '',
     'DANH MỤC',
     list('Công trình', ctx.projects, ctx.project_hints),
-    has('invoice') || has('material_list') ? list('Loại chi phí', ctx.expense_types) : '',
-    has('invoice') || has('material_list') || has('advance') || has('shop') || has('id_card') ? list('Nhà cung cấp', ctx.suppliers, ctx.supplier_hints) : '',
+    has('invoice') ? list('Loại chi phí', ctx.expense_types) : '',
+    has('invoice') || has('advance') || has('shop') || has('id_card') ? list('Nhà cung cấp', ctx.suppliers, ctx.supplier_hints) : '',
     has('invoice') ? list('Người mua', ctx.buyers) : '',
-    has('advance') || has('id_card') ? list('Thầu phụ', ctx.subcontractors, ctx.subcontractor_hints) : '',
+    has('advance') || has('subcontract') || has('id_card') ? list('Thầu phụ', ctx.subcontractors, ctx.subcontractor_hints) : '',
     has('receipt') || has('contract') || has('id_card') ? list('Khách hàng', ctx.customers) : '',
     has('timesheet') ? list('Công nhân', ctx.workers, ctx.worker_hints) : '',
     has('id_card') ? [has('timesheet') ? '' : list('Công nhân', ctx.workers), list('Nhân viên', ctx.employees)].join('\n') : '',
@@ -594,7 +598,7 @@ function normInvoice(i: Obj, ctx: ScanContext): InvoiceScan {
   };
 }
 
-const ALL_KINDS: readonly ScanKind[] = ['invoice', 'advance', 'receipt', 'contract', 'material_list', 'timesheet', 'id_card', 'shop'];
+const ALL_KINDS: readonly ScanKind[] = ['invoice', 'advance', 'receipt', 'contract', 'subcontract', 'timesheet', 'id_card', 'shop'];
 const CONTACT_KINDS = ['worker', 'customer', 'employee', 'subcontractor', 'supplier'];
 /** Gạch đầu dòng: bỏ dấu "-", "•", "*" ở đầu, bỏ dòng trùng / rỗng */
 export function bulletLines(v: unknown, max = 20): string[] {
@@ -747,14 +751,19 @@ export function normalizeScan(raw: unknown, ctx: ScanContext, fallbackKind: Scan
     };
   }
   if (kind === 'timesheet') return { kind, timesheet: normTimesheet(part('timesheet'), ctx) };
-  if (kind === 'material_list') {
-    const m = part('material_list');
-    const items = Array.isArray(m.items) ? m.items.filter(isObj) : [];
+  if (kind === 'subcontract') {
+    const c = part('subcontract');
+    const items = Array.isArray(c.items) ? c.items.filter(isObj) : [];
+    const subs = ctx.subcontractors ?? [];
+    const text = str(c.subcontractor_text).replace(/\s+/g, ' ').slice(0, 120);
     return {
-      kind, material_list: {
-        title: str(m.title), supplier_match: pick(m.supplier_match, ctx.suppliers), project_match: pick(m.project_match, ctx.projects),
-        delivery_note: str(m.delivery_note),
-        items: items.map((x) => ({ name: str(x.name), quantity: toQuantity(x.quantity), unit: str(x.unit), note: str(x.note) })).filter((x) => x.name),
+      kind, subcontract: {
+        date: toIsoDate(c.date), value: toMoney(c.value), subcontractor_text: text,
+        subcontractor_match: keepIfSimilar(pick(c.subcontractor_match, subs), text) || matchName(text, subs),
+        project_match: pick(c.project_match, ctx.projects), description: str(c.description).slice(0, 300),
+        items: items.map((x) => ({ name: str(x.name), unit: str(x.unit), quantity: toQuantity(x.quantity), unit_price: toMoney(x.unit_price) }))
+          .filter((x) => x.name && !/^(t[oổ]ng|vat|thu[eế])\b/i.test(x.name)),
+        low_confidence: strs(c.low_confidence),
       },
     };
   }
@@ -933,13 +942,13 @@ export function applyProjectGuess(result: ScanResult, note: string, ctx: ScanCon
     return result;
   }
   if (result.kind === 'timesheet') return applyTimesheetGuess(result, byNote, ctx);
-  if (result.kind === 'advance' || result.kind === 'receipt' || result.kind === 'material_list') {
-    const part = result.kind === 'advance' ? result.advance : result.kind === 'receipt' ? result.receipt : result.material_list;
+  if (result.kind === 'advance' || result.kind === 'receipt' || result.kind === 'subcontract') {
+    const part = result.kind === 'advance' ? result.advance : result.kind === 'receipt' ? result.receipt : result.subcontract;
     // Thu tiền: tên khách → công trình có chủ đầu tư đó (khi lời nói không nhắc công trình)
     const byCustomer = result.kind === 'receipt' && !byNote
       ? matchProjectByNote([result.receipt.customer_match, result.receipt.customer_text].filter(Boolean).join(' '), meta) : '';
     if (byNote || byCustomer) part.project_match = byNote || byCustomer;
-    else if (part.project_match && 'low_confidence' in part && !part.low_confidence.includes('project_match')) part.low_confidence.push('project_match');
+    else if (part.project_match && !part.low_confidence.includes('project_match')) part.low_confidence.push('project_match');
     return result;
   }
   if (result.kind !== 'invoice') return result;
@@ -1026,40 +1035,101 @@ export function matchWorker(text: string, workers: readonly string[], crew: Read
   return inCrew.length === 1 ? inCrew[0]! : '';
 }
 
+/** Tổ thợ TUẦN TRƯỚC của công trình (tuần gần nhất trước `week`; chưa rõ tuần → tuần gần nhất) + mọi người từng làm trong 120 ngày */
+export function projectCrew(project: string, history: readonly TimesheetHistoryRow[], week = '', date = ''): { last: string[]; wide: string[] } {
+  const ref = week || date;
+  const mine = history.filter((h) => {
+    if (h.project !== project) return false;
+    const age = ref ? dayDiff(ref, h.week_start) : 0;
+    return age >= -7 && age <= CREW_DAYS;
+  });
+  const before = week ? mine.filter((h) => h.week_start < week) : mine;
+  const pool = before.length ? before : mine;
+  const last = pool.reduce((m, h) => (h.week_start > m ? h.week_start : m), '');
+  return { last: [...new Set(pool.filter((h) => h.week_start === last).map((h) => h.worker))], wide: [...new Set(mine.map((h) => h.worker))] };
+}
+
+/** Tên viết trên phiếu và tên danh mục là một người? trùng, hoặc tên này là phần đầu của tên kia ("Sơn" ~ "SƠN MT") */
+const nearName = (t: string, f: string) => f === t || f.startsWith(`${t} `) || t.startsWith(`${f} `);
+
+export type RosterMatch = { match: string; sure: boolean };
 /**
- * Phiếu chấm công (hàm máy chủ gọi qua applyProjectGuess): giữ tên AI khớp nếu giống tên viết trên phiếu, khớp lại bằng code;
- * công trình: ghi chú > lịch sử chấm công của tổ (guessProjectFromCrew) > AI đoán; rồi khớp nốt tên còn mơ hồ theo tổ của công trình đó.
- * Tên khớp nhờ đoán và công trình không theo ghi chú đều tô vàng.
+ * Khớp CẢ DANH SÁCH tên trên phiếu của MỘT công trình. Thứ tự: tên gọi đã nhớ (Sơn Heo → SƠN MT) > trùng tên người tuần trước >
+ * chỉ 1 người tuần trước bắt đầu bằng tên đó (ghi "Sơn", tuần trước có SƠN MT → SƠN MT, dù danh mục có người tên SƠN) >
+ * người từng làm công trình này trong 120 ngày > AI khớp > danh mục. Mỗi người chỉ dùng 1 dòng; tên rõ hơn được xét trước.
+ * `sure` = false → tô vàng cho người dùng xem lại.
+ */
+export function matchRoster(
+  rows: readonly { name: string; ai?: string }[],
+  o: { workers: readonly string[]; last: readonly string[]; wide: readonly string[]; aliases?: Record<string, string> },
+): RosterMatch[] {
+  const texts = rows.map((r) => foldVi(r.name));
+  const out: RosterMatch[] = rows.map(() => ({ match: '', sure: false }));
+  const known = new Set(o.workers);
+  const taken = new Set<string>();
+  const each = (pickFor: (i: number) => RosterMatch | null) => {
+    let moved = false;
+    rows.forEach((_, i) => {
+      if (out[i]!.match || !texts[i]) return;
+      const m = pickFor(i);
+      if (!m || !known.has(m.match) || taken.has(m.match)) return;
+      out[i] = m; taken.add(m.match); moved = true;
+    });
+    return moved;
+  };
+  const inPool = (pool: readonly string[], sureIf: (i: number, w: string) => boolean) => {
+    each((i) => {
+      const hit = pool.filter((w) => !taken.has(w) && foldVi(w) === texts[i]);
+      return hit.length === 1 ? { match: hit[0]!, sure: sureIf(i, hit[0]!) } : null;
+    });
+    // Lặp: một dòng vừa lấy người này thì dòng trùng tên khác có thể chỉ còn 1 lựa chọn
+    while (each((i) => {
+      const hit = pool.filter((w) => !taken.has(w) && nearName(texts[i]!, foldVi(w)));
+      return hit.length === 1 ? { match: hit[0]!, sure: sureIf(i, hit[0]!) } : null;
+    }));
+  };
+  const twice = (i: number) => texts.filter((t) => t === texts[i]).length > 1;
+  each((i) => { const a = o.aliases?.[texts[i]!]; return a ? { match: a, sure: true } : null; });
+  inPool(o.last, (i, w) => {
+    const f = foldVi(w);
+    if (f === texts[i]) return !twice(i);
+    // "Sơn" → SƠN MT: chắc khi danh mục không có ai tên đúng "SƠN"; phiếu ghi dài hơn danh mục ("Sơn Cốc" → SƠN) thì nhờ xem lại
+    return !twice(i) && f.startsWith(`${texts[i]} `) && !o.workers.some((x) => foldVi(x) === texts[i]);
+  });
+  inPool(o.wide, () => false);
+  each((i) => { const ai = keepIfSimilar(rows[i]!.ai ?? '', rows[i]!.name); return ai ? { match: ai, sure: foldVi(ai) === texts[i] && !twice(i) } : null; });
+  each((i) => { const m = matchWorker(rows[i]!.name, o.workers, new Set(), taken); return m ? { match: m, sure: foldVi(m) === texts[i] && !twice(i) } : null; });
+  return out;
+}
+
+/**
+ * Phiếu chấm công (hàm máy chủ gọi qua applyProjectGuess): công trình = ghi chú > lịch sử chấm công của tổ (guessProjectFromCrew) > AI đoán;
+ * rồi khớp tên thợ theo tổ TUẦN TRƯỚC của công trình đó (matchRoster). Tên khớp nhờ đoán và công trình không theo ghi chú đều tô vàng.
  */
 export function applyTimesheetGuess(result: Extract<ScanResult, { kind: 'timesheet' }>, byNote: string, ctx: ScanContext): ScanResult {
   const ts = result.timesheet;
   const history = ctx.recent_timesheets ?? [];
   const date = ts.week_start || ctx.today || '';
-  const taken = new Set<string>();
-  const none = new Set<string>();
-  const flag = (r: TimesheetRowScan) => { if (!r.low_confidence.includes('name')) r.low_confidence.push('name'); };
-  // Lượt 1: AI khớp (phải giống tên viết) hoặc khớp chắc bằng code
-  for (const r of ts.rows) {
-    let m = keepIfSimilar(r.worker_match, r.name);
-    if (m && taken.has(m)) m = '';
-    r.worker_match = m || matchWorker(r.name, ctx.workers, none, taken);
-    if (r.worker_match) taken.add(r.worker_match);
-  }
-  const byCrew = byNote ? '' : guessProjectFromCrew(ts.rows.map((r) => r.worker_match), history, date);
+  const aliases = ctx.worker_aliases ?? {};
+  const roster = ts.rows.map((r) => ({ name: r.name, ai: r.worker_match }));
+  // Lượt 1 (chưa biết công trình): chỉ để đoán công trình theo tổ thợ — tên trùng nhiều người không được bỏ phiếu
+  const first = matchRoster(roster, { workers: ctx.workers, last: [], wide: [], aliases }).map((m) => m.match);
+  const clear = first.map((m, i) => {
+    const t = foldVi(ts.rows[i]!.name);
+    return aliases[t] || ctx.workers.filter((w) => nearName(t, foldVi(w))).length <= 1 ? m : '';
+  });
+  const byCrew = byNote ? '' : guessProjectFromCrew(clear, history, date) || guessProjectFromCrew(first, history, date);
   const project = byNote || byCrew || ts.project_match;
   ts.project_match = project;
   ts.project_by = byNote ? 'note' : byCrew ? 'crew' : project ? 'ai' : '';
   if (project && !byNote && !ts.low_confidence.includes('project_match')) ts.low_confidence.push('project_match');
-  // Lượt 2: tên còn mơ hồ → người trong tổ gần đây của công trình
-  if (project) {
-    const crew = new Set(history.filter((h) => h.project === project).map((h) => h.worker));
-    for (const r of ts.rows) {
-      if (r.worker_match) continue;
-      r.worker_match = matchWorker(r.name, ctx.workers, crew, taken);
-      if (r.worker_match) { taken.add(r.worker_match); flag(r); }
-    }
-  }
-  for (const r of ts.rows) if (!r.worker_match) flag(r);
+  // Lượt 2: theo tổ tuần trước của công trình
+  const crew = project ? projectCrew(project, history, ts.week_start, date) : { last: [], wide: [] };
+  matchRoster(roster, { workers: ctx.workers, ...crew, aliases }).forEach((m, i) => {
+    const r = ts.rows[i]!;
+    r.worker_match = m.match;
+    if ((!m.match || !m.sure) && !r.low_confidence.includes('name')) r.low_confidence.push('name');
+  });
   return result;
 }
 
@@ -1069,13 +1139,13 @@ export function pickFixture(kind: ScanRequestKind, note: string): string {
   const w = ` ${n} `;
   if (kind === 'shop' || /cua hang|bang hieu|mat tien/.test(n)) return 'cua-hang';
   if (kind === 'id_card' || kind === 'save_info' || /cccd|can cuoc/.test(n)) return 'cccd';
+  if (kind === 'subcontract' || /giao khoan|hop dong thau phu/.test(n)) return 'hd-thau-phu';
   if (kind === 'contract' || /hop dong|du toan/.test(n)) return 'hop-dong';
   if (kind === 'advance' || w.includes(' ung ')) return 'tien-ung';
   if (kind === 'receipt' || /thu tien|chuyen tien/.test(n) || w.includes(' dua ')) return 'thu-tien';
   if (kind === 'timesheet' || /cham cong|ngay cong/.test(n)) return 'cham-cong';
-  if (kind === 'material_list' || /vat tu|can mua|cop pha|copha/.test(n)) return 'vat-tu';
   if (w.includes(' mo ') || n.includes('blur')) return 'hoa-don-chu-mo';
   return 'hoa-don-ncc-moi';
 }
 
-export const SCAN_FIXTURES = ['hoa-don-ncc-moi', 'hoa-don-chu-mo', 'cccd', 'hop-dong', 'tien-ung', 'thu-tien', 'vat-tu', 'cham-cong', 'cua-hang'] as const;
+export const SCAN_FIXTURES = ['hoa-don-ncc-moi', 'hoa-don-chu-mo', 'cccd', 'hop-dong', 'tien-ung', 'thu-tien', 'hd-thau-phu', 'cham-cong', 'cua-hang'] as const;

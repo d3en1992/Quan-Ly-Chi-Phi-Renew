@@ -17,15 +17,15 @@ import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { findByName } from '@/features/expenses/logic';
 import { today } from '@/features/expenses/shared';
-import { useCreateWorker, useSaveWeek, useSetWeekImage, useTimesheetData, type TimesheetData } from '@/features/timesheets/api';
+import { useCreateWorker, useRememberAliases, useSaveWeek, useSetWeekImage, useTimesheetData, useWorkerAliases, type TimesheetData } from '@/features/timesheets/api';
 import { blankRow, checkSheet, newKey, toCalcRow, type DraftRow } from '@/features/timesheets/sheet-model';
 import { cDay, DAY_LABELS, DayCell, dayText, PhoneDayInput, RoleTag } from '@/features/timesheets/shared';
 import { removeReceipt, uploadReceipt, type PreparedImage } from './api';
 import { useObjectUrl } from './CaptureForm';
-import { UNSURE } from './shared';
-import { checkPurchaseTotal, lastWage, purchaseSum, timesheetFromScan, withPurchases, type PurchaseDraft } from './timesheet-model';
+import { UNSURE, type Remember } from './shared';
+import { aliasesToRemember, checkPurchaseTotal, lastWage, purchaseSum, rosterForProject, timesheetFromScan, withPurchases, type PurchaseDraft } from './timesheet-model';
 
-type Props = { scan: TimesheetScan; image: PreparedImage | null; compact?: boolean; onDone: () => void; onRetake: () => void };
+type Props = { scan: TimesheetScan; image: PreparedImage | null; compact?: boolean; remember: Remember; onDone: () => void; onRetake: () => void };
 
 export function ScanTimesheet(props: Props) {
   const data = useTimesheetData();
@@ -38,12 +38,14 @@ const BY_TEXT: Record<TimesheetScan['project_by'], string> = {
   note: 'theo ghi chú của anh', crew: 'theo lịch sử chấm công của tổ thợ này', ai: 'AI đoán — anh xem lại', '': '',
 };
 
-function Sheet({ scan, image, compact = false, onDone, onRetake, data }: Props & { data: TimesheetData }) {
+function Sheet({ scan, image, compact = false, remember, onDone, onRetake, data }: Props & { data: TimesheetData }) {
   const toast = useToast();
   const access = useAccess();
   const save = useSaveWeek();
   const setWeekImage = useSetWeekImage();
   const createWorker = useCreateWorker();
+  const aliases = useWorkerAliases();
+  const learn = useRememberAliases();
   const [keepImage, setKeepImage] = useState(true);
   const workers = useMemo(() => data.workers.filter((w) => !w.archived), [data.workers]);
   const guessed = findByName(scan.project_match, data.projectOptions) ?? findByName(scan.project_match, data.projects);
@@ -54,6 +56,7 @@ function Sheet({ scan, image, compact = false, onDone, onRetake, data }: Props &
   const [purchases, setPurchases] = useState<PurchaseDraft[]>(init.purchases);
   const [extraNote, setExtraNote] = useState(scan.note);
   const [seen, setSeen] = useState<string[]>([]); // ô tô vàng đã sửa → hết vàng
+  const [guessedNames, setGuessedNames] = useState<string[]>([]); // dòng vừa khớp lại theo công trình mới, cần xem
   const [bad, setBad] = useState<string[]>([]);
   const [confirmOverwrite, setConfirmOverwrite] = useState(false);
   const [openRow, setOpenRow] = useState<string | null>(null); // điện thoại: thẻ đang mở ô gõ số công
@@ -66,7 +69,7 @@ function Sheet({ scan, image, compact = false, onDone, onRetake, data }: Props &
   const touch = (cell: string) => setSeen((s) => (s.includes(cell) ? s : [...s, cell]));
   // Công trình chưa chọn, hoặc đang là gợi ý không theo ghi chú (tổ thợ / AI đoán) → tính là 1 ô cần xem
   const projectUnsure = !proj || (scan.project_by !== 'note' && proj.name === guessed?.name);
-  const unsureCount = init.unsure.filter((c) => !seen.includes(c)).length + (projectUnsure ? 1 : 0);
+  const unsureCount = new Set([...init.unsure, ...guessedNames.map((k) => `${k}:name`)].filter((c) => !seen.includes(c))).size + (projectUnsure ? 1 : 0);
 
   const full = useMemo(() => withPurchases(rows, purchases, extraNote), [rows, purchases, extraNote]);
   const totals = sheetTotals(full.map(toCalcRow));
@@ -75,6 +78,30 @@ function Sheet({ scan, image, compact = false, onDone, onRetake, data }: Props &
   const cai = rows.find((r) => r.name.trim());
 
   const setRow = (key: string, patch: Partial<DraftRow>) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  /** Tên viết trên phiếu của từng dòng (dòng thêm tay thì không có) */
+  const written = useMemo(() => new Map(init.rows.map((r, i) => [r.key, scan.rows[i]?.name ?? ''])), [init, scan]);
+  // Đổi công trình → tên thợ (dòng chưa sửa tay) khớp lại theo tổ tuần trước của công trình đó
+  const changeProject = (v: string) => {
+    setProject(v);
+    const p = findByName(v, data.projectOptions) ?? findByName(v, data.projects);
+    if (!p || p.id === proj?.id) return;
+    const target = rows.filter((r) => written.get(r.key) && !seen.includes(`${r.key}:name`));
+    const found = rosterForProject(target.map((r) => written.get(r.key)!), p.id, weekStart, data, aliases.data ?? new Map<string, string>());
+    const byKey = new Map(target.map((r, i) => [r.key, found[i]!]));
+    setGuessedNames(target.filter((_, i) => !found[i]!.sure).map((r) => r.key));
+    setRows((rs) => rs.map((r) => {
+      const m = byKey.get(r.key);
+      const w = m?.match ? findByName(m.match, workers) : undefined;
+      if (!m || !w || w.name === r.name) return r;
+      return { ...r, name: w.name, role: w.role, wage: lastWage(w.id, p.id, data.weeks, data.lines) || (seen.includes(`${r.key}:wage`) ? r.wage : 0) };
+    }));
+  };
+  const nameUnsure = (key: string) => !seen.includes(`${key}:name`) && (init.unsure.includes(`${key}:name`) || guessedNames.includes(key));
+  /** Phiếu ghi khác tên đang chọn → hiện để đối chiếu */
+  const writtenHint = (r: DraftRow) => {
+    const w = written.get(r.key);
+    return w && w.trim().toUpperCase() !== r.name.trim().toUpperCase() ? <div className="text-[11px] text-muted" data-testid="ts-written">phiếu ghi “{w}”</div> : null;
+  };
   const setName = (key: string, name: string) => {
     touch(`${key}:name`);
     const w = findByName(name, workers);
@@ -97,6 +124,12 @@ function Sheet({ scan, image, compact = false, onDone, onRetake, data }: Props &
     save.mutate({ projectId: proj.id, weekStart, lines: check.lines }, {
       onSuccess: async (weekId) => {
         setConfirmOverwrite(false);
+        remember('timesheet_weeks', weekId);
+        learn.mutate(aliasesToRemember(rows.flatMap((r) => {
+          const w = findByName(r.name, data.workers);
+          const t = written.get(r.key);
+          return w && t ? [{ written: t, workerId: w.id, workerName: w.name }] : [];
+        }), aliases.data ?? new Map<string, string>()));
         // Ảnh phiếu: lưu sau khi chấm công đã vào sổ — ảnh hỏng không làm mất chấm công
         if (image && keepImage) {
           let path: string | null = null;
@@ -148,7 +181,7 @@ function Sheet({ scan, image, compact = false, onDone, onRetake, data }: Props &
         <div className={cn('grid gap-3', compact ? 'p-3' : 'p-4')}>
           <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
             <Field label="Công trình *">
-              <Combo aria-label="Công trình" value={project} onChange={setProject} items={data.projectOptions} groupLabel="Công trình"
+              <Combo aria-label="Công trình" value={project} onChange={changeProject} items={data.projectOptions} groupLabel="Công trình"
                 className={projectUnsure ? UNSURE : undefined} />
             </Field>
             <div className="grid gap-1 text-xs font-medium text-muted"><span>Tuần{scan.week_start ? '' : ' (phiếu không ghi ngày — anh xem lại)'}</span>{weekNav}</div>
@@ -173,7 +206,7 @@ function Sheet({ scan, image, compact = false, onDone, onRetake, data }: Props &
                       <span className="w-4 shrink-0 text-[12px] text-faint">{i + 1}</span>
                       <div className="min-w-0 flex-1">
                         <Combo aria-label={`Tên công nhân dòng ${i + 1}`} placeholder="Tên công nhân…" value={r.name} onChange={(v) => setName(r.key, v)} items={workers} groupLabel="Công nhân"
-                          onCreate={createName} className={cn((!known || unsure(`${r.key}:name`)) && UNSURE)} />
+                          onCreate={createName} className={cn((!known || nameUnsure(r.key)) && UNSURE)} />{writtenHint(r)}
                       </div>
                       <RoleTag role={r.role} />
                       <button type="button" aria-label={`Gõ số công dòng ${i + 1}`} className="text-muted" onClick={() => setOpenRow(open ? null : r.key)}><Icon name={open ? 'expand_less' : 'tune'} /></button>
@@ -233,7 +266,7 @@ function Sheet({ scan, image, compact = false, onDone, onRetake, data }: Props &
                       <td className="text-faint">{i + 1}</td>
                       <td>
                         <Combo aria-label={`Tên công nhân dòng ${i + 1}`} placeholder="Tên…" value={r.name} onChange={(v) => setName(r.key, v)} items={workers} groupLabel="Công nhân"
-                          onCreate={createName} className={cn('h-8', (!known || unsure(`${r.key}:name`)) && UNSURE)} />
+                          onCreate={createName} className={cn('h-8', (!known || nameUnsure(r.key)) && UNSURE)} />{writtenHint(r)}
                       </td>
                       <td className="text-center"><RoleTag role={r.role} /></td>
                       {r.days.map((v, d) => (

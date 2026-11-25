@@ -30,7 +30,7 @@ export type NavItem = {
   featured?: boolean;  // tab nổi bật (Trợ lý AI): biểu tượng nền chuyển sắc trên menu
 };
 
-/** Trợ lý AI (nút AI; trước là Chụp, đường dẫn cũ /chup): ảnh hóa đơn, chuyển khoản, giọng nói, PDF / Excel hợp đồng, vật tư cần mua */
+/** Trợ lý AI (nút AI; trước là Chụp, đường dẫn cũ /chup): ảnh hóa đơn, chuyển khoản, giọng nói, PDF / Excel hợp đồng */
 export const AI_TAB: NavItem = { key: 'trolyai', path: '/tro-ly-ai', icon: 'auto_awesome', label: 'Trợ lý AI', module: 'ai', featured: true };
 
 export const NAV_TABS: NavItem[] = [

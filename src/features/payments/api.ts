@@ -25,6 +25,7 @@ export const itemsSchema = z.array(itemSchema).catch([]);
 const subcontractSchema = z.object({
   id: z.string(), project_id: z.string(), subcontractor_id: z.string(), date, value: money, legacy_variation: money,
   items: itemsSchema, description: z.string().nullable(), created_by: z.string().nullable(), created_at: z.string().nullable(),
+  attachment_paths: z.array(z.string()).nullable(),
 });
 const creditSchema = z.object({
   id: z.string(), project_id: z.string(), supplier_id: z.string().nullable(), date, amount: money, paid_at_purchase: z.boolean(),
@@ -277,6 +278,8 @@ export function useCreateParty() {
 
 export type SubcontractInput = {
   id: string | null; date: string; subcontractorId: string; projectId: string; value: number; variation: number; description: string; items: ContractItem[];
+  /** Chỉ hợp đồng MỚI: ảnh / tệp đã tải lên kho */
+  attachmentPaths?: string[];
 };
 export const subcontractInputSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Chọn ngày'), subcontractorId: z.string().uuid('Chọn thầu phụ'), projectId: z.string().uuid('Chọn công trình'),
@@ -286,7 +289,7 @@ export const subcontractInputSchema = z.object({
 export function useSaveSubcontract() {
   const done = useRefresh();
   return useMutation({
-    mutationFn: async (v: SubcontractInput) => {
+    mutationFn: async (v: SubcontractInput): Promise<string> => {
       const r = subcontractInputSchema.safeParse(v);
       if (!r.success) throw firstIssue(r.error);
       const row = {
@@ -297,10 +300,12 @@ export function useSaveSubcontract() {
         const { data, error } = await sb.from('subcontracts').update(row).eq('id', v.id).select('id');
         if (error) throw friendly(error);
         if (!data?.length) throw new Error('Không sửa được: hợp đồng do người khác nhập hoặc đã bị xóa.');
-      } else {
-        const { error } = await sb.from('subcontracts').insert(row);
-        if (error) throw friendly(error);
+        return v.id;
       }
+      const id = crypto.randomUUID();
+      const { error } = await sb.from('subcontracts').insert({ id, ...row, attachment_paths: v.attachmentPaths ?? [] });
+      if (error) throw friendly(error);
+      return id;
     },
     onSuccess: done,
   });

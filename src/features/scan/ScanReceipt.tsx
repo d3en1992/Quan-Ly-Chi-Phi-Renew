@@ -15,13 +15,14 @@ import { formatMoney } from '@/lib/format';
 import { findByName } from '@/features/expenses/logic';
 import { today } from '@/features/expenses/shared';
 import { RECEIPT_KIND, useRevData, useSaveReceipt, type ReceiptKind } from '@/features/revenue/api';
-import { METHOD_OPTS, UNSURE } from './shared';
+import { DataDuplicateNotice } from './DuplicateNotice';
+import { METHOD_OPTS, UNSURE, type Remember } from './shared';
 
-type Props = { scan: ReceiptScan; doc: Doc | null; onDone: () => void; onRetake: () => void };
+type Props = { scan: ReceiptScan; doc: Doc | null; remember: Remember; onDone: () => void; onRetake: () => void };
 
 const KIND_OPTS = (['advance', 'stage', 'settlement', 'other'] as const).map((k) => ({ value: k, label: RECEIPT_KIND[k]?.label ?? k }));
 
-export function ScanReceipt({ scan, doc, onDone, onRetake }: Props) {
+export function ScanReceipt({ scan, doc, remember, onDone, onRetake }: Props) {
   const access = useAccess();
   const [keep, setKeep] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -55,7 +56,8 @@ export function ScanReceipt({ scan, doc, onDone, onRetake }: Props) {
     let path = '';
     try {
       if (doc && keep) path = await uploadDoc('documents', access.profile.company_id, doc);
-      await save.mutateAsync({ id: null, projectId: p.id, date, amount, kind, note, method, attachmentPaths: path ? [path] : [] });
+      const id = await save.mutateAsync({ id: null, projectId: p.id, date, amount, kind, note, method, attachmentPaths: path ? [path] : [] });
+      remember('receipts', id);
       toast(`Đã lưu phiếu thu ${formatMoney(amount)} · ${p.name}`);
       onDone();
     } catch (e) {
@@ -72,6 +74,9 @@ export function ScanReceipt({ scan, doc, onDone, onRetake }: Props) {
         {scan.customer_text ? <Pill>Khách: {scan.customer_match || scan.customer_text}</Pill> : null}
       </header>
       <div className="grid gap-3 p-4" data-testid="scan-receipt">
+        <DataDuplicateNotice what="Phiếu thu" incoming={{ date, projectId: p?.id ?? null, amount, text: note }}
+          saved={d.receipts.map((r) => ({ id: r.id, date: r.date, projectId: r.project_id, amount: r.amount, text: r.note ?? '' }))}
+          describe={(r) => d.projectName(r.projectId)} />
         <ScanDocPreview doc={doc} keep={keep} setKeep={setKeep} label="Lưu ảnh / tệp kèm phiếu thu" />
         <div className="grid gap-2.5 sm:grid-cols-2">
           <Field label="Công trình *" className="sm:col-span-2">

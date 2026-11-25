@@ -1,9 +1,9 @@
 // Trợ lý AI (nút AI; trước là Chụp đa năng GĐ9) — dùng ở 3 chỗ: tab con CHỤP / AI (Nhập Chi Phí, máy tính), màn AI trên điện thoại (/chup),
 // nút Chụp CCCD ở Danh Bạ. Các bước: 1. Chụp / chọn tệp / nói → 2. AI đọc → 3. Anh kiểm tra, sửa → 4. Lưu. Không bao giờ tự lưu.
-// AI tự nhận: hóa đơn (chi tiết / nhanh / sổ cộng tiền), tiền ứng thầu phụ, thu tiền khách, hợp đồng / dự toán, danh sách vật tư cần mua,
+// AI tự nhận: hóa đơn (chi tiết / nhanh / sổ cộng tiền), tiền ứng thầu phụ, thu tiền khách, hợp đồng / dự toán, hợp đồng thầu phụ,
 // phiếu chấm công tuần (tên + công + mua lẻ → Sổ chấm công), LƯU THÔNG TIN: CCCD / danh thiếp → Danh Bạ, ảnh bảng hiệu → Danh Bạ › Cửa hàng.
 import { docFromInput, type Doc } from '@/features/attachments/api';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ScanRequestKind, ScanResponse } from '@shared/scan';
 import { useAccess } from '@/app/auth';
 import { Icon } from '@/components/ui/button';
@@ -13,14 +13,18 @@ import { hasLevel } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import { useLists } from '@/features/expenses/shared';
 import { askAssistant, audioToWav, prepareInput, type AiFile, type PreparedImage, type PreparedInput } from './api';
-import { CaptureForm } from './CaptureForm';
+import { CaptureForm, type AudioClip } from './CaptureForm';
+import { ImageDuplicateNotice } from './DuplicateNotice';
+import type { Fingerprint } from './duplicates';
+import { fingerprintInput, rememberFingerprint } from './fingerprint';
+import type { Remember } from './shared';
 import { ScanAdvance } from './ScanAdvance';
 import { ScanContract } from './ScanContract';
 import { ScanIdCard } from './ScanIdCard';
 import { ScanInvoice } from './ScanInvoice';
-import { ScanMaterials } from './ScanMaterials';
 import { ScanReceipt } from './ScanReceipt';
 import { ScanShop } from './ScanShop';
+import { ScanSubcontract } from './ScanSubcontract';
 import { ScanTimesheet } from './ScanTimesheet';
 
 type Props = {
@@ -39,7 +43,7 @@ const GUIDE: { kind: Exclude<ScanRequestKind, 'auto' | 'id_card'>; icon: string;
   { kind: 'contract', icon: 'description', title: 'Hợp đồng / dự toán', text: 'Gửi PDF, ảnh hoặc Excel .xlsx → khách hàng mới, giá trị hợp đồng, diện tích móng / trệt / lầu.', examples: [] },
   { kind: 'timesheet', icon: 'calendar_month', title: 'Phiếu chấm công', text: 'Chụp phiếu chấm công tuần của cai → tên thợ, công CN – T7, tiền mua lẻ cộng cho cai; gợi ý sẵn công trình theo tổ thợ.', examples: ['chấm công công trình A Huynh'] },
   { kind: 'save_info', icon: 'contact_page', title: 'Lưu thông tin', text: 'Ảnh CCCD / danh thiếp + lời nói → lưu khách hàng, công nhân, thầu phụ, nhà cung cấp. Ảnh bảng hiệu cửa hàng → Danh Bạ › Cửa hàng (kèm ảnh mặt tiền, mặt hàng).', examples: ['lưu thông tin thầu phụ Đảng, số điện thoại 0909 123 456', 'cửa hàng này bán tôn lá đủ khổ, giá rẻ nhất Tân Phú'] },
-  { kind: 'material_list', icon: 'checklist', title: 'Vật tư cần mua', text: 'Ảnh tin nhắn Zalo của thợ, chữ cai ghi trên ván → bảng tên vật tư + số lượng để copy gửi cửa hàng.', examples: ['cốp pha anh Long đưa'] },
+  { kind: 'subcontract', icon: 'handshake', title: 'Hợp đồng thầu phụ', text: 'Gửi ảnh, PDF hoặc Excel hợp đồng / báo giá giao khoán → thầu phụ, công trình, giá trị, hạng mục; lưu kèm tệp.', examples: ['hợp đồng Hà điện nước công trình A Huynh 45 triệu'] },
 ];
 
 function AiGuide({ allowed, onPick }: { allowed: Record<ScanRequestKind, boolean>; onPick: (k: ScanRequestKind, text: string) => void }) {
@@ -65,6 +69,15 @@ function AiGuide({ allowed, onPick }: { allowed: Record<ScanRequestKind, boolean
   );
 }
 
+/** Hàm máy chủ thử nhiều model, tối đa ~110 giây; quá 125 giây coi như mất kết nối */
+const WAIT_MS = 125_000;
+function withTimeout<T>(p: Promise<T>): Promise<T> {
+  return new Promise((ok, fail) => {
+    const t = window.setTimeout(() => fail(new Error('AI trả lời quá chậm — thử gửi lại.')), WAIT_MS);
+    p.then(ok, fail).finally(() => window.clearTimeout(t));
+  });
+}
+
 export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact = false, onSaved, guide = false }: Props) {
   const access = useAccess();
   const toast = useToast();
@@ -75,7 +88,7 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
     advance: hasLevel(perms, 'payments', 'add'),
     receipt: hasLevel(perms, 'revenue', 'add'),
     contract: hasLevel(perms, 'revenue', 'add'),
-    material_list: hasLevel(perms, 'expenses', 'add') || hasLevel(perms, 'payments', 'add'),
+    subcontract: hasLevel(perms, 'payables', 'add'),
     timesheet: hasLevel(perms, 'timesheets', 'add'),
     id_card: hasLevel(perms, 'contacts', 'add') && access.special.see_contact_ids,
     shop: hasLevel(perms, 'contacts', 'add'),
@@ -83,48 +96,61 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
     auto: false,
   };
   allowedKinds.save_info = allowedKinds.id_card || allowedKinds.shop;
-  allowedKinds.auto = allowedKinds.invoice || allowedKinds.advance || allowedKinds.receipt || allowedKinds.contract || allowedKinds.material_list || allowedKinds.timesheet || allowedKinds.save_info;
+  allowedKinds.auto = allowedKinds.invoice || allowedKinds.advance || allowedKinds.receipt || allowedKinds.contract || allowedKinds.subcontract || allowedKinds.timesheet || allowedKinds.save_info;
   const [kind, setKind] = useState<ScanRequestKind>(allowedKinds[defaultKind] ? defaultKind : 'auto');
   const [note, setNote] = useState('');
   const [input, setInput] = useState<PreparedInput | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ resp: ScanResponse; image: PreparedImage | null; doc: Doc | null } | null>(null);
+  const [result, setResult] = useState<{ resp: ScanResponse; image: PreparedImage | null; doc: Doc | null; fp: Fingerprint | null } | null>(null);
+  const [fp, setFp] = useState<Fingerprint | null>(null);
+  const [audio, setAudio] = useState<AudioClip | null>(null);
+  /** Lần gửi đang chờ; bấm "Thôi chờ" thì tăng số → kết quả về muộn bị bỏ */
+  const run = useRef(0);
 
-  const reset = () => { setResult(null); setInput(null); };
+  const reset = () => { setResult(null); setInput(null); setFp(null); setAudio(null); };
   const done = () => { reset(); setNote(''); onSaved?.(); };
 
   const pickFile = async (f: File) => {
     setPreparing(true);
-    try { setInput(await prepareInput(f)); } catch (e) { toast(e instanceof Error ? e.message : String(e), 'error'); } finally { setPreparing(false); }
+    try { const p = await prepareInput(f); setInput(p); setFp(null); setFp(await fingerprintInput(p)); } catch (e) { toast(e instanceof Error ? e.message : String(e), 'error'); } finally { setPreparing(false); }
   };
 
-  const read = async (audio?: AiFile) => {
+  const cancel = () => { run.current++; setBusy(false); };
+
+  /** Gửi ảnh / tệp + ghi âm + lời nhắn. Lỗi hoặc quá lâu thì mọi thứ còn nguyên để bấm gửi lại */
+  const read = async (clip: AudioClip | null = audio) => {
+    const id = ++run.current;
     setBusy(true);
     try {
       const files: AiFile[] = [];
       if (input?.kind === 'image') files.push({ mime: input.image.mime, base64: input.image.base64 });
       if (input?.kind === 'pdf') files.push(input.file);
-      if (audio) files.push(audio);
-      const resp = await askAssistant({ files, text: input?.kind === 'sheet' ? input.text : '', note, kind });
+      if (clip) {
+        try { files.push(await audioToWav(clip.blob)); } catch { throw new Error('Không đọc được ghi âm — nghe lại thử, hoặc gõ chữ.'); }
+      }
+      const resp = await withTimeout(askAssistant({ files, text: input?.kind === 'sheet' ? input.text : '', note, kind }));
+      if (run.current !== id) return;
       if (resp.warning) toast(resp.warning);
-      setResult({ resp, image: input?.kind === 'image' ? input.image : null, doc: docFromInput(input) });
+      setResult({ resp, image: input?.kind === 'image' ? input.image : null, doc: docFromInput(input), fp });
       // CCCD: bỏ ảnh khỏi ô chọn tệp ngay (ảnh chỉ còn ở màn kiểm tra, bấm Lưu mới lên kho riêng)
       if (resp.kind === 'id_card') setInput(null);
     } catch (e) {
-      toast(e instanceof Error ? e.message : String(e), 'error');
+      if (run.current !== id) return;
+      toast(`${e instanceof Error ? e.message : String(e)}${clip ? ' Ghi âm vẫn còn — bấm Gửi lại.' : ''}`, 'error');
     } finally {
-      setBusy(false);
+      if (run.current === id) setBusy(false);
     }
   };
 
-  const onAudio = async (blob: Blob, seconds: number) => {
+  const onAudio = (blob: Blob, seconds: number) => {
     if (seconds < 1) { toast('Ghi âm ngắn quá — bấm mic, nói rồi bấm lần nữa.', 'error'); return; }
-    setBusy(true);
-    let wav: AiFile;
-    try { wav = await audioToWav(blob); } catch { setBusy(false); toast('Không đọc được ghi âm — thử lại, hoặc gõ chữ.', 'error'); return; }
-    await read(wav);
+    const clip = { blob, seconds };
+    setAudio(clip);
+    void read(clip);
   };
+
+  const remember: Remember = (table, id) => { void rememberFingerprint(result?.fp ?? null, table, id); };
 
   if (!allowedKinds.auto && !(lockKind && allowedKinds[defaultKind])) {
     return <Card><Note icon="lock">Tài khoản chưa có quyền Nhập ở Chi Phí / Phiếu chi / Doanh Thu / Chấm Công / Danh Bạ nên không dùng được trợ lý AI.</Note></Card>;
@@ -148,33 +174,36 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
       {r?.transcript ? <Note icon="record_voice_over"><span data-testid="ai-transcript">AI nghe được: “{r.transcript}”</span></Note> : null}
       {r?.question ? <Note icon="help"><b data-testid="ai-question">{r.question}</b></Note> : null}
 
+      <ImageDuplicateNotice fp={result ? (result.resp.kind === 'id_card' || result.resp.kind === 'shop' ? null : result.fp) : fp} />
+
       {!result ? (
         <div className={cn('grid gap-3', guide && 'lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)] lg:items-start')}>
           <Card className={cn('p-4', !compact && !guide && 'max-w-[560px]')}>
             <CaptureForm
               kind={kind} setKind={setKind} allowed={allowedKinds} note={note} setNote={setNote}
-              input={input} onPickFile={(f) => void pickFile(f)} onClearFile={() => setInput(null)} onAudio={(b, s) => void onAudio(b, s)}
+              input={input} onPickFile={(f) => void pickFile(f)} onClearFile={() => { setInput(null); setFp(null); }} onAudio={onAudio}
+              audio={audio} onClearAudio={() => setAudio(null)} onCancel={cancel}
               busy={busy || preparing} onRead={() => void read()} lockKind={lockKind}
             />
           </Card>
           {guide ? <AiGuide allowed={allowedKinds} onPick={(k, t) => { setKind(k); setNote(t); }} /> : null}
         </div>
       ) : r!.kind === 'invoice' ? (
-        allowedKinds.invoice ? needLists(<ScanInvoice scan={r!.invoice} image={result.image} lists={lists!} compact={compact} onDone={done} onRetake={reset} />) : noAccess('hóa đơn')
+        allowedKinds.invoice ? needLists(<ScanInvoice scan={r!.invoice} image={result.image} lists={lists!} compact={compact} remember={remember} onDone={done} onRetake={reset} />) : noAccess('hóa đơn')
       ) : r!.kind === 'advance' ? (
-        allowedKinds.advance ? <ScanAdvance scan={r!.advance} doc={result.doc} onDone={done} onRetake={reset} /> : noAccess('tiền ứng thầu phụ / trả nhà cung cấp')
+        allowedKinds.advance ? <ScanAdvance scan={r!.advance} doc={result.doc} remember={remember} onDone={done} onRetake={reset} /> : noAccess('tiền ứng thầu phụ / trả nhà cung cấp')
       ) : r!.kind === 'receipt' ? (
-        allowedKinds.receipt ? <ScanReceipt scan={r!.receipt} doc={result.doc} onDone={done} onRetake={reset} /> : noAccess('phiếu thu tiền khách')
+        allowedKinds.receipt ? <ScanReceipt scan={r!.receipt} doc={result.doc} remember={remember} onDone={done} onRetake={reset} /> : noAccess('phiếu thu tiền khách')
       ) : r!.kind === 'timesheet' ? (
-        allowedKinds.timesheet ? <ScanTimesheet scan={r!.timesheet} image={result.image} compact={compact} onDone={done} onRetake={reset} /> : noAccess('phiếu chấm công')
-      ) : r!.kind === 'material_list' ? (
-        <ScanMaterials scan={r!.material_list} onDone={done} onRetake={reset} />
+        allowedKinds.timesheet ? <ScanTimesheet scan={r!.timesheet} image={result.image} compact={compact} remember={remember} onDone={done} onRetake={reset} /> : noAccess('phiếu chấm công')
+      ) : r!.kind === 'subcontract' ? (
+        allowedKinds.subcontract ? <ScanSubcontract scan={r!.subcontract} doc={result.doc} remember={remember} onDone={done} onRetake={reset} /> : noAccess('hợp đồng thầu phụ')
       ) : r!.kind === 'id_card' ? (
         allowedKinds.id_card ? <ScanIdCard scan={r!.id_card} doc={result.doc} note={note} onDone={done} onRetake={reset} /> : noAccess('CCCD / thông tin người (cần quyền Nhập Danh Bạ + Xem SĐT, số CCCD)')
       ) : r!.kind === 'shop' ? (
         allowedKinds.shop ? <ScanShop scan={r!.shop} image={result.image} onDone={done} onRetake={reset} /> : noAccess('bảng hiệu cửa hàng')
       ) : (
-        allowedKinds.contract ? needLists(<ScanContract scan={r!.contract} doc={result.doc} lists={lists!} onDone={done} onRetake={reset} />) : noAccess('hợp đồng')
+        allowedKinds.contract ? needLists(<ScanContract scan={r!.contract} doc={result.doc} remember={remember} lists={lists!} onDone={done} onRetake={reset} />) : noAccess('hợp đồng')
       )}
     </div>
   );

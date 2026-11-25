@@ -120,7 +120,7 @@ const contractInputSchema = z.object({
 export function useSaveContract() {
   const done = useRefresh();
   return useMutation({
-    mutationFn: async (v: ContractInput) => {
+    mutationFn: async (v: ContractInput): Promise<string> => {
       const r = contractInputSchema.safeParse(v);
       if (!r.success) throw firstIssue(r.error);
       const row = {
@@ -131,9 +131,12 @@ export function useSaveContract() {
         const { data, error } = await sb.from('main_contracts').update(row).eq('id', v.id).select('id');
         if (error) throw friendly(error);
         if (!data?.length) throw new Error('Không sửa được: hợp đồng do người khác nhập hoặc đã bị xóa.');
+        return v.id;
       } else {
-        const { error } = await sb.from('main_contracts').insert({ ...row, attachment_paths: v.attachmentPaths ?? [] });
+        const id = crypto.randomUUID();
+        const { error } = await sb.from('main_contracts').insert({ id, ...row, attachment_paths: v.attachmentPaths ?? [] });
         if (error) throw friendly(error);
+        return id;
       }
     },
     onSuccess: done,

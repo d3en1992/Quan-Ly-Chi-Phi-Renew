@@ -312,6 +312,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"image_fingerprints": {
+                  Row: {
+                    "company_id": string,"created_at": string,"created_by": string | null,"dhash": string | null,"id": string,"sha": string,"target_id": string,"target_table": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"dhash"?: string | null,"id"?: string,"sha": string,"target_id": string,"target_table": string
+                  }
+                  Update: {
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"dhash"?: string | null,"id"?: string,"sha"?: string,"target_id"?: string,"target_table"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "image_fingerprints_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"main_contracts": {
                   Row: {
                     "attachment_paths": (string)[] | null,"company_id": string,"created_at": string,"created_by": string | null,"customer_name": string | null,"date": string | null,"deleted_at": string | null,"deleted_by": string | null,"description": string | null,"extra_value": number,"id": string,"items": NonNullable<Json>,"legacy_variation": number,"project_id": string,"quantity": number | null,"unit_price": number | null,"updated_at": string,"value": number
@@ -854,14 +874,14 @@ isOneToOne: false
                   ]
                 },"subcontracts": {
                   Row: {
-                    "company_id": string,"created_at": string,"created_by": string | null,"date": string | null,"deleted_at": string | null,"deleted_by": string | null,"description": string | null,"id": string,"items": NonNullable<Json>,"legacy_variation": number,"project_id": string,"quantity": number | null,"subcontractor_id": string,"unit_price": number | null,"updated_at": string,"value": number
+                    "attachment_paths": (string)[] | null,"company_id": string,"created_at": string,"created_by": string | null,"date": string | null,"deleted_at": string | null,"deleted_by": string | null,"description": string | null,"id": string,"items": NonNullable<Json>,"legacy_variation": number,"project_id": string,"quantity": number | null,"subcontractor_id": string,"unit_price": number | null,"updated_at": string,"value": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"description"?: string | null,"id"?: string,"items"?: NonNullable<Json>,"legacy_variation"?: number,"project_id": string,"quantity"?: number | null,"subcontractor_id": string,"unit_price"?: number | null,"updated_at"?: string,"value"?: number
+                    "attachment_paths"?: (string)[] | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"description"?: string | null,"id"?: string,"items"?: NonNullable<Json>,"legacy_variation"?: number,"project_id": string,"quantity"?: number | null,"subcontractor_id": string,"unit_price"?: number | null,"updated_at"?: string,"value"?: number
                   }
                   Update: {
-                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"description"?: string | null,"id"?: string,"items"?: NonNullable<Json>,"legacy_variation"?: number,"project_id"?: string,"quantity"?: number | null,"subcontractor_id"?: string,"unit_price"?: number | null,"updated_at"?: string,"value"?: number
+                    "attachment_paths"?: (string)[] | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"description"?: string | null,"id"?: string,"items"?: NonNullable<Json>,"legacy_variation"?: number,"project_id"?: string,"quantity"?: number | null,"subcontractor_id"?: string,"unit_price"?: number | null,"updated_at"?: string,"value"?: number
                   }
                   Relationships: [
                     {
@@ -994,6 +1014,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "wage_advances_worker_id_fkey"
+      columns: ["worker_id"]
+isOneToOne: false
+      referencedRelation: "workers"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"worker_aliases": {
+                  Row: {
+                    "alias": string,"company_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"id": string,"updated_at": string,"worker_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "alias": string,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"id"?: string,"updated_at"?: string,"worker_id": string
+                  }
+                  Update: {
+                    "alias"?: string,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"id"?: string,"updated_at"?: string,"worker_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "worker_aliases_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "worker_aliases_worker_id_fkey"
       columns: ["worker_id"]
 isOneToOne: false
       referencedRelation: "workers"

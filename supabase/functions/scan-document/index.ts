@@ -2,7 +2,7 @@
 // Nhận ảnh (đã thu nhỏ ≤ 1600px) / PDF / ghi âm (WAV) / chữ (Excel đã đổi ra chữ) + ghi chú + loại, gửi Gemini (mẫu JSON trong câu lệnh),
 // kèm danh mục công trình / loại chi phí / NCC / thầu phụ / khách hàng để AI khớp tên. Trả kết quả + ô AI không chắc.
 // Loại: invoice (hóa đơn / sổ cộng tiền), advance (tiền ứng thầu phụ), receipt (thu tiền khách), contract (hợp đồng / dự toán),
-// material_list (danh sách vật tư cần mua — không lưu), id_card (CCCD / danh thiếp → Danh Bạ), shop (bảng hiệu → Danh Bạ › Cửa hàng);
+// subcontract (hợp đồng giao khoán thầu phụ), id_card (CCCD / danh thiếp → Danh Bạ), shop (bảng hiệu → Danh Bạ › Cửa hàng);
 // save_info = nút "Lưu thông tin" (AI chọn id_card hoặc shop).
 //
 // Key Gemini: Supabase secret GEMINI_API_KEY (hóa đơn, gói miễn phí) và GEMINI_API_KEY_PAID (CCCD, gói trả tiền — Google không
@@ -22,13 +22,13 @@ import fxIdCard from './fixtures/cccd.json' with { type: 'json' };
 import fxContract from './fixtures/hop-dong.json' with { type: 'json' };
 import fxAdvance from './fixtures/tien-ung.json' with { type: 'json' };
 import fxReceipt from './fixtures/thu-tien.json' with { type: 'json' };
-import fxMaterials from './fixtures/vat-tu.json' with { type: 'json' };
+import fxSubcontract from './fixtures/hd-thau-phu.json' with { type: 'json' };
 import fxTimesheet from './fixtures/cham-cong.json' with { type: 'json' };
 import fxShop from './fixtures/cua-hang.json' with { type: 'json' };
 
 const FIXTURES: Record<string, unknown> = {
   'hoa-don-ncc-moi': fxInvoiceNew, 'hoa-don-chu-mo': fxInvoiceBlur, cccd: fxIdCard, 'hop-dong': fxContract,
-  'tien-ung': fxAdvance, 'thu-tien': fxReceipt, 'vat-tu': fxMaterials, 'cham-cong': fxTimesheet, 'cua-hang': fxShop,
+  'tien-ung': fxAdvance, 'thu-tien': fxReceipt, 'hd-thau-phu': fxSubcontract, 'cham-cong': fxTimesheet, 'cua-hang': fxShop,
 };
 
 const cors = {
@@ -49,11 +49,11 @@ const env = (...names: string[]) => {
 
 type InFile = { mime_type?: string; data?: string };
 type Body = { image_base64?: string; mime_type?: string; files?: InFile[]; text?: string; note?: string; kind?: ScanRequestKind; fixture?: string };
-const KINDS: ScanRequestKind[] = ['auto', 'save_info', 'invoice', 'advance', 'receipt', 'contract', 'material_list', 'timesheet', 'id_card', 'shop'];
+const KINDS: ScanRequestKind[] = ['auto', 'save_info', 'invoice', 'advance', 'receipt', 'contract', 'subcontract', 'timesheet', 'id_card', 'shop'];
 /** Loại tệp Gemini đọc được: ảnh, PDF, âm thanh (app đổi ghi âm sang WAV) */
 const MIME_OK = /^(image\/(jpeg|png|webp)|application\/pdf|audio\/(wav|x-wav|webm|ogg|mp4|mpeg|aac|flac))$/;
 const KIND_LABEL: Record<ScanKind, string> = {
-  invoice: 'hóa đơn', advance: 'tiền ứng thầu phụ / trả nhà cung cấp', receipt: 'thu tiền khách', contract: 'hợp đồng', material_list: 'danh sách vật tư', timesheet: 'phiếu chấm công', id_card: 'CCCD / thông tin người', shop: 'bảng hiệu cửa hàng',
+  invoice: 'hóa đơn', advance: 'tiền ứng thầu phụ / trả nhà cung cấp', receipt: 'thu tiền khách', contract: 'hợp đồng', subcontract: 'hợp đồng thầu phụ', timesheet: 'phiếu chấm công', id_card: 'CCCD / thông tin người', shop: 'bảng hiệu cửa hàng',
 };
 /** Thứ tự xoay tua mặc định — model đầu đọc tốt nhất; mỗi model gói miễn phí có lượt riêng (≈ 5 lần/phút, 20 lần/ngày) */
 // Model lite lên đầu (anh Tình chốt 13/11/2026: nhanh, đọc đủ chính xác, nhiều lượt/phút); bản 2.5 đã ngừng cho key mới
@@ -81,19 +81,20 @@ Deno.serve(async (req) => {
     const note = String(body.note ?? '').slice(0, 500);
 
     // Quyền theo loại: hóa đơn = Nhập ở Chi phí; tiền ứng = Nhập ở Phiếu chi; thu tiền / hợp đồng = Nhập ở Doanh thu;
-    // danh sách vật tư = ai nhập được hóa đơn hoặc phiếu chi; phiếu chấm công = Nhập ở Chấm Công; CCCD = Nhập ở Danh Bạ + "Xem SĐT, số CCCD"
+    // hợp đồng thầu phụ = Nhập ở Công nợ phải trả; phiếu chấm công = Nhập ở Chấm Công; CCCD = Nhập ở Danh Bạ + "Xem SĐT, số CCCD"
     const can = async (fn: 'has_permission' | 'has_special', args: Record<string, string>) => {
       const { data } = await caller.rpc(fn, args);
       return data === true;
     };
-    const [canInvoice, canPayments, canRevenue, canContacts, canSeeIds, canTimesheets] = await Promise.all([
+    const [canInvoice, canPayments, canRevenue, canContacts, canSeeIds, canTimesheets, canPayables] = await Promise.all([
       can('has_permission', { module: 'expenses', level: 'add' }), can('has_permission', { module: 'payments', level: 'add' }),
       can('has_permission', { module: 'revenue', level: 'add' }), can('has_permission', { module: 'contacts', level: 'add' }),
       can('has_special', { flag: 'see_contact_ids' }), can('has_permission', { module: 'timesheets', level: 'add' }),
+      can('has_permission', { module: 'payables', level: 'add' }),
     ]);
     const perms: KindPermissions = {
       invoice: canInvoice, advance: canPayments, receipt: canRevenue, contract: canRevenue,
-      material_list: canInvoice || canPayments, timesheet: canTimesheets, id_card: canContacts && canSeeIds, shop: canContacts,
+      subcontract: canPayables, timesheet: canTimesheets, id_card: canContacts && canSeeIds, shop: canContacts,
     };
     const allowed = kind === 'auto' || kind === 'save_info' ? promptKinds(kind, perms).some((k) => perms[k]) : !!perms[kind];
     if (!allowed) return json(403, { error: 'Tài khoản không có quyền dùng chức năng này.' });
@@ -217,7 +218,7 @@ async function loadContext(sb: ReturnType<typeof createClient>): Promise<ScanCon
   const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10); // giờ Việt Nam
   const since = new Date(Date.parse(today) - 90 * 86_400_000).toISOString().slice(0, 10);
   const sinceCrew = new Date(Date.parse(today) - 120 * 86_400_000).toISOString().slice(0, 10);
-  const [projectRows, expense_types, buyers, supplierRows, workers, customers, employees, expenseRows, subRows, weekRows] = await Promise.all([
+  const [projectRows, expense_types, buyers, supplierRows, workers, customers, employees, expenseRows, subRows, weekRows, aliasRows] = await Promise.all([
     rows('projects', 'name, status, owner_name, address, aliases, note'), // gửi cả CT đã đóng (dữ liệu trạng thái hay chưa cập nhật) — AI ưu tiên CT đang thi công
     names('catalog_items', 'name', (q) => q.eq('kind', 'expense_type').eq('archived', false)),
     names('catalog_items', 'name', (q) => q.eq('kind', 'person').eq('archived', false)),
@@ -232,6 +233,7 @@ async function loadContext(sb: ReturnType<typeof createClient>): Promise<ScanCon
     // Chấm công 120 ngày gần nhất — đoán công trình của phiếu theo tổ thợ (RLS: không có quyền Chấm Công thì trả rỗng)
     rows('timesheet_weeks', 'week_start, project:projects(name), lines:timesheet_lines(position, deleted_at, worker:workers(name))',
       (q) => q.gte('week_start', sinceCrew).order('week_start', { ascending: false })),
+    rows('worker_aliases', 'alias, worker:workers(name)'),
   ]);
   const recent_timesheets: TimesheetHistoryRow[] = weekRows.flatMap((w) => {
     const project = String((w.project as { name?: string } | null)?.name ?? '');
@@ -240,6 +242,14 @@ async function loadContext(sb: ReturnType<typeof createClient>): Promise<ScanCon
     const top = Math.min(...live.map((l) => Number(l.position ?? 0)));
     return live.map((l) => ({ week_start: String(w.week_start ?? ''), project, worker: String(l.worker!.name), first: Number(l.position ?? 0) === top }));
   }).filter((r) => r.week_start && r.project);
+  // Tên cai hay ghi trên phiếu → công nhân (bảng worker_aliases); kèm vào mô tả công nhân cho AI
+  const worker_aliases: Record<string, string> = {};
+  for (const a of aliasRows) {
+    const w = String((a.worker as { name?: string } | null)?.name ?? '');
+    if (a.alias && w) worker_aliases[String(a.alias)] = w;
+  }
+  const worker_hints = workerRecentProjects(recent_timesheets);
+  for (const [alias, w] of Object.entries(worker_aliases)) worker_hints[w] = [worker_hints[w], `phiếu hay ghi: ${alias}`].filter(Boolean).join('; ');
   const recent_expenses: ExpenseHistoryRow[] = expenseRows.map((r) => ({
     date: String(r.date ?? ''),
     project: String((r.project as { name?: string } | null)?.name ?? ''),
@@ -282,6 +292,6 @@ async function loadContext(sb: ReturnType<typeof createClient>): Promise<ScanCon
   return {
     projects, expense_types, suppliers, buyers, workers, customers, employees, subcontractors, subcontractor_hints,
     project_hints, supplier_hints, project_meta, recent_expenses, today,
-    worker_hints: workerRecentProjects(recent_timesheets), recent_timesheets,
+    worker_hints, worker_aliases, recent_timesheets,
   };
 }

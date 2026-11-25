@@ -10,7 +10,7 @@ import { MAX_PDF_BYTES, prepareImage, type PreparedInput } from '@/features/scan
 const sb = supabase as unknown as SupabaseClient;
 
 export type AttachBucket = 'documents' | 'id-cards';
-export type AttachTable = 'payments' | 'receipts' | 'main_contracts';
+export type AttachTable = 'payments' | 'receipts' | 'main_contracts' | 'subcontracts';
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -78,14 +78,14 @@ const add = (path: string) => (old: string[]) => (old.includes(path) ? old : [..
 
 export const attachToRow = (table: AttachTable, id: string, path: string) => editPaths(table, 'attachment_paths', id, add(path));
 
-/** Gắn tệp vào hợp đồng chính đã có của công trình; chưa có hợp đồng → trả về false */
-export async function attachToProjectContract(projectId: string, path: string): Promise<boolean> {
+/** Gắn tệp vào hợp đồng chính đã có của công trình; trả về mã hợp đồng, chưa có thì null */
+export async function attachToProjectContract(projectId: string, path: string): Promise<string | null> {
   const { data, error } = await sb.from('main_contracts').select('id').eq('project_id', projectId).is('deleted_at', null).limit(1);
   if (error) throw new Error(error.message);
   const id = (data as { id: string }[])[0]?.id;
-  if (!id) return false;
+  if (!id) return null;
   await attachToRow('main_contracts', id, path);
-  return true;
+  return id;
 }
 
 export type PersonKind = Exclude<ContactKind, 'supplier'>;

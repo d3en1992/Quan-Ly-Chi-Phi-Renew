@@ -14,16 +14,19 @@ import { cn } from '@/lib/utils';
 import { useCreateExpenses, useEntryExpenses, useLineHistory } from '@/features/expenses/api';
 import { InvoiceFields, useLineSuggestions } from '@/features/expenses/InvoiceForm';
 import { blankLine, checkInvoice, invoiceDescription, invoiceTotal, type InvoiceDraft, type InvoiceField } from '@/features/expenses/invoice-model';
-import { findDuplicates, historySuggest, type DupHit } from '@/features/expenses/logic';
+import { findByName, findDuplicates, historySuggest, type DupHit } from '@/features/expenses/logic';
 import type { ExpenseInput } from '@/features/expenses/schema';
 import { DuplicateDialog, toDupCandidate, today, type Lists } from '@/features/expenses/shared';
 import { removeReceipt, uploadReceipt, useSupplierChange, type PreparedImage } from './api';
 import { useObjectUrl } from './CaptureForm';
+import { DataDuplicateNotice } from './DuplicateNotice';
+import { likelyDuplicates, type DupRecord } from './duplicates';
+import type { Remember } from './shared';
 import { checkPrintedTotal, invoiceFromScan, supplierPlan } from './model';
 
-type Props = { scan: InvoiceScan; image: PreparedImage | null; lists: Lists; compact?: boolean; onDone: () => void; onRetake: () => void };
+type Props = { scan: InvoiceScan; image: PreparedImage | null; lists: Lists; compact?: boolean; remember: Remember; onDone: () => void; onRetake: () => void };
 
-export function ScanInvoice({ scan, image, lists, compact = false, onDone, onRetake }: Props) {
+export function ScanInvoice({ scan, image, lists, compact = false, remember, onDone, onRetake }: Props) {
   const toast = useToast();
   const access = useAccess();
   const create = useCreateExpenses();
@@ -73,6 +76,13 @@ export function ScanInvoice({ scan, image, lists, compact = false, onDone, onRet
       setSavingSupplier(false);
     }
   };
+  // So trùng số liệu ngay khi AI đọc xong và mỗi khi sửa ô (kể cả hóa đơn nhập tay)
+  const saved = useMemo<DupRecord[]>(() => (expenses.data ?? []).map((e) => ({ id: e.id, date: e.date, projectId: e.project_id, partyId: e.supplier_id, amount: e.amount, text: e.description })), [expenses.data]);
+  const supplierName = (id: string | null | undefined) => lists.suppliers.find((x) => x.id === id)?.name ?? '';
+  const current: DupRecord = {
+    date: draft.date, projectId: findByName(draft.project, lists.projectOptions)?.id ?? null, partyId: findByName(draft.supplier, lists.suppliers)?.id ?? null,
+    amount: invoiceTotal(draft), text: invoiceDescription(draft),
+  };
   const total = checkPrintedTotal(draft, init.printedTotal);
   const unsureCount = init.unsureHead.length + init.unsureCells.length;
 
@@ -81,7 +91,8 @@ export function ScanInvoice({ scan, image, lists, compact = false, onDone, onRet
     let path: string | null = null;
     try {
       if (image && keepImage) path = await uploadReceipt(access.profile.company_id, image.blob, input.date);
-      await create.mutateAsync([{ ...input, receiptImagePath: path }]);
+      const [id] = await create.mutateAsync([{ ...input, receiptImagePath: path }]);
+      if (id) remember('expenses', id);
       toast(`Đã lưu hóa đơn ${input.lines?.length ?? 0} dòng · ${formatMoney(input.amount)} đ${path ? ' · kèm ảnh' : ''}`);
       setDups(null);
       onDone();
@@ -125,6 +136,12 @@ export function ScanInvoice({ scan, image, lists, compact = false, onDone, onRet
       [{ id: null, date: i.date, projectId: i.projectId, typeId: i.typeId, buyerId: i.buyerId, supplierId: i.supplierId, amount: i.amount, description: i.description }],
       (expenses.data ?? []).map(toDupCandidate),
     );
+    // Hộp hỏi lại khi lưu: gồm cả phiếu giống ≥ 90% (khác nội dung, lệch ngày ít) mà findDuplicates bỏ qua
+    const incoming = { id: null, date: i.date, projectId: i.projectId, typeId: i.typeId, buyerId: i.buyerId, supplierId: i.supplierId, amount: i.amount, description: i.description };
+    for (const h of likelyDuplicates({ date: i.date, projectId: i.projectId, partyId: i.supplierId, amount: i.amount, text: i.description }, saved)) {
+      const e = expenses.data?.find((x) => x.id === h.record.id);
+      if (e && !hits.some((x) => x.existing.id === e.id)) hits.push({ incoming, existing: toDupCandidate(e), similarity: h.similarity, exact: false, inForm: false });
+    }
     if (hits.length) { setDups({ hits, input: i }); return; }
     await doSave(i);
   };
@@ -145,6 +162,7 @@ export function ScanInvoice({ scan, image, lists, compact = false, onDone, onRet
           <small className="text-muted">Ô tô vàng = AI không chắc</small>
         </header>
         <div className="grid gap-3 p-4">
+          <DataDuplicateNotice what="Hóa đơn" incoming={current} saved={saved} describe={(r) => [lists.nameOf(r.projectId), supplierName(r.partyId)].filter(Boolean).join(' · ')} />
           {scan.is_summary ? (
             <div className="flex gap-2 rounded-lg border border-warn/50 bg-warn-soft p-3 text-[13px]" data-testid="summary-warning">
               <Icon name="warning" className="text-warn" />

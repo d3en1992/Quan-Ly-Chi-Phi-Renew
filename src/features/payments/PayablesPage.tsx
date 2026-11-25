@@ -1,7 +1,7 @@
 // Tab CÔNG NỢ PHẢI TRẢ (PAGES.congno / MP.congno — công ty nợ thầu phụ, nhà cung cấp; mục 4L):
 // THẦU PHỤ (hợp đồng thầu phụ, master–detail, trả nhanh) · NHÀ CUNG CẤP (sổ nợ theo NCC + Đối chiếu, mục 4J).
 // (Tất toán đã bỏ 18/11/2026: không ảnh hưởng số liệu; trả nốt dùng "Trả thêm", xem đã xong dùng lọc "Đã trả đủ".)
-import { AttachmentsButton } from '@/features/attachments/Attachments';
+import { AttachmentList, AttachmentsButton } from '@/features/attachments/Attachments';
 import { Fragment, useMemo, useState } from 'react';
 import { useAccess } from '@/app/auth';
 import { useLayoutMode } from '@/app/useLayoutMode';
@@ -136,6 +136,7 @@ function ContractDetail({ ctx, h, debt, onEdit }: { ctx: Ctx; h: Subcontract; de
             <tbody>{list.map((p) => <tr key={p.id}><td className="num whitespace-nowrap">{formatDate(p.date)}</td><td className="text-muted">{p.note}{!p.subcontract_id ? <small className="ml-1 text-faint">(chung cặp)</small> : null}</td><td className="num text-right whitespace-nowrap"><AttachmentsButton target={{ bucket: 'documents', table: 'payments', id: p.id }} paths={p.attachment_paths} canEdit={canEditRow(access, 'payments', p.created_by)} label="Ảnh / tệp phiếu chi" />{formatMoney(p.amount)}</td></tr>)}</tbody></table>
         ) : <span className="text-[13px] text-muted">Chưa trả lần nào</span>}
         {h.items.length ? <div className="mt-2 text-xs text-muted">Hạng mục: {h.items.map((i) => `${i.name} (${String(i.sl).replace('.', ',')} ${i.donVi})`).join(' · ')}</div> : null}
+        <div className="mt-2 max-w-[420px]"><AttachmentList target={{ bucket: 'documents', table: 'subcontracts', id: h.id }} paths={h.attachment_paths} canEdit={editable} label="Ảnh / tệp hợp đồng" /></div>
         <div className="mt-2 flex flex-wrap gap-2">
           {editable ? <Button size="sm" onClick={onEdit}><Icon name="edit" />Sửa HĐ</Button> : null}
           <Button size="sm" data-testid="hdtp-zalo" onClick={() => void zalo()}><Icon name="chat" />Copy Zalo</Button>

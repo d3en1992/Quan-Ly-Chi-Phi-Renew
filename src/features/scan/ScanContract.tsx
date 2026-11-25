@@ -17,14 +17,14 @@ import { findByName } from '@/features/expenses/logic';
 import { today, type Lists } from '@/features/expenses/shared';
 import { useSaveContract } from '@/features/revenue/api';
 import { contractCustomer } from './model';
-import { UNSURE } from './shared';
+import { UNSURE, type Remember } from './shared';
 
-type Props = { scan: ContractScan; doc: Doc | null; lists: Lists; onDone: () => void; onRetake: () => void };
+type Props = { scan: ContractScan; doc: Doc | null; remember: Remember; lists: Lists; onDone: () => void; onRetake: () => void };
 
 const areaText = (n: number) => (n ? String(n).replace('.', ',') : '');
 const cell = 'h-[34px] w-full min-w-0 border-0 bg-transparent px-2 text-[13px] text-fg focus:outline-2 focus:outline-accent';
 
-export function ScanContract({ scan, doc, lists, onDone, onRetake }: Props) {
+export function ScanContract({ scan, doc, remember, lists, onDone, onRetake }: Props) {
   const [keep, setKeep] = useState(true);
   const toast = useToast();
   const access = useAccess();
@@ -68,15 +68,17 @@ export function ScanContract({ scan, doc, lists, onDone, onRetake }: Props) {
         toast(`Đã thêm khách hàng “${name}”`);
       } else if (existing) name = existing.name;
       if (withContract) {
-        await saveContract.mutateAsync({
+        const contractId = await saveContract.mutateAsync({
           id: null, projectId: p.id, date: c.date || today(), value: c.value, extra: 0, variation: 0,
           description: c.description, customerName: c.customer_full_name || name, items: [], attachmentPaths: path ? [path] : [],
         });
+        remember('main_contracts', contractId);
         toast(`Đã lưu hợp đồng chính cho ${p.name}`);
       }
-      if (path && !withContract && !(await attachToProjectContract(p.id, path))) {
-        await removeDoc('documents', path);
-        toast(`${p.name} chưa có hợp đồng chính nên tệp chưa lưu được.`, 'error');
+      if (path && !withContract) {
+        const contractId = await attachToProjectContract(p.id, path);
+        if (contractId) remember('main_contracts', contractId);
+        else { await removeDoc('documents', path); toast(`${p.name} chưa có hợp đồng chính nên tệp chưa lưu được.`, 'error'); }
       }
       if (withAreas) {
         const rows = areas.filter((a) => a.name.trim() && a.area > 0).map((a) => ({ ten: a.name.trim(), dvt: 'm2', kl: a.area, heSo: 1, tinh: true }));

@@ -17,14 +17,15 @@ import { formatMoney } from '@/lib/format';
 import { findByName } from '@/features/expenses/logic';
 import { today } from '@/features/expenses/shared';
 import { useCreateParty, useCreatePayments, usePayData } from '@/features/payments/api';
-import { METHOD_OPTS, UNSURE, methodNote } from './shared';
+import { DataDuplicateNotice } from './DuplicateNotice';
+import { METHOD_OPTS, UNSURE, methodNote, type Remember } from './shared';
 
-type Props = { scan: AdvanceScan; doc: Doc | null; onDone: () => void; onRetake: () => void };
+type Props = { scan: AdvanceScan; doc: Doc | null; remember: Remember; onDone: () => void; onRetake: () => void };
 type Party = AdvanceScan['party'];
 
 const PARTY_OPTS: { value: Party; label: string }[] = [{ value: 'subcontractor', label: 'Thầu phụ' }, { value: 'supplier', label: 'Nhà cung cấp' }];
 
-export function ScanAdvance({ scan, doc, onDone, onRetake }: Props) {
+export function ScanAdvance({ scan, doc, remember, onDone, onRetake }: Props) {
   const access = useAccess();
   const [keep, setKeep] = useState(true);
   const toast = useToast();
@@ -79,7 +80,7 @@ export function ScanAdvance({ scan, doc, onDone, onRetake }: Props) {
       }
       if (doc && keep) path = await uploadDoc('documents', access.profile.company_id, doc);
       const attachmentPaths = path ? [path] : [];
-      await create.mutateAsync([isSup ? {
+      const [payId] = await create.mutateAsync([isSup ? {
         // Trả nợ NCC: có công trình → chỉ chia cho hóa đơn của công trình đó; không → chia hóa đơn mua nợ cũ nhất trước
         kind: 'supplier_payment', date, amount, subcontractorId: null, subcontractId: null, supplierId: id,
         projectId: proj?.id ?? null, mode: proj ? 'project' : 'fifo', picks: [], note: methodNote(method, note), attachmentPaths,
@@ -87,6 +88,7 @@ export function ScanAdvance({ scan, doc, onDone, onRetake }: Props) {
         kind: payKind, date, amount, subcontractorId: id, subcontractId: null, supplierId: null, projectId: proj!.id,
         mode: 'fifo', picks: [], note: methodNote(method, note), attachmentPaths,
       }]);
+      if (payId) remember('payments', payId);
       const label = found?.name ?? name.trim().toUpperCase();
       toast(`Đã lưu ${isSup ? 'phiếu trả NCC' : 'phiếu trả thầu phụ'} ${formatMoney(amount)} cho ${label}${proj ? ` · ${proj.name}` : ''}`);
       onDone();
@@ -106,6 +108,9 @@ export function ScanAdvance({ scan, doc, onDone, onRetake }: Props) {
         {scan.low_confidence.length ? <Pill tone="warn">{scan.low_confidence.length} ô cần xem lại</Pill> : null}
       </header>
       <div className="grid gap-3 p-4" data-testid="scan-advance">
+        <DataDuplicateNotice what="Phiếu chi" incoming={{ date, projectId: proj?.id ?? null, partyId: found?.id ?? null, amount, text: note }}
+          saved={d.payments.filter((p) => (p.kind === 'supplier_payment') === isSup).map((p) => ({ id: p.id, date: p.date, projectId: p.project_id, partyId: p.supplier_id ?? p.subcontractor_id, amount: p.amount, text: p.note ?? '' }))}
+          describe={(r) => [isSup ? d.supplierName(r.partyId) : d.subcontractorName(r.partyId), d.projectName(r.projectId)].join(' · ')} />
         <ScanDocPreview doc={doc} keep={keep} setKeep={setKeep} label="Lưu ảnh / tệp kèm phiếu chi" />
         <div className="grid gap-2.5 sm:grid-cols-2">
           <div className="grid gap-1 text-xs font-medium text-muted sm:col-span-2"><span>Trả cho</span>

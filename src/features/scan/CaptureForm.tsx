@@ -1,5 +1,5 @@
 // Bước 1 của nút AI (trước là Chụp đa năng — MP.chupmenu): chụp / chọn ảnh, PDF, Excel; bấm mic để NÓI (ghi âm gửi thẳng cho AI);
-// gõ lời nhắn; (không bắt buộc) chọn loại. AI tự nhận: hóa đơn, tiền ứng thầu phụ, thu tiền khách, hợp đồng / dự toán, vật tư cần mua,
+// gõ lời nhắn; (không bắt buộc) chọn loại. AI tự nhận: hóa đơn, tiền ứng thầu phụ, thu tiền khách, hợp đồng / dự toán, hợp đồng thầu phụ,
 // chấm công, Lưu thông tin (CCCD / danh thiếp / bảng hiệu cửa hàng).
 import { useEffect, useRef, useState } from 'react';
 import type { ScanRequestKind } from '@shared/scan';
@@ -11,7 +11,7 @@ import { ACCEPT_FILES, recordingSupported, type PreparedInput } from './api';
 
 export const KIND_OPTIONS: { value: ScanRequestKind; label: string }[] = [
   { value: 'auto', label: 'AI tự nhận' }, { value: 'invoice', label: 'Hóa đơn' }, { value: 'advance', label: 'Tiền ứng' },
-  { value: 'receipt', label: 'Thu tiền' }, { value: 'contract', label: 'Hợp đồng' }, { value: 'material_list', label: 'Vật tư cần mua' },
+  { value: 'receipt', label: 'Thu tiền' }, { value: 'contract', label: 'Hợp đồng' }, { value: 'subcontract', label: 'HĐ thầu phụ' },
   { value: 'timesheet', label: 'Chấm công' }, { value: 'save_info', label: 'Lưu thông tin' },
 ];
 /** Nút Chụp CCCD ở Danh Bạ (lockKind) */
@@ -19,6 +19,8 @@ export const ID_CARD_OPTION = { value: 'id_card' as const, label: 'CCCD' };
 
 /** Ghi âm tối đa 120 giây (WAV 16 kHz ≈ 3,8 MB, base64 ≈ 5,1 MB — dưới giới hạn 7 MB của hàm máy chủ) */
 export const MAX_RECORD_SECONDS = 120;
+
+export type AudioClip = { blob: Blob; seconds: number };
 
 type Props = {
   kind: ScanRequestKind;
@@ -34,6 +36,11 @@ type Props = {
   onClearFile: () => void;
   /** Ghi âm xong → gửi luôn cho AI */
   onAudio: (blob: Blob, seconds: number) => void;
+  /** Ghi âm còn giữ (AI lỗi / chậm) — gửi lại được, không phải nói lại */
+  audio: AudioClip | null;
+  onClearAudio: () => void;
+  /** Thôi chờ AI — ghi âm, ảnh, lời nhắn vẫn còn */
+  onCancel: () => void;
   busy: boolean;
   onRead: () => void;
   /** Chỉ cho đúng 1 loại (nút Chụp CCCD ở Danh Bạ) */
@@ -52,16 +59,51 @@ export function useObjectUrl(blob: Blob | null): string | null {
   return url;
 }
 
-export function CaptureForm({ kind, setKind, allowed, note, setNote, input, onPickFile, onClearFile, onAudio, busy, onRead, lockKind }: Props) {
+export function CaptureForm({ kind, setKind, allowed, note, setNote, input, onPickFile, onClearFile, onAudio, audio, onClearAudio, onCancel, busy, onRead, lockKind }: Props) {
   const camRef = useRef<HTMLInputElement>(null);
   const pickRef = useRef<HTMLInputElement>(null);
   const url = useObjectUrl(input?.kind === 'image' ? input.image.blob : null);
-  const pick = (f: File | undefined | null) => { if (f) onPickFile(f); };
-  const canRead = !busy && !!allowed[kind] && (!!input || !!note.trim());
+  const audioUrl = useObjectUrl(audio?.blob ?? null);
+  const [pasteErr, setPasteErr] = useState('');
+  const pick = (f: File | undefined | null) => { if (f) { setPasteErr(''); onPickFile(f); } };
+  // Ctrl+V ở bất cứ đâu trên màn này: có ảnh / tệp trong bộ nhớ tạm thì nhận; dán chữ vào ô lời nhắn vẫn như thường
+  const latest = useRef({ busy, pick });
+  latest.current = { busy, pick };
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const file = [...(e.clipboardData?.files ?? [])][0];
+      if (!file || latest.current.busy || document.querySelector('[data-testid="image-zoom"]')) return;
+      e.preventDefault();
+      latest.current.pick(file);
+    };
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  }, []);
+  const pasteButton = async () => {
+    setPasteErr('');
+    try {
+      for (const item of await navigator.clipboard.read()) {
+        const type = item.types.find((t) => t.startsWith('image/'));
+        if (type) { const blob = await item.getType(type); pick(new File([blob], 'anh-dan.png', { type })); return; }
+      }
+      setPasteErr('Chưa có ảnh nào được copy — copy ảnh ở Zalo rồi bấm lại.');
+    } catch { setPasteErr('Trình duyệt chưa cho đọc bộ nhớ tạm — bấm Ctrl + V để dán.'); }
+  };
+  const canRead = !busy && !!allowed[kind] && (!!input || !!note.trim() || !!audio);
 
   return (
     <div className="grid gap-3" data-testid="capture-form">
       {!lockKind || kind !== 'id_card' ? <Recorder disabled={busy || !allowed[kind]} onAudio={onAudio} /> : null}
+      {audio && audioUrl ? (
+        <div className="grid gap-2 rounded-xl border border-accent/40 bg-accent-soft/40 p-3" data-testid="kept-audio">
+          <div className="flex items-center gap-2 text-[13px] font-medium">
+            <Icon name="graphic_eq" className="text-accent" /><span className="min-w-0 flex-1">Ghi âm {audio.seconds} giây {busy ? '— đang gửi cho AI…' : '— còn giữ, chưa gửi được thì bấm gửi lại'}</span>
+            <Button size="icon" variant="ghost" aria-label="Xóa ghi âm" disabled={busy} onClick={onClearAudio}><Icon name="delete" /></Button>
+          </div>
+          <audio controls src={audioUrl} className="h-9 w-full" aria-label="Nghe lại ghi âm" />
+          {busy ? null : <Button variant="primary" className="justify-center" data-testid="resend-audio" disabled={!canRead} onClick={onRead}><Icon name="send" />Gửi lại cho AI</Button>}
+        </div>
+      ) : null}
 
       <div
         className={cn('relative grid min-h-[120px] place-items-center overflow-hidden rounded-xl border-2 border-dashed border-line bg-surface-2 text-center text-[13px] text-muted', input && 'border-solid')}
@@ -79,8 +121,8 @@ export function CaptureForm({ kind, setKind, allowed, note, setNote, input, onPi
         ) : (
           <div className="grid gap-1 p-4">
             <Icon name="add_photo_alternate" className="text-[30px] text-accent" />
-            <span>{lockKind ? (kind === 'shop' ? 'Chụp mặt tiền / bảng hiệu cửa hàng' : 'Chụp hoặc chọn ảnh CCCD') : 'Chụp hóa đơn, phiếu chấm công, CCCD, bảng hiệu cửa hàng, ảnh chuyển khoản, tin nhắn Zalo… hoặc chọn PDF / Excel'}</span>
-            <span className="text-[12px] text-faint">Trên máy tính có thể kéo tệp thả vào đây</span>
+            <span>{lockKind ? (kind === 'shop' ? 'Chụp mặt tiền / bảng hiệu cửa hàng' : 'Chụp hoặc chọn ảnh CCCD') : 'Chụp hóa đơn, phiếu chấm công, CCCD, bảng hiệu cửa hàng, ảnh chuyển khoản, hợp đồng… hoặc chọn PDF / Excel'}</span>
+            <span className="text-[12px] text-faint">Trên máy tính: copy ảnh (Zalo…) rồi bấm Ctrl + V, hoặc kéo tệp thả vào đây</span>
           </div>
         )}
         {input ? (
@@ -89,10 +131,12 @@ export function CaptureForm({ kind, setKind, allowed, note, setNote, input, onPi
           </button>
         ) : null}
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <Button onClick={() => camRef.current?.click()} className="justify-center"><Icon name="photo_camera" />{input ? 'Chụp lại' : 'Chụp'}</Button>
-        <Button onClick={() => pickRef.current?.click()} className="justify-center"><Icon name="upload" />{input ? 'Chọn tệp khác' : lockKind ? 'Chọn ảnh' : 'Ảnh / PDF / Excel'}</Button>
+        <Button onClick={() => pickRef.current?.click()} className="justify-center"><Icon name="upload" />{input ? 'Tệp khác' : lockKind ? 'Chọn ảnh' : 'Chọn tệp'}</Button>
+        <Button onClick={() => void pasteButton()} className="justify-center" data-testid="scan-paste"><Icon name="content_paste" />Dán ảnh</Button>
       </div>
+      {pasteErr ? <span role="alert" className="text-[12px] text-bad">{pasteErr}</span> : null}
       <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" aria-label="Chụp ảnh" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
       <input ref={pickRef} type="file" accept={lockKind ? 'image/*' : ACCEPT_FILES} className="hidden" data-testid="scan-file" aria-label="Chọn tệp" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
 
@@ -115,7 +159,7 @@ export function CaptureForm({ kind, setKind, allowed, note, setNote, input, onPi
         <span>{lockKind ? (kind === 'shop' ? 'Ghi chú cho AI (không bắt buộc) — cửa hàng bán gì, tốt / rẻ chỗ nào' : 'Ghi chú cho AI') : 'Lời nhắn cho AI (gõ, hoặc dán tin nhắn Zalo)'}</span>
         <Textarea
           aria-label="Ghi chú cho AI" value={note} maxLength={4000} rows={lockKind ? 2 : 3}
-          placeholder={lockKind ? (kind === 'shop' ? 'ví dụ: bán tôn lá đủ khổ 20cm tới 1m, giá rẻ nhất Tân Phú' : 'ví dụ: CCCD thợ Hiền') : 'ví dụ: ứng Hà điện nước 5 triệu công trình A Huynh · hóa đơn copha CT A Huynh · cốp pha anh Long đưa'}
+          placeholder={lockKind ? (kind === 'shop' ? 'ví dụ: bán tôn lá đủ khổ 20cm tới 1m, giá rẻ nhất Tân Phú' : 'ví dụ: CCCD thợ Hiền') : 'ví dụ: ứng Hà điện nước 5 triệu công trình A Huynh · hóa đơn copha CT A Huynh'}
           onChange={(e) => setNote(e.target.value)}
         />
       </label>
@@ -124,6 +168,7 @@ export function CaptureForm({ kind, setKind, allowed, note, setNote, input, onPi
       <Button variant="primary" size="lg" data-testid="scan-read" disabled={!canRead} onClick={onRead} className="justify-center">
         <Icon name={busy ? 'hourglass_top' : 'auto_awesome'} />{busy ? 'AI đang đọc…' : 'Gửi cho AI'}
       </Button>
+      {busy ? <Button className="justify-center" data-testid="scan-cancel" onClick={onCancel}><Icon name="close" />Thôi chờ (giữ lại ghi âm, ảnh, lời nhắn)</Button> : null}
     </div>
   );
 }

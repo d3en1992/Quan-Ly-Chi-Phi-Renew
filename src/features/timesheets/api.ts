@@ -189,3 +189,28 @@ export function useDeleteAdvance() {
     onSuccess: done,
   });
 }
+
+/** Tên cai hay ghi trên phiếu (đã bỏ dấu) → mã công nhân (bảng worker_aliases, migration …022) */
+export function useWorkerAliases() {
+  return useQuery({
+    queryKey: ['worker-aliases'],
+    staleTime: 60_000,
+    queryFn: async (): Promise<Map<string, string>> => {
+      const { data, error } = await sb.from('worker_aliases').select('alias,worker_id').is('deleted_at', null);
+      if (error) throw new Error(error.message);
+      return new Map(z.array(z.object({ alias: z.string(), worker_id: z.string() })).parse(data ?? []).map((a) => [a.alias, a.worker_id]));
+    },
+  });
+}
+/** Nhớ tên gọi người dùng vừa sửa ở màn AI (chạy ngầm sau khi lưu chấm công; hỏng thì bỏ qua) */
+export function useRememberAliases() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: { alias: string; worker_id: string }[]) => {
+      if (!rows.length) return;
+      const { error } = await sb.from('worker_aliases').upsert(rows, { onConflict: 'company_id,alias' });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['worker-aliases'] }),
+  });
+}

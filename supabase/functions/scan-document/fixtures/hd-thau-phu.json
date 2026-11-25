@@ -1,0 +1,1 @@
+{ "kind": "subcontract", "subcontract": { "date": "2026-11-10", "value": 45000000, "subcontractor_text": "Hà điện nước", "subcontractor_match": "", "project_match": "", "description": "Nhân công điện nước", "items": [{ "name": "Đi ống nước âm", "unit": "m2", "quantity": 150, "unit_price": 300000 }], "low_confidence": [] } }

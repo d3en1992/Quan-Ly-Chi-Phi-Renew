@@ -1,6 +1,6 @@
 // Nút AI → PHIẾU CHẤM CÔNG: biến kết quả AI đọc thành bảng nháp của Sổ chấm công (DraftRow). Hàm thuần, có test.
 // Tiền mua lẻ cộng bằng calc.sumAmounts, so số tổng ghi trên phiếu bằng calc.printedTotalGap — không tự cộng ở đây.
-import type { TimesheetScan } from '@shared/scan';
+import { foldVi, matchRoster, projectCrew, type RosterMatch, type TimesheetHistoryRow, type TimesheetScan } from '@shared/scan';
 import { printedTotalGap, shiftWeek, sumAmounts, weekStartOf } from '@/lib/calc';
 import { formatMoney } from '@/lib/format';
 import { findByName } from '@/features/expenses/logic';
@@ -102,4 +102,35 @@ export function withPurchases(rows: readonly DraftRow[], purchases: readonly Pur
   const first = rows.findIndex((r) => r.name.trim());
   if (first < 0 || (!total && !note)) return [...rows];
   return rows.map((r, i) => (i === first ? { ...r, retail: total, note } : r));
+}
+
+type RosterData = { workers: readonly WorkerLite[]; weeks: readonly WeekLite[]; lines: readonly { week_id: string; worker_id: string }[] };
+/** Khớp lại tên thợ khi người dùng ĐỔI CÔNG TRÌNH: theo tổ tuần trước của công trình mới (cùng cách với hàm máy chủ) */
+export function rosterForProject(names: readonly string[], projectId: string, weekStart: string, data: RosterData, aliases: ReadonlyMap<string, string>): RosterMatch[] {
+  const live = data.workers.filter((w) => !w.archived);
+  const nameOf = new Map(live.map((w) => [w.id, w.name]));
+  const weekOf = new Map(data.weeks.filter((w) => w.project_id === projectId).map((w) => [w.id, w.week_start]));
+  const history: TimesheetHistoryRow[] = data.lines.flatMap((l) => {
+    const week = weekOf.get(l.week_id), worker = nameOf.get(l.worker_id);
+    return week && worker ? [{ week_start: week, project: projectId, worker }] : [];
+  });
+  const named: Record<string, string> = {};
+  for (const [a, id] of aliases) { const n = nameOf.get(id); if (n) named[a] = n; }
+  return matchRoster(names.map((name) => ({ name })), { workers: live.map((w) => w.name), ...projectCrew(projectId, history, weekStart, weekStart), aliases: named });
+}
+
+/**
+ * Tên gọi cần nhớ sau khi lưu: phiếu ghi TÊN CÓ TỪ 2 CHỮ ("Sơn Heo") mà người dùng chọn công nhân tên khác ("SƠN MT").
+ * Tên 1 chữ ("Sơn") không nhớ — tùy công trình, đã khớp theo tuần trước.
+ */
+export function aliasesToRemember(
+  pairs: readonly { written: string; workerId: string; workerName: string }[], known: ReadonlyMap<string, string>,
+): { alias: string; worker_id: string }[] {
+  const out = new Map<string, string>();
+  for (const p of pairs) {
+    const a = foldVi(p.written);
+    if (!a.includes(' ') || a === foldVi(p.workerName) || known.get(a) === p.workerId) continue;
+    out.set(a, p.workerId);
+  }
+  return [...out].map(([alias, worker_id]) => ({ alias, worker_id }));
 }
