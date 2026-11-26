@@ -376,6 +376,7 @@ const INVOICE_RULES = [
   'HÓA ĐƠN:',
   '- Ô "Khách hàng" trên phiếu của cửa hàng thường là tên NGƯỜI MUA / chủ nhà, KHÔNG phải tên công trình — chép nguyên vào customer_text.',
   '- Dòng viết tay kiểu "ván 5p x 47 = 480.m": "5p", "x 47", "r57" thường là QUY CÁCH (dày, rộng, dài), KHÔNG phải số lượng × đơn giá. amount = số tiền sau dấu "=" (480000), chép cả dòng vào name. Chỉ ghi quantity / unit_price khi phép nhân ra ĐÚNG số tiền đó; không thì quantity = 1, unit_price = amount. TUYỆT ĐỐI không tự chia ra đơn giá lẻ (vd 200000 ÷ 57 = 3509) và không sửa số tiền ghi trên phiếu cho khớp phép nhân.',
+  '- Phiếu viết tay chữ xấu / không rõ số lượng: CHỈ lấy số tiền cuối dòng làm amount, quantity = 1, unit_price = amount. Ưu tiên đúng SỐ TIỀN hơn đúng số lượng.',
   '- Các dòng cộng lại phải bằng số tổng ghi trên phiếu (printed_total). Lệch thì đọc lại từng số tiền dòng, ghi số nghi sai vào low_confidence của dòng đó.',
   '- SỔ CỘNG TIỀN (is_summary = true): phiếu chỉ ghi các dòng ngày + số tiền (vd "13/11 … 73.261Đ", "12/11 … 31.321Đ") rồi cộng tổng. Mỗi dòng: date = ngày ghi ở dòng đó, name = "Hóa đơn ngày dd/mm", quantity = 1, unit_price = amount = số tiền dòng đó; printed_total = số tổng. KHÔNG bỏ trống số tiền.',
   '- Nhà cung cấp: tên cửa hàng in ở đầu phiếu, SĐT, tên gọi khác trong danh mục. Loại dịch vụ chung chung (xe ba gát, xe tải, thợ…) KHÔNG đủ để đoán. Nhiều số điện thoại thì lấy 2 số đầu.',

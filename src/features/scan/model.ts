@@ -36,8 +36,8 @@ export function invoiceFromScan(inv: InvoiceScan, lists: { projects: readonly Na
   const buyer = findByName(inv.buyer_match, lists.buyers);
   const unsureCells: string[] = [];
   const lines = inv.lines.map((l) => {
-    // SL × đơn giá lệch thành tiền ghi trên phiếu → tin thành tiền, tô vàng SL + đơn giá
-    const fit = fitScannedLine(l.quantity, l.unit_price, l.amount);
+    // SL × đơn giá lệch thành tiền ghi trên phiếu, hoặc AI không chắc SL / đơn giá → tin số cuối (thành tiền), tô vàng SL + đơn giá
+    const fit = fitScannedLine(l.quantity, l.unit_price, l.amount, l.low_confidence.includes('quantity') || l.low_confidence.includes('unit_price'));
     const line = blankLine({ name: l.name, unit: l.unit, quantity: quantityText(fit.quantity), unitPrice: fit.unitPrice });
     for (const f of l.low_confidence) if (COL_OF[f] !== undefined) unsureCells.push(`${line.key}:${COL_OF[f]}`);
     if (fit.changed) unsureCells.push(`${line.key}:2`, `${line.key}:3`);

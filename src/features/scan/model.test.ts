@@ -55,7 +55,8 @@ describe('Chụp hóa đơn → form', () => {
     expect(d.draft.project).toBe('');
     expect(d.unsureHead).toContain('project');
     expect(d.draft.lines).toHaveLength(6);
-    expect(d.unsureCells).toHaveLength(2);
+    expect(d.unsureCells).toHaveLength(3);
+    expect(d.draft.lines?.[4]).toMatchObject({ quantity: '1', unitPrice: 1_750_000 }); // AI không chắc SL → SL 1, đơn giá = số cuối
     expect(checkPrintedTotal(d.draft, d.printedTotal)).toEqual({ status: 'match', printed: 8500000 });
     const plan = supplierPlan(d.draft.supplier, r.invoice, lists.suppliers);
     expect(plan).toEqual({ kind: 'new', name: 'CH VLXD THANH BÌNH', address: '128 Tỉnh lộ 8, Tân An Hội, Củ Chi', phone: '0908123456' });
@@ -82,13 +83,14 @@ describe('Chụp hóa đơn → form', () => {
       { name: '3p x 57 = 200.m', unit: 'm', quantity: 57, unit_price: 3_509, amount: 200_000 },
       { name: 'rô = 80.m', unit: 'm', quantity: 1, unit_price: 80_000, amount: 80_000 },
       { name: 'Cát', unit: 'm3', quantity: 2.5, unit_price: 0, amount: 750_000 },
+      { name: 'Đinh', unit: 'kg', quantity: 3, unit_price: 30_000, amount: 90_000, low_confidence: ['quantity'] },
     ] } }, ctx);
     if (r.kind !== 'invoice') throw new Error('sai loại');
     const d = invoiceFromScan(r.invoice, lists, '2026-11-26');
     const lines = d.draft.lines ?? [];
-    expect(lines.map((l) => [l.quantity, l.unitPrice])).toEqual([['7', 60_000], ['1', 480_000], ['1', 200_000], ['1', 80_000], ['2,5', 300_000]]);
+    expect(lines.map((l) => [l.quantity, l.unitPrice])).toEqual([['7', 60_000], ['1', 480_000], ['1', 200_000], ['1', 80_000], ['2,5', 300_000], ['1', 90_000]]);
     const k = lines.map((l) => l.key);
-    expect(d.unsureCells).toEqual([`${k[1]}:2`, `${k[1]}:3`, `${k[2]}:2`, `${k[2]}:3`, `${k[4]}:2`, `${k[4]}:3`]);
+    expect(d.unsureCells).toEqual([`${k[1]}:2`, `${k[1]}:3`, `${k[2]}:2`, `${k[2]}:3`, `${k[4]}:2`, `${k[4]}:3`, `${k[5]}:2`, `${k[5]}:3`]);
     expect(checkPrintedTotal({ ...d.draft, lines: lines.slice(0, 4) }, d.printedTotal)).toEqual({ status: 'match', printed: 1_180_000 });
   });
   it('printedTotalGap', () => {

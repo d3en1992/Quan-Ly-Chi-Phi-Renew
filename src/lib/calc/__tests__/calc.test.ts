@@ -240,3 +240,11 @@ describe('fitScannedLine — dòng AI đọc: SL × đơn giá lệch thành ti�
     expect(fitScannedLine(0, 0, 80_000)).toEqual({ quantity: 1, unitPrice: 80_000, changed: true });
   });
 });
+
+describe('fitScannedLine — AI không chắc SL / đơn giá (chữ xấu)', () => {
+  it('chỉ lấy số cuối: SL 1, đơn giá = thành tiền', () => {
+    expect(fitScannedLine(7, 60_000, 420_000, true)).toEqual({ quantity: 1, unitPrice: 420_000, changed: true });
+    expect(fitScannedLine(1, 80_000, 80_000, true)).toEqual({ quantity: 1, unitPrice: 80_000, changed: false });
+    expect(fitScannedLine(3, 50_000, 0, true)).toEqual({ quantity: 3, unitPrice: 50_000, changed: false }); // không có số cuối thì giữ
+  });
+});
