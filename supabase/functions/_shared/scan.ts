@@ -366,6 +366,7 @@ const NUMBER_RULES = [
   '- Tiền là số nguyên đồng (1.250.000 → 1250000).',
   '- Phiếu viết tay ở Việt Nam thường VIẾT TẮT, bỏ 3 số 0 cuối, kèm ký hiệu Đ / đ / D / k / n / dấu gạch: "313Đ" = 313000, "10.642Đ" = 10642000, "31.321Đ" = 31321000, "18,5" = 18500.',
   '- Lời nói / tin nhắn: "5 triệu" = 5000000, "3tr2" / "3 triệu 2" = 3200000, "1tr5" = 1500000, "500k" / "5 trăm nghìn" = 500000, "100 triệu" = 100000000, "1 tỷ 2" = 1200000000.',
+  '- Chữ "m" / "n" / "ng" sau số trên phiếu viết tay = NGHÌN: "420.m" = 420000, "1.180.m" = 1180000, "80m" = 80000.',
   '- Hóa đơn: LUÔN kiểm tra số lượng × đơn giá = thành tiền ở TỪNG dòng, và tổng các dòng = tổng in trên phiếu. Chọn cách hiểu số (nghìn hay đồng) sao cho các phép tính KHỚP. Đơn giá vật liệu xây dựng hiếm khi dưới 1.000 đ. Vẫn không khớp thì ghi đúng từng số đọc được và ghi ô nghi sai vào low_confidence.',
   '- Ngày dạng YYYY-MM-DD, ghi ĐÚNG ngày trên chứng từ (Việt Nam ghi ngày/tháng/năm). Thiếu năm thì lấy năm gần nhất không vượt quá hôm nay. "hôm nay" = ngày hôm nay, "hôm qua" = trước 1 ngày. Không có ngày thì để trống.',
   '- unit (đơn vị tính) viết thường: cái, bao, xe, kg, m, m2, m3, cây, viên, cuộn, lon, thùng, khối, tấm, bộ… Ô ĐVT ghi " hoặc // (ditto) thì để trống.',
@@ -374,6 +375,8 @@ const NUMBER_RULES = [
 const INVOICE_RULES = [
   'HÓA ĐƠN:',
   '- Ô "Khách hàng" trên phiếu của cửa hàng thường là tên NGƯỜI MUA / chủ nhà, KHÔNG phải tên công trình — chép nguyên vào customer_text.',
+  '- Dòng viết tay kiểu "ván 5p x 47 = 480.m": "5p", "x 47", "r57" thường là QUY CÁCH (dày, rộng, dài), KHÔNG phải số lượng × đơn giá. amount = số tiền sau dấu "=" (480000), chép cả dòng vào name. Chỉ ghi quantity / unit_price khi phép nhân ra ĐÚNG số tiền đó; không thì quantity = 1, unit_price = amount. TUYỆT ĐỐI không tự chia ra đơn giá lẻ (vd 200000 ÷ 57 = 3509) và không sửa số tiền ghi trên phiếu cho khớp phép nhân.',
+  '- Các dòng cộng lại phải bằng số tổng ghi trên phiếu (printed_total). Lệch thì đọc lại từng số tiền dòng, ghi số nghi sai vào low_confidence của dòng đó.',
   '- SỔ CỘNG TIỀN (is_summary = true): phiếu chỉ ghi các dòng ngày + số tiền (vd "13/11 … 73.261Đ", "12/11 … 31.321Đ") rồi cộng tổng. Mỗi dòng: date = ngày ghi ở dòng đó, name = "Hóa đơn ngày dd/mm", quantity = 1, unit_price = amount = số tiền dòng đó; printed_total = số tổng. KHÔNG bỏ trống số tiền.',
   '- Nhà cung cấp: tên cửa hàng in ở đầu phiếu, SĐT, tên gọi khác trong danh mục. Loại dịch vụ chung chung (xe ba gát, xe tải, thợ…) KHÔNG đủ để đoán. Nhiều số điện thoại thì lấy 2 số đầu.',
   '- Mỗi hóa đơn chọn 1 loại chi phí hợp với phần lớn hàng (vd sắt thép → loại có chữ Sắt Thép).',

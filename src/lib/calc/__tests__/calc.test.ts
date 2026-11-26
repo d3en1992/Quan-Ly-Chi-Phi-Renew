@@ -1,7 +1,7 @@
 // Test từng công thức bằng số nhỏ tự đặt (so số thật với app cũ nằm ở so-chuan.test.ts).
 import { describe, expect, it } from 'vitest';
 import {
-  ALL_YEARS, addDays, allocateOverhead, allocateSupplierPayment, buildCostEntries, calcTimesheetRow, contractValue, costBreakdown,
+  ALL_YEARS, addDays, fitScannedLine, allocateOverhead, allocateSupplierPayment, buildCostEntries, calcTimesheetRow, contractValue, costBreakdown,
   effectiveYear, inYear, inYearLoose, isCrossYearWeek, lineWageCost, percentOf, profitMargin, profitRating, profitReport, projectDays,
   projectIdsInYear, projectInYear, projectK, projectRevenue, settlementDeltas, subcontractPayables, supplierPayables, timesheetCostEntries,
   weekEnd, weekNumber, weekStartOf, weeklyCosts, type CalcData, type CalcProject,
@@ -227,5 +227,16 @@ describe('stats — số tổng hợp', () => {
   it('percentOf', () => {
     expect(percentOf(50, 200)).toBe(25);
     expect(percentOf(1, 0)).toBeNull();
+  });
+});
+
+describe('fitScannedLine — dòng AI đọc: SL × đơn giá lệch thành tiền ghi trên phiếu', () => {
+  it('khớp thì giữ; lệch thì tin thành tiền', () => {
+    expect(fitScannedLine(7, 60_000, 420_000)).toEqual({ quantity: 7, unitPrice: 60_000, changed: false });
+    expect(fitScannedLine(5, 100_000, 0)).toEqual({ quantity: 5, unitPrice: 100_000, changed: false });
+    expect(fitScannedLine(47, 10_000, 480_000)).toEqual({ quantity: 1, unitPrice: 480_000, changed: true });
+    expect(fitScannedLine(57, 3_509, 200_000)).toEqual({ quantity: 1, unitPrice: 200_000, changed: true });
+    expect(fitScannedLine(2.5, 0, 750_000)).toEqual({ quantity: 2.5, unitPrice: 300_000, changed: true });
+    expect(fitScannedLine(0, 0, 80_000)).toEqual({ quantity: 1, unitPrice: 80_000, changed: true });
   });
 });

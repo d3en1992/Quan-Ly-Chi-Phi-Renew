@@ -58,3 +58,18 @@ export function printedTotalGap(printedTotal: number, linesTotal: number): numbe
   if (printed <= 0) return null;
   return printed - Math.round(Number(linesTotal) || 0);
 }
+
+/**
+ * Chụp hóa đơn: một dòng AI đọc có cả SL, đơn giá và THÀNH TIỀN ghi trên phiếu. Form tự tính thành tiền = SL × đơn giá,
+ * nên khi hai số không khớp thì tin số THÀNH TIỀN ghi trên phiếu (phiếu viết tay hay ghi quy cách "5p x 47" chứ không phải SL):
+ * SL chia hết thành tiền → đơn giá = thành tiền ÷ SL; không thì SL = 1, đơn giá = thành tiền. `changed` = phải tô vàng cho người dùng xem.
+ */
+export function fitScannedLine(quantity: number, unitPrice: number, amount: number): { quantity: number; unitPrice: number; changed: boolean } {
+  const total = Math.round(Number(amount) || 0);
+  if (total <= 0 || (quantity > 0 && lineAmount(quantity, unitPrice) === total)) return { quantity, unitPrice, changed: false };
+  const each = quantity > 0 ? total / quantity : 0;
+  if (each >= 1 && lineAmount(quantity, Math.round(each)) === total) {
+    return { quantity, unitPrice: Math.round(each), changed: true };
+  }
+  return { quantity: 1, unitPrice: total, changed: true };
+}

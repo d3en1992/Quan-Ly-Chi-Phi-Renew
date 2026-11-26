@@ -75,6 +75,22 @@ describe('Chụp hóa đơn → form', () => {
     // người dùng đổi sang NCC khác → không gợi ý địa chỉ của cửa hàng in trên hóa đơn
     expect(supplierPlan('VLXD KHÁC', r.invoice, lists.suppliers)).toEqual({ kind: 'new', name: 'VLXD KHÁC', address: '', phone: '' });
   });
+  it('biên nhận viết tay "ván 5p x 47 = 480.m": SL × đơn giá lệch thành tiền → tin thành tiền, tô vàng (biên nhận Tiến Thành 26/11)', () => {
+    const r = normalizeScan({ kind: 'invoice', invoice: { printed_total: 1_180_000, lines: [
+      { name: 'rốp 5p x 7 = 420.m', unit: 'm', quantity: 7, unit_price: 60_000, amount: 420_000 },
+      { name: 'rốp 10p x 47 = 480.m', unit: 'm', quantity: 47, unit_price: 10_000, amount: 480_000 },
+      { name: '3p x 57 = 200.m', unit: 'm', quantity: 57, unit_price: 3_509, amount: 200_000 },
+      { name: 'rô = 80.m', unit: 'm', quantity: 1, unit_price: 80_000, amount: 80_000 },
+      { name: 'Cát', unit: 'm3', quantity: 2.5, unit_price: 0, amount: 750_000 },
+    ] } }, ctx);
+    if (r.kind !== 'invoice') throw new Error('sai loại');
+    const d = invoiceFromScan(r.invoice, lists, '2026-11-26');
+    const lines = d.draft.lines ?? [];
+    expect(lines.map((l) => [l.quantity, l.unitPrice])).toEqual([['7', 60_000], ['1', 480_000], ['1', 200_000], ['1', 80_000], ['2,5', 300_000]]);
+    const k = lines.map((l) => l.key);
+    expect(d.unsureCells).toEqual([`${k[1]}:2`, `${k[1]}:3`, `${k[2]}:2`, `${k[2]}:3`, `${k[4]}:2`, `${k[4]}:3`]);
+    expect(checkPrintedTotal({ ...d.draft, lines: lines.slice(0, 4) }, d.printedTotal)).toEqual({ status: 'match', printed: 1_180_000 });
+  });
   it('printedTotalGap', () => {
     expect(printedTotalGap(0, 100)).toBeNull();
     expect(printedTotalGap(100, 100)).toBe(0);

@@ -1,7 +1,7 @@
 // Chụp đa năng (GĐ9) — biến kết quả AI đọc thành dữ liệu cho form: hóa đơn chi tiết, CCCD, hợp đồng. Hàm thuần, có test.
 // Không có công thức tiền ở đây: thành tiền / tổng dòng dùng invoice-model → src/lib/calc; so số tổng in dùng calc.printedTotalGap.
 import type { ContractScan, IdCardScan, InvoiceScan } from '@shared/scan';
-import { printedTotalGap } from '@/lib/calc';
+import { fitScannedLine, printedTotalGap } from '@/lib/calc';
 import { blankLine, invoiceTotal, quantityText, type InvoiceDraft } from '@/features/expenses/invoice-model';
 import { findByName, normVi } from '@/features/expenses/logic';
 
@@ -34,10 +34,14 @@ export function invoiceFromScan(inv: InvoiceScan, lists: { projects: readonly Na
   const project = findByName(inv.project_match, lists.projects);
   const type = findByName(inv.expense_type_match, lists.types);
   const buyer = findByName(inv.buyer_match, lists.buyers);
-  const lines = inv.lines.map((l) => blankLine({ name: l.name, unit: l.unit, quantity: quantityText(l.quantity), unitPrice: l.unit_price }));
   const unsureCells: string[] = [];
-  inv.lines.forEach((l, i) => {
-    for (const f of l.low_confidence) if (COL_OF[f] !== undefined) unsureCells.push(`${lines[i]!.key}:${COL_OF[f]}`);
+  const lines = inv.lines.map((l) => {
+    // SL × đơn giá lệch thành tiền ghi trên phiếu → tin thành tiền, tô vàng SL + đơn giá
+    const fit = fitScannedLine(l.quantity, l.unit_price, l.amount);
+    const line = blankLine({ name: l.name, unit: l.unit, quantity: quantityText(fit.quantity), unitPrice: fit.unitPrice });
+    for (const f of l.low_confidence) if (COL_OF[f] !== undefined) unsureCells.push(`${line.key}:${COL_OF[f]}`);
+    if (fit.changed) unsureCells.push(`${line.key}:2`, `${line.key}:3`);
+    return line;
   });
   const head = new Set<HeadKey>();
   for (const f of inv.low_confidence) if (HEAD_OF[f]) head.add(HEAD_OF[f]!);
