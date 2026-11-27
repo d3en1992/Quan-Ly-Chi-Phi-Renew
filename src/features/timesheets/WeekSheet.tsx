@@ -104,7 +104,11 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
   const go = (next: { weekStart?: string; projectId?: string }) => { if (dirty) setPending(next); else onNavigate(next); };
   const workers = useMemo(() => data.workers.filter((w) => !w.archived), [data.workers]);
   const totals = sheetTotals(rows.map(toCalcRow));
-  const readOnly = !canAdd;
+  // Công trình đã quyết toán: vẫn chọn được để xem lại chấm công cũ, nhưng chỉ xem (27/11/2026)
+  const closed = data.projects.find((p) => p.id === projectId)?.status === 'closed';
+  const readOnly = !canAdd || closed;
+  /** Các tuần đã chấm của công trình đang chọn, mới nhất trước */
+  const projectWeeks = useMemo(() => data.weeks.filter((w) => w.project_id === projectId).sort((a, b) => b.week_start.localeCompare(a.week_start)), [data.weeks, projectId]);
   // Tuần cũ đã lưu (nhập tay): nút lưu ảnh phiếu chấm công giấy để đối chiếu sau — gắn ngay, không cần bấm Lưu tuần
   const setWeekImage = useSetWeekImage();
   const attachPhoto = !readOnly && week ? {
@@ -164,11 +168,38 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
     });
   };
 
+  // Tuần chấm gần nhất của từng công trình — để xếp + nhảy thẳng tới khi mở công trình đã quyết toán
+  const lastWeekOf = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const w of data.weeks) if ((m.get(w.project_id) ?? '') < w.week_start) m.set(w.project_id, w.week_start);
+    return m;
+  }, [data.weeks]);
   const projectOpts = useMemo(() => {
-    const list = [...data.projectOptions];
-    if (projectId && !list.some((p) => p.id === projectId)) { const p = data.projects.find((x) => x.id === projectId); if (p) list.push(p); }
-    return list.map((p) => ({ value: p.id, label: p.name }));
-  }, [data.projectOptions, data.projects, projectId]);
+    const open = data.projectOptions.map((p) => ({ value: p.id, label: p.name }));
+    const inOpen = new Set(open.map((o) => o.value));
+    // Đã quyết toán (có chấm công, hoặc đang được chọn): nhóm riêng, công trình chấm gần nhất lên đầu
+    const old = data.projects.filter((p) => !inOpen.has(p.id) && (lastWeekOf.has(p.id) || p.id === projectId))
+      .sort((a, b) => (lastWeekOf.get(b.id) ?? '').localeCompare(lastWeekOf.get(a.id) ?? '') || a.name.localeCompare(b.name, 'vi'))
+      .map((p) => { const last = lastWeekOf.get(p.id); return { value: p.id, label: last ? `${p.name} · ${last.slice(0, 4)}` : p.name, group: 'Đã quyết toán — chỉ xem' }; });
+    return [...open, ...old];
+  }, [data.projectOptions, data.projects, projectId, lastWeekOf]);
+  const pickProject = (id: string) => {
+    const p = data.projects.find((x) => x.id === id);
+    const last = lastWeekOf.get(id);
+    // Công trình cũ thường không có chấm công ở tuần đang xem → nhảy tới tuần chấm gần nhất
+    const hasThisWeek = data.weeks.some((w) => w.project_id === id && w.week_start === weekStart);
+    go(p?.status === 'closed' && last && !hasThisWeek ? { projectId: id, weekStart: last } : { projectId: id });
+  };
+  const linesPerWeek = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of data.lines) m.set(l.week_id, (m.get(l.week_id) ?? 0) + 1);
+    return m;
+  }, [data.lines]);
+  const weekJump = projectWeeks.length ? (
+    <FilterSelect label={`Tuần đã chấm (${projectWeeks.length})`} value={week ? weekStart : ''} onChange={(v) => { if (v) go({ weekStart: v }); }}
+      allLabel={week ? null : '— chọn tuần —'} className="max-w-full"
+      options={projectWeeks.map((w) => ({ value: w.week_start, label: `${weekRangeLabel(w.week_start)} · ${linesPerWeek.get(w.id) ?? 0} người` }))} />
+  ) : null;
 
   const weekNav = (
     <span className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface">
@@ -181,7 +212,7 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
       <button type="button" aria-label="Tuần sau" className="px-2 py-1.5 text-muted" onClick={() => go({ weekStart: shiftWeek(weekStart, 1) })}><Icon name="chevron_right" /></button>
     </span>
   );
-  const projectSel = <FilterSelect label="Công trình" value={projectId} onChange={(v) => go({ projectId: v })} options={projectOpts} allLabel={projectId ? null : 'Chọn công trình'} className="max-w-full" />;
+  const projectSel = <FilterSelect label="Công trình" value={projectId} onChange={pickProject} options={projectOpts} allLabel={projectId ? null : 'Chọn công trình'} className="max-w-full" />;
 
   const actions = (
     <>
@@ -206,7 +237,12 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
 
   const status = (
     <>
-      {readOnly ? <Note icon="lock">Tài khoản chỉ được xem chấm công.</Note> : null}
+      {!canAdd ? <Note icon="lock">Tài khoản chỉ được xem chấm công.</Note> : null}
+      {canAdd && closed ? (
+        <Note icon="lock">Công trình đã quyết toán — <b>chỉ xem</b>
+          {projectWeeks.length ? <> ({projectWeeks.length} tuần, {weekRangeLabel(projectWeeks[projectWeeks.length - 1]!.week_start)} → {weekRangeLabel(projectWeeks[0]!.week_start)})</> : null}.
+          Chọn tuần ở ô “Tuần đã chấm”. Cần sửa thì đổi trạng thái công trình về “Hoàn thành” ở tab Công Trình.</Note>
+      ) : null}
       {!week && saved.length === 0 && rows.length === 0 ? null : !week ? <Note icon="edit_note">Tuần này của công trình chưa lưu — bấm <b>Lưu tuần</b> để ghi.</Note> : null}
       {dirty && week ? <Note icon="edit_note">Có thay đổi chưa lưu.</Note> : null}
       {otherSaved && dirty ? <Note icon="sync_problem">Tuần này vừa được người khác lưu trên máy khác. Bảng vẫn giữ phần đang sửa — bấm <b>Lưu tuần</b> sẽ ghi đè bản của họ; muốn xem bản mới thì đổi sang tuần khác rồi quay lại (bỏ phần đang sửa).</Note> : null}
@@ -225,6 +261,7 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
             ) : <span hidden data-testid="cc-net-total">{formatMoney(totals.netPay)}</span>}
           </div>
           {projectSel}
+          {weekJump}
           {status}
           {rows.length === 0 ? <div className="rounded-[var(--r)] border border-dashed border-line px-3.5 py-3 text-center text-[12.5px] text-muted">Tuần này chưa có công nhân.</div> : null}
           {rows.map((r) => {
@@ -310,6 +347,7 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
       <FilterBar>
         {weekNav}
         {projectSel}
+        {weekJump}
         <ReceiptPhotoButton path={week?.sheet_image_path} />
         {attachPhoto ? <AttachReceiptButton {...attachPhoto} /> : null}
         <div className="flex-1" />

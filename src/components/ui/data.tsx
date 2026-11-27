@@ -64,7 +64,23 @@ export function FilterBar({ children, className }: { children: ReactNode; classN
   return <div className={cn('flex flex-wrap items-center gap-2', className)}>{children}</div>;
 }
 
-export type Option = { value: string; label: string };
+/** `group`: tên nhóm (optgroup) — mục không có nhóm hiện trước, các nhóm theo thứ tự xuất hiện */
+export type Option = { value: string; label: string; group?: string };
+
+function renderOptions(options: Option[]) {
+  const plain = options.filter((o) => !o.group);
+  const groups = [...new Set(options.filter((o) => o.group).map((o) => o.group!))];
+  return (
+    <>
+      {plain.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      {groups.map((g) => (
+        <optgroup key={g} label={g}>
+          {options.filter((o) => o.group === g).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </optgroup>
+      ))}
+    </>
+  );
+}
 
 /** Ô lọc có nhãn nhỏ bên trái (.f của mẫu). Giá trị '' = "Tất cả". */
 export function FilterSelect({
@@ -80,9 +96,7 @@ export function FilterSelect({
         className={cn('h-full max-w-[220px] min-w-0 cursor-pointer sm:max-w-[150px] lg:max-w-[220px] truncate rounded-lg bg-transparent pr-1.5 font-medium text-fg focus:outline-none', selectClassName)}
       >
         {allLabel !== null ? <option value="">{allLabel}</option> : null}
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
+        {renderOptions(options)}
       </select>
     </label>
   );
