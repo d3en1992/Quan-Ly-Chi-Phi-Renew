@@ -19,11 +19,12 @@ import { initials } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { ACCESS_QUERY_KEY, useAccess, useAuth } from './auth';
 import { toggleTheme } from './theme';
-import { useYears } from './year';
+import { useYearOptions, useYears } from './year';
 
 /** `tiny` = đầu trang điện thoại: bỏ biểu tượng lịch, chừa chỗ cho tên trang */
 export function YearPicker({ compact = false, tiny = false }: { compact?: boolean; tiny?: boolean }) {
-  const { years, setYears, options, label } = useYears();
+  const { years, setYears, label } = useYears();
+  const options = useYearOptions();
   const toggle = (y: number) => {
     if (years === 'all') return setYears([y]);
     const next = years.includes(y) ? years.filter((x) => x !== y) : [...years, y];
