@@ -129,10 +129,13 @@ function timesheetBlock(mode: TimesheetMode, withLines: boolean, weeks: Row[], l
     id: String(a.id), worker_id: String(a.worker_id), project_id: (a.project_id as string | null) ?? null, date: String(a.date ?? ''),
     direction: String(a.direction), amount: num(a.amount), counts_in_net_pay: !!a.counts_in_net_pay, note: (a.note as string | null) ?? null,
   })) satisfies WageAdvance[];
+  // Vai trò T/P/C lấy theo Danh Bạ (dòng cũ nhập từ app cũ để trống) — 27/11/2026
+  const roleOf = new Map((store.workers ?? []).map((w) => [String(w.id), (w.role as string | null) ?? null]));
+  const lineRole = (l: Row) => roleOf.get(String(l.worker_id)) ?? (l.role as string | null) ?? null;
   const toLine = (l: Row): PayrollLine & { worker_id: string } => ({
     id: String(l.id), week_id: String(l.week_id), worker_id: String(l.worker_id), day_units: (l.day_units as number[]).map(Number),
     daily_wage: num(l.daily_wage), allowance: num(l.allowance), retail_purchase: num(l.retail_purchase), debt_deduction: num(l.debt_deduction),
-    legacy_loan: num(l.legacy_loan), role: (l.role as string | null) ?? null, position: num(l.position),
+    legacy_loan: num(l.legacy_loan), role: lineRole(l), position: num(l.position),
   });
   const weekById = new Map(weeks.map((w) => [w.id, w]));
   const byProject = new Map<string, { weeks: PayWeek[]; lines: ReturnType<typeof toLine>[] }>();
@@ -183,7 +186,7 @@ function timesheetBlock(mode: TimesheetMode, withLines: boolean, weeks: Row[], l
       const w = wk.get(l.week_id)!;
       const s = calcSheetRow({ day_units: l.day_units, daily_wage: l.daily_wage, allowance: l.allowance, retail_purchase: l.retail_purchase, deduction: l.debt_deduction });
       rows.push({
-        cells: [w.week_start, worker(l.worker_id), l.role ?? null, ...l.day_units.map((d) => d || null), s.dayUnits, l.daily_wage, s.wage, l.allowance, l.retail_purchase,
+        cells: [w.week_start, worker(l.worker_id), lineRole(l), ...l.day_units.map((d) => d || null), s.dayUnits, l.daily_wage, s.wage, l.allowance, l.retail_purchase,
           l.legacy_loan, l.debt_deduction, exportLineNetPay(l), null],
         project: p, date: w.week_start,
       });

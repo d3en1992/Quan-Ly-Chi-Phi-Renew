@@ -29,7 +29,9 @@ export const toCalcRow = (r: DraftRow): SheetRowInput => ({ day_units: r.days, d
  * Dòng nháp của một tuần đã lưu. Trừ nợ (chỉ xem, sổ không còn cột Trừ nợ từ GĐ99) = "tru" đời cũ trong dòng + dòng "Trả" gắn với tuần
  * — vẫn trừ vào Thực lãnh của sổ như trước; lưu lại tuần không đụng tới (hàm save_timesheet_week bỏ qua).
  */
-export function rowsFromWeek(week: TsWeek | null, lines: readonly TsLine[], advances: readonly TsAdvance[], workerName: (id: string) => string): DraftRow[] {
+export function rowsFromWeek(week: TsWeek | null, lines: readonly TsLine[], advances: readonly TsAdvance[], workerName: (id: string) => string,
+  /** Vai trò theo Danh Bạ — ưu tiên hơn bản chép trong dòng (dòng cũ để trống) */
+  workerRole?: (id: string) => string | null | undefined): DraftRow[] {
   if (!week) return [];
   const ded = new Map<string, number>();
   for (const a of advances) if (a.source_week_id === week.id && a.direction === 'repay') ded.set(a.worker_id, (ded.get(a.worker_id) ?? 0) + a.amount);
@@ -37,7 +39,7 @@ export function rowsFromWeek(week: TsWeek | null, lines: readonly TsLine[], adva
     .filter((l) => l.week_id === week.id)
     .sort((a, b) => a.position - b.position)
     .map((l) => ({
-      key: newKey(), name: workerName(l.worker_id), role: l.role, days: [...l.day_units, 0, 0, 0, 0, 0, 0, 0].slice(0, 7),
+      key: newKey(), name: workerName(l.worker_id), role: workerRole?.(l.worker_id) ?? l.role, days: [...l.day_units, 0, 0, 0, 0, 0, 0, 0].slice(0, 7),
       wage: l.daily_wage, allowance: l.allowance, retail: l.retail_purchase, note: l.note ?? '', deduction: (l.debt_deduction || 0) + (ded.get(l.worker_id) ?? 0),
     }));
 }
@@ -66,7 +68,7 @@ export function checkSheet(rows: readonly DraftRow[], workers: readonly TsWorker
     lines: used.map((r) => {
       const w = findByName(r.name, workers)!;
       return {
-        worker_id: w.id, role: r.role ?? w.role ?? null, day_units: r.days.map((v) => Number(v) || 0), daily_wage: r.wage, allowance: r.allowance,
+        worker_id: w.id, role: w.role ?? r.role ?? null, day_units: r.days.map((v) => Number(v) || 0), daily_wage: r.wage, allowance: r.allowance,
         retail_purchase: r.retail, note: r.note.trim(),
       };
     }),

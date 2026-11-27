@@ -81,7 +81,7 @@ export function PayrollTab({ data, ix, years, yearLabel, phone, onOpenWeek }: Pr
       {rows.map((r) => (
         <MobileCard key={r.key} onClick={() => toggle(r.key)}>
           <MobileRow>
-            <span className="flex min-w-0 items-center gap-2"><input type="checkbox" readOnly checked={ticked.has(r.key)} aria-label={`Chọn ${data.workerName(r.workerId)}`} className="size-4 accent-[var(--accent)]" /><b className="truncate">{data.workerName(r.workerId)}</b><RoleTag role={r.role} /></span>
+            <span className="flex min-w-0 items-center gap-2"><input type="checkbox" readOnly checked={ticked.has(r.key)} aria-label={`Chọn ${data.workerName(r.workerId)}`} className="size-4 accent-[var(--accent)]" /><b className="truncate">{data.workerName(r.workerId)}</b><RoleTag role={data.workerById.get(r.workerId)?.role ?? r.role} /></span>
             <b className="num">{formatMoney(week ? r.netPay : r.wageWithAllowance)}</b>
           </MobileRow>
           <MobileRow meta><span>{cDay(r.dayUnits)} công · TB {formatMoney(r.avgDaily)}/ngày</span>{week && r.deduction ? <span>trừ {formatMoney(r.deduction)}</span> : null}</MobileRow>
@@ -103,7 +103,7 @@ export function PayrollTab({ data, ix, years, yearLabel, phone, onOpenWeek }: Pr
             <tr key={r.key} className="cursor-pointer" onClick={() => toggle(r.key)}>
               <td><input type="checkbox" readOnly checked={ticked.has(r.key)} aria-label={`Chọn ${data.workerName(r.workerId)}`} className="size-4 accent-[var(--accent)]" /></td>
               <td className="whitespace-nowrap"><b className="font-semibold">{data.workerName(r.workerId)}</b></td>
-              <td className="text-center"><RoleTag role={r.role} /></td>
+              <td className="text-center"><RoleTag role={data.workerById.get(r.workerId)?.role ?? r.role} /></td>
               <td className="num text-right">{cDay(r.dayUnits)}</td>
               <td className="text-right"><Money value={r.wageWithAllowance} /></td>
               <td className="text-right"><Money value={r.avgDaily} /></td>

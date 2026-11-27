@@ -58,7 +58,7 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
   const del = useDeleteWeek();
   const createWorker = useCreateWorker();
   const week = useMemo(() => data.weeks.find((w) => w.project_id === projectId && w.week_start === weekStart) ?? null, [data.weeks, projectId, weekStart]);
-  const saved = useMemo(() => rowsFromWeek(week, data.lines, data.advances, data.workerName), [week, data.lines, data.advances, data.workerName]);
+  const saved = useMemo(() => rowsFromWeek(week, data.lines, data.advances, data.workerName, (id) => data.workerById.get(id)?.role), [week, data.lines, data.advances, data.workerName, data.workerById]);
   const [rows, setRows] = useState<DraftRow[]>(saved);
   const [bad, setBad] = useState<string[]>([]);
   const [clip, setClip] = useState<DraftRow[] | null>(loadClip);
@@ -190,6 +190,11 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
     const hasThisWeek = data.weeks.some((w) => w.project_id === id && w.week_start === weekStart);
     go(p?.status === 'closed' && last && !hasThisWeek ? { projectId: id, weekStart: last } : { projectId: id });
   };
+  // Mở lại trang / đổi khổ màn hình mà đang chọn CT đã quyết toán, tuần đang xem trống → nhảy tới tuần chấm cuối
+  useEffect(() => {
+    const last = lastWeekOf.get(projectId);
+    if (closed && !week && last && !dirtyRef.current) onNavigate({ weekStart: last });
+  }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
   const linesPerWeek = useMemo(() => {
     const m = new Map<string, number>();
     for (const l of data.lines) m.set(l.week_id, (m.get(l.week_id) ?? 0) + 1);
