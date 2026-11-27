@@ -22,12 +22,14 @@ function vnTime(date: IsoDate, h = 0, mi = 0, s = 0): number {
  * Số ngày thi công của công trình trong phạm vi năm đang chọn (`getProjectDays`).
  * - Không có ngày bắt đầu → 1.
  * - Chọn ĐÚNG 1 năm → cắt theo năm đó; không giao nhau → 0; có giao nhau thì tối thiểu 1.
- * - "Tất cả năm" hoặc chọn NHIỀU năm → cả vòng đời (app cũ: `activeYear = 0` khi chọn nhiều năm).
+ * - Chọn NHIỀU năm → cộng số ngày cắt theo từng năm đã chọn (28/11/2026: không lấy cả vòng đời như app cũ).
+ * - "Tất cả năm" → cả vòng đời.
  * - Chưa có ngày kết thúc → tính tới `now`.
  */
 export function projectDays(p: Pick<CalcProject, 'start_date' | 'end_date'>, years: YearFilter, now: number): number {
   if (!p.start_date) return 1;
-  if (years.length !== 1) {
+  if (years.length > 1) return years.reduce((s, y) => s + projectDays(p, [y], now), 0);
+  if (years.length === 0) {
     const endMs = p.end_date ? utcMidnight(p.end_date) : now;
     const days = Math.ceil((endMs - utcMidnight(p.start_date)) / DAY_MS);
     return days <= 0 ? 1 : days;
@@ -88,4 +90,38 @@ export function allocateOverhead(projects: readonly CalcProject[], totalCost: nu
     const ratio = totalWeight > 0 ? weight / totalWeight : 0;
     return { projectId: r.p.id, days: r.days, k: r.k, weight, ratio, allocated: totalCost * ratio };
   });
+}
+
+/** Các năm có chi phí CÔNG TY (để chia "Tất cả năm" theo từng năm) */
+function companyCostYears(costs: readonly CostEntry[], companyProjectIds: ReadonlySet<string>): number[] {
+  const ys = new Set<number>();
+  for (const c of costs) if (companyProjectIds.has(c.project_id) && c.date) ys.add(Number(c.date.slice(0, 4)));
+  return [...ys].filter((y) => Number.isFinite(y)).sort((a, b) => a - b);
+}
+
+/**
+ * Chi phí chung cho phạm vi năm đang chọn — CHIA TỪNG NĂM RỒI CỘNG (28/11/2026, anh yêu cầu chọn năm nào chỉ hiện số năm đó):
+ * chi phí công ty năm nào chỉ chia cho công trình thi công trong năm đó (ngày cắt theo năm × k).
+ * - Chọn 1 năm: y như `allocateOverhead` (khớp app cũ).
+ * - Chọn nhiều năm / "Tất cả năm": cộng phần chia của từng năm (app cũ chia tổng mọi năm theo ngày cả vòng đời,
+ *   làm công trình năm cũ gánh chi phí công ty năm mới).
+ * `days` / `weight` = tổng các năm; `ratio` = phần được chia / tổng chi phí chung.
+ */
+export function allocateOverheadByYear(
+  projects: readonly CalcProject[], costs: readonly CostEntry[], companyProjectIds: ReadonlySet<string>, years: YearFilter, now: number,
+): { total: number; shares: OverheadShare[] } {
+  const list = years.length ? [...years] : companyCostYears(costs, companyProjectIds);
+  const acc = new Map<string, OverheadShare>();
+  let total = 0;
+  for (const y of list) {
+    const t = companyOverheadCost(costs, companyProjectIds, [y]);
+    total += t;
+    for (const o of allocateOverhead(projects, t, [y], now)) {
+      const a = acc.get(o.projectId);
+      if (!a) acc.set(o.projectId, { ...o });
+      else { a.days += o.days; a.weight += o.weight; a.allocated += o.allocated; }
+    }
+  }
+  const shares = [...acc.values()].map((o) => ({ ...o, ratio: total > 0 ? o.allocated / total : 0 }));
+  return { total, shares };
 }

@@ -1,11 +1,12 @@
 // Test từng công thức bằng số nhỏ tự đặt (so số thật với app cũ nằm ở so-chuan.test.ts).
 import { describe, expect, it } from 'vitest';
 import {
-  ALL_YEARS, addDays, fitScannedLine, allocateOverhead, allocateSupplierPayment, buildCostEntries, calcTimesheetRow, contractValue, costBreakdown,
+  ALL_YEARS, addDays, fitScannedLine, allocateOverhead, allocateOverheadByYear, allocateSupplierPayment, buildCostEntries, calcTimesheetRow, contractValue, costBreakdown,
   effectiveYear, inYear, inYearLoose, isCrossYearWeek, lineWageCost, percentOf, profitMargin, profitRating, profitReport, projectDays,
   projectIdsInYear, projectInYear, projectK, projectRevenue, settlementDeltas, subcontractPayables, supplierPayables, timesheetCostEntries,
   weekEnd, weekNumber, weekStartOf, weeklyCosts, type CalcData, type CalcProject,
 } from '../index';
+import type { CostEntry } from '../index';
 
 const NOW = Date.parse('2026-11-11T10:00:00+07:00');
 const proj = (id: string, o: Partial<CalcProject> = {}): CalcProject => ({ id, name: id, is_company_overhead: false, start_date: null, end_date: null, cost_weight_k: null, created_year: null, ...o });
@@ -64,9 +65,10 @@ describe('overhead — phân bổ chi phí chung', () => {
     expect(projectDays({ start_date: '2025-12-01', end_date: '2026-01-10' }, [2025], NOW)).toBe(31);
     expect(projectDays({ start_date: '2025-01-01', end_date: '2025-06-30' }, [2026], NOW)).toBe(0);
     expect(projectDays({ start_date: '2026-11-01', end_date: null }, [2026], NOW)).toBe(11);
-    // Tất cả năm / nhiều năm: cả vòng đời (hiệu 2 ngày, như app cũ)
+    // Tất cả năm: cả vòng đời (hiệu 2 ngày, như app cũ); nhiều năm: cộng phần cắt theo từng năm
     expect(projectDays({ start_date: '2025-12-01', end_date: '2026-01-10' }, ALL_YEARS, NOW)).toBe(40);
-    expect(projectDays({ start_date: '2025-12-01', end_date: '2026-01-10' }, [2025, 2026], NOW)).toBe(40);
+    expect(projectDays({ start_date: '2025-12-01', end_date: '2026-01-10' }, [2025, 2026], NOW)).toBe(41);
+    expect(projectDays({ start_date: '2020-03-01', end_date: '2020-03-10' }, [2025, 2026], NOW)).toBe(0);
     expect(projectDays({ start_date: '2026-05-05', end_date: '2026-05-05' }, ALL_YEARS, NOW)).toBe(1);
   });
   it('hệ số k: mặc định 1, k = 0 không gánh', () => {
@@ -85,6 +87,30 @@ describe('overhead — phân bổ chi phí chung', () => {
     ];
     const out = allocateOverhead(ps, 6_000_000, [2026], NOW);
     expect(out.map((o) => [o.projectId, o.days, o.weight, o.allocated])).toEqual([['a', 30, 30, 3_000_000], ['b', 10, 30, 3_000_000], ['c', 31, 0, 0]]);
+  });
+  it('nhiều năm / Tất cả: chia TỪNG NĂM rồi cộng — công trình năm cũ không gánh chi phí công ty năm mới', () => {
+    const ps = [
+      proj('cu', { start_date: '2020-01-01', end_date: '2020-12-31' }),
+      proj('moi', { start_date: '2026-01-01', end_date: '2026-03-31' }),
+      proj('vat', { start_date: '2025-12-02', end_date: '2026-01-30' }),
+      proj('cty', { is_company_overhead: true, start_date: '2020-01-01' }),
+    ];
+    const costs = [
+      { project_id: 'cty', date: '2020-05-01', amount: 1_000_000 },
+      { project_id: 'cty', date: '2026-02-01', amount: 6_000_000 },
+    ] as unknown as CostEntry[];
+    const ids = new Set(['cty']);
+    const all = allocateOverheadByYear(ps, costs, ids, ALL_YEARS, NOW);
+    const by = (r: typeof all) => Object.fromEntries(r.shares.map((o) => [o.projectId, Math.round(o.allocated)]));
+    expect(all.total).toBe(7_000_000);
+    // 2020: chỉ 'cu' → 1tr; 2026: moi 90 ngày, vat 30 ngày → 4,5tr / 1,5tr
+    expect(by(all)).toEqual({ cu: 1_000_000, moi: 4_500_000, vat: 1_500_000 });
+    const y2526 = allocateOverheadByYear(ps, costs, ids, [2025, 2026], NOW);
+    expect(y2526.total).toBe(6_000_000);
+    expect(by(y2526)).toEqual({ moi: 4_500_000, vat: 1_500_000 });
+    // 1 năm: y như allocateOverhead
+    const one = allocateOverheadByYear(ps, costs, ids, [2026], NOW);
+    expect(one.shares).toEqual(allocateOverhead(ps, 6_000_000, [2026], NOW));
   });
 });
 

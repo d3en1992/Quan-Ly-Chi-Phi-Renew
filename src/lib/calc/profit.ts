@@ -7,7 +7,7 @@
 //   B = tiền đã chi thầu phụ (tạm ứng + thanh toán đợt)
 //   C = chi phí chung CÔNG TY phân bổ theo ngày × k
 //   Lợi nhuận = Tổng đã thu − (A + B + C)
-import { allocateOverhead, companyOverheadCost, type OverheadShare } from './overhead';
+import { allocateOverheadByYear, type OverheadShare } from './overhead';
 import { projectRevenue, type ProjectRevenue } from './revenue';
 import { timesheetCostEntries } from './timesheet';
 import type { CalcData, CalcMainContract, CalcProject, CalcReceipt, CalcSettlement, CostEntry } from './types';
@@ -119,8 +119,7 @@ export type ProfitContext = {
 
 /** `_lnContext`: phân bổ chi phí chung cho phạm vi năm, tính 1 lần cho mọi công trình. */
 export function profitContext(index: ProfitIndex, years: YearFilter, now: number): ProfitContext {
-  const overheadTotal = companyOverheadCost(index.costs, index.companyIds, years);
-  const overhead = allocateOverhead(index.projects, overheadTotal, years, now);
+  const { total: overheadTotal, shares: overhead } = allocateOverheadByYear(index.projects, index.costs, index.companyIds, years, now);
   return { index, years, overheadTotal, overhead, overheadByProject: new Map(overhead.map((o) => [o.projectId, o.allocated])) };
 }
 

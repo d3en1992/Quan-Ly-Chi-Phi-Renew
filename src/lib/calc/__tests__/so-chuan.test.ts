@@ -68,6 +68,10 @@ describe.skipIf(!ready)('So số với app cũ (so-chuan.json) — lệch 0 đ�
       const g = gold.nam[key]!;
       const ctx = profitContext(index, years, now);
       const diffs: string[] = [];
+      // "Tất cả năm" (28/11/2026): chi phí chung chia TỪNG NĂM rồi cộng (app cũ chia theo ngày cả vòng đời)
+      // → C mong đợi = Σ C các năm của app cũ (lệch tối đa 1 đồng do làm tròn từng năm); đã chi / lợi nhuận đổi đúng phần chênh C.
+      const perYearC = new Map<string, number>();
+      if (key === 'TAT_CA') for (const k of yearKeys) if (k !== 'TAT_CA') for (const r of gold.nam[k]!.congTrinh) perYearC.set(r.id, (perYearC.get(r.id) ?? 0) + r.C_chiPhiChung);
       const byId = new Map(index.realProjects.map((p) => [p.id, p]));
       for (const row of g.congTrinh) {
         const p = byId.get(row.id.toLowerCase());
@@ -78,14 +82,17 @@ describe.skipIf(!ready)('So số với app cũ (so-chuan.json) — lệch 0 đ�
           tongDaChi: r.spent, tongDaThu: r.received, loiNhuan: r.profit, X_hdGoc: r.revenue.baseContract, Y_quyetToan: r.revenue.settlement,
           giaTriHD: r.revenue.contractValue, conPhaiThu: r.revenue.receivable,
         };
+        const dC = key === 'TAT_CA' ? (perYearC.get(row.id) ?? 0) - row.C_chiPhiChung : 0;
+        const want: Partial<Record<keyof GoldRow, number>> = dC ? { C_chiPhiChung: row.C_chiPhiChung + dC, tongDaChi: row.tongDaChi + dC, loiNhuan: row.loiNhuan - dC } : {};
         for (const [f, name] of FIELDS) {
-          const a = Math.round(Number(mine[f])), b = Number(row[f]);
-          if (a !== b) diffs.push(`${row.ten} · ${name}: mới ${a.toLocaleString('vi-VN')} ≠ cũ ${b.toLocaleString('vi-VN')} (lệch ${(a - b).toLocaleString('vi-VN')})`);
+          const a = Math.round(Number(mine[f])), b = Number(want[f] ?? row[f]);
+          if (a !== b && !(f in want && Math.abs(a - b) <= 1)) diffs.push(`${row.ten} · ${name}: mới ${a.toLocaleString('vi-VN')} ≠ cũ ${b.toLocaleString('vi-VN')} (lệch ${(a - b).toLocaleString('vi-VN')})`);
         }
       }
       expect(diffs, `${label}: ${diffs.length} ô lệch\n` + diffs.slice(0, 40).join('\n')).toEqual([]);
     });
 
+    // Bảng phân bổ "Tất cả năm" kiểu app cũ (ngày cả vòng đời) vẫn so để giữ đúng hàm allocateOverhead; app giờ dùng allocateOverheadByYear
     it(`${label}: chi phí chung CÔNG TY và bảng phân bổ khớp`, () => {
       const g = gold.nam[key]!;
       const total = companyOverheadCost(index.costs, index.companyIds, years);

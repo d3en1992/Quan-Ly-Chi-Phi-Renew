@@ -8,7 +8,7 @@
 //
 // Tên trường trong `cost_allocations.data` (jsonb) GIỮ như app cũ: nhomTay, theoHdtp, nhomLoai, nhomLuat,
 // truLoai, quyMuc (bỏ dùng 24/11/2026), roTay / roLoai / roLuat (đời cũ, tự chuyển khi đọc), dgNhom, dgRo1, ro1…
-import { allocateOverhead, companyOverheadCost } from './overhead';
+import { allocateOverheadByYear } from './overhead';
 import { subcontractTotal } from './payables';
 import { buildCostEntries } from './profit';
 import type { CalcExpense, CalcPayment, CalcProject, CalcTimesheetLine, CalcTimesheetWeek, IsoDate } from './types';
@@ -170,8 +170,7 @@ export function allocCostLines(projectId: string, src: AllocSource, years: YearF
 
   // Chi phí chung CÔNG TY phân bổ theo ngày × k (cùng công thức cột C của Lợi Nhuận)
   const companyIds = new Set(src.projects.filter((p) => p.is_company_overhead).map((p) => p.id));
-  const total = companyOverheadCost(buildCostEntries(src), companyIds, years);
-  const share = allocateOverhead(src.projects, total, years, src.now).find((o) => o.projectId === projectId);
+  const share = allocateOverheadByYear(src.projects, buildCostEntries(src), companyIds, years, src.now).shares.find((o) => o.projectId === projectId);
   const overhead = Math.round(share?.allocated ?? 0);
   if (share && overhead) {
     lines.push({
