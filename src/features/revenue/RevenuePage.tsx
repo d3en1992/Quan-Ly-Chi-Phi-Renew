@@ -17,13 +17,16 @@ import { formatDate, formatMoney, formatShortMoney } from '@/lib/format';
 import { hasLevel } from '@/lib/permissions';
 import { canEditRow, ItemsEditor } from '@/features/payments/shared';
 import { matchesSearch, todayIso } from '@/features/reports/shared';
+import { useProjectIdsInYear } from '@/features/reports/api';
 import {
   RECEIPT_KIND, useDeleteContract, useDeleteReceipt, useRevData, useSaveContract, useSaveReceipt,
   type MainContract, type Receipt, type ReceiptKind, type ReceiptMethod, type RevData,
 } from './api';
 
 export type RevenueTab = 'contracts' | 'receipts';
-type Ctx = { data: RevData; years: YearFilter; phone: boolean; canAdd: boolean; company: string };
+type Ctx = { data: RevData; years: YearFilter; phone: boolean; canAdd: boolean; company: string; yearIds: Set<string> | null };
+/** Ô chọn công trình chỉ hiện công trình của năm đang chọn (28/11/2026); công trình đang chọn luôn giữ */
+const yearOpts = (ctx: Ctx, keep: string) => ctx.data.projectOptions.filter((p) => !ctx.yearIds || ctx.yearIds.has(p.id) || p.id === keep);
 const Dash = () => <span className="text-faint">—</span>;
 const pct = (a: number, b: number) => percentOf(a, b) ?? 0;
 const SPLIT = 'grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)]';
@@ -68,7 +71,7 @@ function ContractsTab({ ctx }: { ctx: Ctx }) {
         <Field label="Công trình *" className="col-span-2">
           <Select aria-label="Công trình" value={draft.project} onChange={(e) => pickProject(e.target.value)}>
             <option value="">— Chọn công trình —</option>
-            {data.projectOptions.map((p) => <option key={p.id} value={p.id}>{p.name}{data.contractOf(p.id) ? ' ✓' : ''}</option>)}
+            {yearOpts(ctx, draft.project).map((p) => <option key={p.id} value={p.id}>{p.name}{data.contractOf(p.id) ? ' ✓' : ''}</option>)}
           </Select>
         </Field>
         <Field label="Ngày"><Input type="date" aria-label="Ngày hợp đồng" value={draft.date} onChange={(e) => set('date', e.target.value)} /></Field>
@@ -213,7 +216,7 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
         <Field label="Công trình *" className="col-span-2">
           <Select aria-label="Công trình" value={draft.project} onChange={(e) => set('project', e.target.value)}>
             <option value="">— Chọn công trình —</option>
-            {data.projectOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {yearOpts(ctx, draft.project).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </Select>
         </Field>
         <Field label="Ngày"><Input type="date" aria-label="Ngày thu" value={draft.date} onChange={(e) => set('date', e.target.value)} /></Field>
@@ -272,7 +275,7 @@ function ReceiptsTab({ ctx }: { ctx: Ctx }) {
       {canAdd ? <Card><CardHeader title={draft.id ? 'Sửa phiếu thu' : 'Phiếu thu'} />{form}</Card> : <div />}
       <div className="grid min-w-0 gap-4">
         <Card>
-          <CardHeader title="Tiến độ thu theo công trình" actions={<FilterSelect label="Công trình" value={project} onChange={setProject} options={data.projectOptions.map((p) => ({ value: p.id, label: p.name }))} />} />
+          <CardHeader title="Tiến độ thu theo công trình" actions={<FilterSelect label="Công trình" value={project} onChange={setProject} options={yearOpts(ctx, project).map((p) => ({ value: p.id, label: p.name }))} />} />
           {progress.length === 0 ? <EmptyState icon="attach_money" title="Chưa có hợp đồng / phiếu thu trong kỳ này" /> : (
             <div className="tbl max-h-[420px] overflow-y-auto">
               <table data-testid="thu-progress">
@@ -329,12 +332,13 @@ export function RevenuePage({ tab }: { tab: RevenueTab }) {
   const { years: yearSel } = useYears();
   const years = useMemo(() => toYearFilter(yearSel), [yearSel]);
   const query = useRevData();
+  const yearIds = useProjectIdsInYear();
   const header = <PageHeader title={phone ? 'Doanh thu' : 'Doanh Thu'} sub="Hợp đồng chính và thu tiền" />;
   if (query.isPending) return <>{header}<Card><LoadingState label="Đang tải doanh thu…" /></Card></>;
   if (query.isError) return <>{header}<Card><ErrorState error={query.error} onRetry={() => void query.refetch()} /></Card></>;
   const ctx: Ctx = {
     data: query.data, years, phone, canAdd: hasLevel(access.permissions, 'revenue', 'add'),
-    company: access.company.short_name || access.company.name,
+    company: access.company.short_name || access.company.name, yearIds,
   };
   return (
     <>

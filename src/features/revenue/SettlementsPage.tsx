@@ -16,6 +16,7 @@ import { formatDate, formatMoney } from '@/lib/format';
 import { hasLevel } from '@/lib/permissions';
 import { canEditRow } from '@/features/payments/shared';
 import { matchesSearch, todayIso } from '@/features/reports/shared';
+import { useProjectIdsInYear } from '@/features/reports/api';
 import { SETTLEMENT_KIND, useDeleteSettlement, useRevData, useSaveSettlement, type RevData, type Settlement, type SettlementKind } from './api';
 
 type Draft = { id: string | null; project: string; date: string; kind: SettlementKind; amount: number; note: string; isFinal: boolean; wantReceipt: boolean };
@@ -35,6 +36,7 @@ export function SettlementsPage() {
   const { years: yearSel } = useYears();
   const years = useMemo(() => toYearFilter(yearSel), [yearSel]);
   const query = useRevData();
+  const yearIds = useProjectIdsInYear();
   const data = query.data;
   const save = useSaveSettlement(), del = useDeleteSettlement();
   const [draft, setDraft] = useState<Draft>(blank);
@@ -126,7 +128,7 @@ export function SettlementsPage() {
         <Field label="Công trình *" className="col-span-2" hint={dupes > 1 ? `Công trình này đang có ${dupes} bản quyết toán (dữ liệu cũ) — bấm dòng trong lịch sử để sửa bản khác.` : undefined}>
           <Select aria-label="Công trình" value={draft.project} onChange={(e) => pickProject(e.target.value)}>
             <option value="">— Chọn công trình —</option>
-            {data.projectOptions.map((p) => <option key={p.id} value={p.id}>{p.name}{p.status === 'closed' ? ' (đã QT)' : ''}</option>)}
+            {data.projectOptions.filter((p) => !yearIds || yearIds.has(p.id) || p.id === draft.project).map((p) => <option key={p.id} value={p.id}>{p.name}{p.status === 'closed' ? ' · QT' : ''}</option>)}
           </Select>
         </Field>
         <Field label="Ngày"><Input type="date" aria-label="Ngày quyết toán" value={draft.date} onChange={(e) => set('date', e.target.value)} /></Field>

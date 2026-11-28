@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { findByName } from '@/features/expenses/logic';
 import { AttachReceiptButton, ReceiptPhotoButton } from '@/features/scan/ReceiptPhoto';
 import { useCreateWorker, useDeleteWeek, useSaveWeek, useSetWeekImage, type TimesheetData } from './api';
+import { useProjectIdsInYear } from '@/features/reports/api';
 import { blankRow, checkSheet, copyRows, pasteRows, rowsFromWeek, sameRows, toCalcRow, type DraftRow } from './sheet-model';
 import { cDay, DAY_LABELS, DayCell, dayText, PayslipSheet, PhoneDayInput, RoleTag } from './shared';
 
@@ -174,15 +175,17 @@ export function WeekSheet({ data, ix, weekStart, projectId, onNavigate, canAdd, 
     for (const w of data.weeks) if ((m.get(w.project_id) ?? '') < w.week_start) m.set(w.project_id, w.week_start);
     return m;
   }, [data.weeks]);
+  // Chỉ công trình của năm đang chọn (28/11/2026); đã quyết toán ghi "· QT" cạnh tên, không còn nhóm riêng (gọn trên điện thoại)
+  const yearIds = useProjectIdsInYear();
   const projectOpts = useMemo(() => {
-    const open = data.projectOptions.map((p) => ({ value: p.id, label: p.name }));
-    const inOpen = new Set(open.map((o) => o.value));
-    // Đã quyết toán (có chấm công, hoặc đang được chọn): nhóm riêng, công trình chấm gần nhất lên đầu
-    const old = data.projects.filter((p) => !inOpen.has(p.id) && (lastWeekOf.has(p.id) || p.id === projectId))
+    const keep = (p: { id: string; is_company_overhead?: boolean }) => !yearIds || yearIds.has(p.id) || p.is_company_overhead || p.id === projectId;
+    const open = data.projectOptions.filter(keep).map((p) => ({ value: p.id, label: p.name }));
+    const inOpen = new Set(data.projectOptions.map((p) => p.id));
+    const old = data.projects.filter((p) => !inOpen.has(p.id) && keep(p) && (lastWeekOf.has(p.id) || p.id === projectId))
       .sort((a, b) => (lastWeekOf.get(b.id) ?? '').localeCompare(lastWeekOf.get(a.id) ?? '') || a.name.localeCompare(b.name, 'vi'))
-      .map((p) => { const last = lastWeekOf.get(p.id); return { value: p.id, label: last ? `${p.name} · ${last.slice(0, 4)}` : p.name, group: 'Đã quyết toán — chỉ xem' }; });
+      .map((p) => ({ value: p.id, label: `${p.name} · QT` }));
     return [...open, ...old];
-  }, [data.projectOptions, data.projects, projectId, lastWeekOf]);
+  }, [data.projectOptions, data.projects, projectId, lastWeekOf, yearIds]);
   const pickProject = (id: string) => {
     const p = data.projects.find((x) => x.id === id);
     const last = lastWeekOf.get(id);

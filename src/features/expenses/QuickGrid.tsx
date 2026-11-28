@@ -20,7 +20,7 @@ import { findDuplicates, historySuggest, isoToVn, type DupHit } from './logic';
 import type { ExpenseInput } from './schema';
 import { DuplicateDialog, toDupCandidate, type Lists } from './shared';
 
-const WIDTHS = [36, 92, 170, 250, 116, 0, 110, 170, 62];
+const WIDTHS = [36, 92, 170, 250, 116, 0, 130, 170, 62];
 const AC_LABEL: Partial<Record<Col, string>> = { type: 'Loại chi phí', project: 'Công trình', buyer: 'Người lập phiếu', supplier: 'Nhà cung cấp', description: 'Nội dung đã nhập' };
 const CREATE_KIND: Partial<Record<Col, CreatableKind>> = { type: 'expense_type', buyer: 'person', supplier: 'supplier' };
 
@@ -30,7 +30,7 @@ export function QuickGrid({ lists, expenses, today, onActiveDate }: {
   const toast = useToast();
   const createExpenses = useCreateExpenses();
   const year = Number(today.slice(0, 4));
-  const [rows, setRows] = useState<GridRow[]>(() => blankRows(10));
+  const [rows, setRows] = useState<GridRow[]>(() => blankRows(7));
   const [tried, setTried] = useState(false);
   const [dups, setDups] = useState<{ hits: DupHit[]; inputs: ExpenseInput[]; lastDate: string } | null>(null);
   const [askClear, setAskClear] = useState(false);
@@ -132,7 +132,7 @@ export function QuickGrid({ lists, expenses, today, onActiveDate }: {
     grid.pasteText(text, at);
     go(at.r, 0);
   };
-  const clearAll = () => { setRows(blankRows(10)); setTried(false); grid.closeSuggest(); setAskClear(false); setSel({ ar: 0, ac: 0, fr: 0, fc: 0 }); go(0, 0); };
+  const clearAll = () => { setRows(blankRows(7)); setTried(false); grid.closeSuggest(); setAskClear(false); setSel({ ar: 0, ac: 0, fr: 0, fc: 0 }); go(0, 0); };
 
   const cellInput = 'block h-[38px] w-full min-w-0 truncate bg-transparent px-3 text-[13px] text-fg outline-none placeholder:text-faint';
 

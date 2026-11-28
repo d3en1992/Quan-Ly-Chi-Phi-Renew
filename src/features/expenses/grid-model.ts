@@ -8,7 +8,7 @@ export const COLS = ['date', 'type', 'project', 'amount', 'description', 'buyer'
 export type Col = (typeof COLS)[number];
 export const COL_LABEL: Record<Col, string> = {
   date: 'Ngày', type: 'Loại Chi Phí *', project: 'Công Trình *', amount: 'Số Tiền (đ)', description: 'Nội Dung / Ghi Chú',
-  buyer: 'Người Mua', supplier: 'Nhà Cung Cấp', paid: 'Đã TT',
+  buyer: 'Người Lập Phiếu', supplier: 'Nhà Cung Cấp', paid: 'Đã TT',
 };
 
 export type GridRow = {

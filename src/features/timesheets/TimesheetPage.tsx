@@ -9,6 +9,7 @@ import { buildPayrollIndex, toYearFilter, weekStartOf } from '@/lib/calc';
 import { hasLevel } from '@/lib/permissions';
 import { todayIso } from '@/features/reports/shared';
 import { useYears } from '@/app/year';
+import { useProjectIdsInYear } from '@/features/reports/api';
 import { useTimesheetData } from './api';
 import { AdvancesTab } from './AdvancesTab';
 import { PayrollTab } from './PayrollTab';
@@ -41,7 +42,9 @@ export function TimesheetPage() {
   const ix = useMemo(() => (data ? buildPayrollIndex(data.weeks, data.lines, data.advances) : null), [data]);
 
   // Công trình mặc định: lần chọn trước (nếu còn), không thì công trình đầu danh sách
-  const projectId = data && (data.projects.some((p) => p.id === projectPick) ? projectPick : data.projectOptions[0]?.id) || '';
+  const yearIds = useProjectIdsInYear();
+  const projectId = data && (data.projects.some((p) => p.id === projectPick) ? projectPick
+    : (data.projectOptions.find((p) => !yearIds || yearIds.has(p.id)) ?? data.projectOptions[0])?.id) || '';
   const setProject = (id: string) => { setProjectPick(id); try { localStorage.setItem(PROJECT_KEY, id); } catch { /* bỏ qua */ } };
   const changeTab = (t: Tab) => { if (tab === 'sheet' && t !== 'sheet' && dirtyRef.current) setPendingTab(t); else setTab(t); };
   const tabs = <SubTabs tabs={TABS} value={tab} onChange={changeTab} />;

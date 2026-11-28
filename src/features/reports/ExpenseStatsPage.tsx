@@ -165,12 +165,11 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
   const fill = 'max-sm:w-full max-sm:max-w-none max-sm:[&_select]:max-w-none max-sm:[&_select]:flex-1';
   const filters = (
     <div className="grid shrink-0 gap-2" data-testid="stats-filters">
-      {/* 13/11/2026: hàng 1 = Tìm nội dung + Công trình; hàng 2 = Loại chi phí · NCC · Lọc nâng cao. Ba ô này gõ để tìm, bấm để xổ danh sách */}
-      <div className="grid gap-2 sm:grid-cols-2">
-        <SearchBox value={search} onChange={setSearch} placeholder="Tìm nội dung…" className="w-full sm:max-w-none" />
-        <FilterCombo label="Công trình" value={project} onChange={setProject} items={options.projects} />
-      </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+      {/* 28/11/2026: máy tính (≥1024) 1 hàng: Tìm · Công trình · Loại · NCC · Lọc nâng cao; máy tính bảng 2 hàng (Tìm + Công trình / Loại · NCC · nút);
+          điện thoại: Tìm, Công trình mỗi ô 1 hàng, Loại + NCC chung hàng, nút cả hàng. Ba ô lọc gõ để tìm, bấm để xổ danh sách */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <SearchBox value={search} onChange={setSearch} placeholder="Tìm nội dung…" className="col-span-2 w-full min-w-0 sm:col-span-1 sm:max-w-none sm:min-w-0 lg:min-w-0" />
+        <FilterCombo label="Công trình" value={project} onChange={setProject} items={options.projects} className="col-span-2 lg:col-span-1" />
         <FilterCombo label="Loại chi phí" value={type} onChange={setType} items={options.types} />
         <FilterCombo label="NCC" value={supplier} onChange={setSupplier} items={options.suppliers} />
         <Button data-testid="stats-adv" aria-expanded={advOpen} onClick={() => setAdvOpen((o) => !o)}
@@ -212,7 +211,7 @@ function Content({ data, years, yearLabel }: { data: ReportData; years: readonly
           <MobileCard key={r.id} onClick={() => setOpen(r)}>
             <MobileRow><b className="min-w-0 truncate">{r.type}</b><b className="num">{formatMoney(r.amount)}</b></MobileRow>
             <MobileRow meta><span className="min-w-0 truncate">{years.length === 1 ? formatDate(r.date).slice(0, 5) : formatDate(r.date)} · {r.project}</span><HasPhotoMark path={r.photo} /></MobileRow>
-            <MobileRow meta><span className="min-w-0 truncate">{[r.supplier, r.buyer ? `mua: ${r.buyer}` : ''].filter(Boolean).join(' · ') || r.description}</span>{r.paid ? null : <PaidPill paid={false} />}</MobileRow>
+            <MobileRow meta><span className="min-w-0 truncate">{[r.supplier, r.buyer ? `lập: ${r.buyer}` : ''].filter(Boolean).join(' · ') || r.description}</span>{r.paid ? null : <PaidPill paid={false} />}</MobileRow>
           </MobileCard>
         ))}
         {rows.length > PAGE_SIZE ? <Pager {...paged} /> : null}

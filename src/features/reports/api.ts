@@ -5,7 +5,9 @@ import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
 import { fetchAllPages } from '@/lib/fetch-pages';
-import type { CalcData, CalcSubcontract } from '@/lib/calc';
+import { inYear, projectIdsInYear, toYearFilter, yearOf, type CalcData, type CalcSubcontract } from '@/lib/calc';
+import { useYears } from '@/app/year';
+import { useMemo } from 'react';
 
 const money = z.coerce.number();
 const date = z.string().nullable();
@@ -126,4 +128,22 @@ export const REPORT_DATA_KEY = ['report-data'] as const;
 /** Dữ liệu báo cáo dùng chung cho 3 màn (tải 1 lần, giữ 1 phút; đổi tab không tải lại). */
 export function useReportData() {
   return useQuery({ queryKey: REPORT_DATA_KEY, queryFn: fetchReportData, staleTime: 60_000 });
+}
+
+/**
+ * Công trình thuộc năm đang chọn — cho ô chọn công trình ở Chấm công, Thu tiền, Hợp đồng chính, Quyết toán, Lợi nhuận (28/11/2026).
+ * Như tab Công Trình (`projectIdsInYear`: năm tạo, hóa đơn, chấm công, phiếu chi) + có phiếu thu / ngày bắt đầu trong năm.
+ * Trả `null` = không lọc ("Tất cả năm" hoặc chưa tải xong dữ liệu).
+ */
+export function useProjectIdsInYear(): Set<string> | null {
+  const { years } = useYears();
+  const q = useReportData();
+  return useMemo(() => {
+    const ys = toYearFilter(years);
+    if (!q.data || ys.length === 0) return null;
+    const ids = projectIdsInYear(q.data.projects, ys, q.data);
+    for (const r of q.data.receipts) if (r.project_id && inYear(r.date, ys)) ids.add(r.project_id);
+    for (const p of q.data.projects) { const y = yearOf(p.start_date); if (y !== null && ys.includes(y)) ids.add(p.id); }
+    return ids;
+  }, [years, q.data]);
 }

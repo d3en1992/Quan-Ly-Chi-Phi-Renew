@@ -21,7 +21,8 @@ import { KIND_LABEL, MODE_LABEL, useCreateParty, useCreatePayments, usePayData, 
 import { autoSubcontractId, blankPayDraft, projectFilterOptions, canEditRow, draftOfPayment, PaymentSheet, paymentZalo, usePayCalc, type PayCalc, type PayDraft } from './shared';
 
 type Row = { date: string; party: string; project: string; amount: number; note: string };
-const blankRow = (): Row => ({ date: '', party: '', project: '', amount: 0, note: '' });
+/** Ngày mặc định = hôm nay (28/11/2026) — dòng thêm sau lấy ngày dòng trên */
+const blankRow = (date = todayIso()): Row => ({ date, party: '', project: '', amount: 0, note: '' });
 const isBlank = (r: Row) => !r.party.trim() && !r.project && !r.amount && !r.note.trim();
 const KINDS: { value: PaymentKind; label: string }[] = (['advance', 'supplier_payment'] as const).map((k) => ({ value: k, label: KIND_LABEL[k]! }));
 
@@ -35,8 +36,10 @@ function EntryGrid({ data, calc }: { data: PayData; calc: PayCalc }) {
   const ncc = kind === 'supplier_payment';
   const parties = useMemo(() => (ncc ? data.suppliers : data.subcontractors).filter((p) => !p.archived), [ncc, data]);
   const set = (i: number, patch: Partial<Row>) => setRows((rs) => {
-    const next = rs.map((r, j) => (j === i ? { ...r, ...patch } : r));
-    return i === next.length - 1 && !isBlank(next[i]!) ? [...next, blankRow()] : next;
+    const old = rs[i]?.date;
+    // Đổi ngày 1 dòng → các dòng trống bên dưới đang cùng ngày cũ đổi theo
+    const next = rs.map((r, j) => (j === i ? { ...r, ...patch } : patch.date !== undefined && j > i && isBlank(r) && r.date === old ? { ...r, date: patch.date } : r));
+    return i === next.length - 1 && !isBlank(next[i]!) ? [...next, blankRow(next[i]!.date || todayIso())] : next;
   });
   const filled = rows.filter((r) => !isBlank(r));
   const total = sumOf(filled, (r) => r.amount);
@@ -110,7 +113,7 @@ function EntryGrid({ data, calc }: { data: PayData; calc: PayCalc }) {
         </table>
       </div>
       <div className="flex flex-wrap items-center gap-3 border-t border-line-soft px-4 py-2.5 text-[13px]">
-        <span className="min-w-0 flex-1 text-muted" data-testid="pay-grid-debt">{debtLine ?? (ncc ? 'Chọn NCC để xem còn nợ. Ngày để trống = ngày dòng trên (dòng đầu = hôm nay).' : 'Chọn thầu phụ + công trình để xem còn phải trả. Ngày để trống = ngày dòng trên.')}</span>
+        <span className="min-w-0 flex-1 text-muted" data-testid="pay-grid-debt">{debtLine ?? (ncc ? 'Chọn NCC để xem còn nợ. Ngày để trống = ngày dòng trên (dòng đầu = hôm nay).' : 'Chọn thầu phụ + công trình để xem còn phải trả. Ngày mặc định hôm nay; để trống = ngày dòng trên.')}</span>
         {filled.length ? <span className="text-muted">Tổng <b className="num text-fg">{formatMoney(total)}</b></span> : null}
         <Button variant="primary" data-testid="pay-grid-save" disabled={create.isPending || !filled.length} onClick={save}><Icon name="save" />{create.isPending ? 'Đang lưu…' : `Lưu ${filled.length || ''} phiếu`}</Button>
       </div>
