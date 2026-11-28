@@ -48,7 +48,8 @@ const env = (...names: string[]) => {
 };
 
 type InFile = { mime_type?: string; data?: string };
-type Body = { image_base64?: string; mime_type?: string; files?: InFile[]; text?: string; note?: string; kind?: ScanRequestKind; fixture?: string };
+/** engine: 'groq' = bỏ qua Gemini, gọi thẳng Groq (để kiểm tra Groq; app bình thường không gửi) */
+type Body = { image_base64?: string; mime_type?: string; files?: InFile[]; text?: string; note?: string; kind?: ScanRequestKind; fixture?: string; engine?: string };
 const KINDS: ScanRequestKind[] = ['auto', 'save_info', 'invoice', 'advance', 'receipt', 'contract', 'subcontract', 'timesheet', 'id_card', 'shop'];
 /** Loại tệp Gemini đọc được: ảnh, PDF, âm thanh (app đổi ghi âm sang WAV) */
 const MIME_OK = /^(image\/(jpeg|png|webp)|application\/pdf|audio\/(wav|x-wav|webm|ogg|mp4|mpeg|aac|flac))$/;
@@ -67,7 +68,9 @@ const MAX_ROUNDS = 3;
 const RETRY_PAUSE_MS = 1_500;
 /** Groq (dự phòng khi Gemini bận, chỉ chữ / ghi âm): secret GROQ_API_KEY; đổi model bằng GROQ_MODELS, GROQ_WHISPER_MODEL */
 const GROQ_URL = 'https://api.groq.com/openai/v1';
-const DEFAULT_GROQ_MODELS = 'openai/gpt-oss-120b,openai/gpt-oss-20b';
+const DEFAULT_GROQ_MODELS = 'openai/gpt-oss-120b,openai/gpt-oss-20b,qwen/qwen3.8-27b';
+/** Model Groq xem được ảnh (đổi bằng secret GROQ_VISION_MODELS) */
+const DEFAULT_GROQ_VISION = 'qwen/qwen3.8-27b';
 const DEFAULT_GROQ_WHISPER = 'whisper-large-v3-turbo';
 const GROQ_RESERVE_MS = 25_000;
 const MAX_BASE64 = 21_500_000; // tổng các tệp ~16 MB: PDF nhận tới 15 MB (app gửi bản đã nén nếu nén được), ảnh ~300 KB, ghi âm ~4 MB
@@ -158,8 +161,9 @@ Deno.serve(async (req) => {
     });
     const started = Date.now();
     const groqKey = env('GROQ_API_KEY');
-    // Groq chỉ thay được khi không có ảnh / PDF (model Groq đang dùng không xem ảnh) — lúc đó chừa thời gian cho Groq
-    const groqUsable = !!groqKey && !hasDoc;
+    // Groq thay được khi không có PDF: chữ / ghi âm → gpt-oss, ảnh → Qwen (xem được ảnh) — lúc đó chừa thời gian cho Groq
+    const hasPdf = files.some((f) => f.mime_type === 'application/pdf');
+    const groqUsable = !!groqKey && !hasPdf;
     const geminiBudget = groqUsable ? TOTAL_BUDGET_MS - GROQ_RESERVE_MS : TOTAL_BUDGET_MS;
     const fails: { model: string; status: number }[] = [];
     /** Kết quả AI (JSON) → câu trả lời cho app */
@@ -175,7 +179,8 @@ Deno.serve(async (req) => {
     // Tự thử lại (anh Tình 29/11/2026): Google hay báo bận (503) — không bắt người dùng bấm lại. Mỗi vòng xoay qua các model,
     // hết vòng nghỉ 1,5 giây rồi thử tiếp, tối đa MAX_ROUNDS vòng. Model hết lượt (429) / không dùng được (400/403/404) thì bỏ hẳn.
     const dead = new Set<string>();
-    for (let round = 0; round < MAX_ROUNDS; round++) {
+    const rounds = groqUsable && body.engine === 'groq' ? 0 : MAX_ROUNDS;
+    for (let round = 0; round < rounds; round++) {
       const live = models.filter((m) => !dead.has(m));
       if (!live.length || Date.now() - started > geminiBudget) break;
       if (round > 0) await new Promise((r) => setTimeout(r, RETRY_PAUSE_MS));
@@ -211,10 +216,14 @@ Deno.serve(async (req) => {
         return finish(raw, 'gemini', model);
       }
     }
-    // Gemini không được → Groq (chữ / ghi âm): ghi âm chép lời bằng Whisper rồi model chữ của Groq điền mẫu JSON
+    // Gemini không được → Groq: ghi âm chép lời bằng Whisper, rồi model Groq điền mẫu JSON (có ảnh thì dùng model xem ảnh)
     if (groqUsable) {
       try {
-        const g = await askGroq(groqKey, buildPrompt(kind, note, ctx, perms), { note, text, audio: files.filter((f) => String(f.mime_type).startsWith('audio/')) });
+        const g = await askGroq(groqKey, buildPrompt(kind, note, ctx, perms), {
+          note, text,
+          audio: files.filter((f) => String(f.mime_type).startsWith('audio/')),
+          images: files.filter((f) => String(f.mime_type).startsWith('image/')),
+        });
         if (g) return finish(g.raw, 'groq', g.model, g.transcript);
       } catch (e) {
         console.error('Groq lỗi', e instanceof Error ? e.message : String(e));
@@ -238,9 +247,9 @@ Deno.serve(async (req) => {
 
 /**
  * Dự phòng Groq khi Gemini bận: ghi âm → Whisper chép lời tiếng Việt; rồi model chữ (gpt-oss) điền đúng mẫu JSON của câu lệnh.
- * Trả null nếu mọi model Groq đều lỗi. Không gửi ảnh / PDF (model chữ không xem được).
+ * Có ảnh → model xem được ảnh (Qwen). Trả null nếu mọi model Groq đều lỗi. PDF không gửi (Groq không đọc PDF).
  */
-async function askGroq(key: string, system: string, input: { note: string; text: string; audio: InFile[] }): Promise<{ raw: unknown; model: string; transcript: string } | null> {
+async function askGroq(key: string, system: string, input: { note: string; text: string; audio: InFile[]; images: InFile[] }): Promise<{ raw: unknown; model: string; transcript: string } | null> {
   const auth = { Authorization: `Bearer ${key}` };
   let transcript = '';
   for (const a of input.audio) {
@@ -254,19 +263,25 @@ async function askGroq(key: string, system: string, input: { note: string; text:
     if (!res.ok) throw new Error(`Whisper ${res.status} ${(await res.text()).slice(0, 200)}`);
     transcript = [transcript, String(((await res.json()) as { text?: string }).text ?? '').trim()].filter(Boolean).join(' ');
   }
-  const user = [
+  const userText = [
+    input.images.length ? 'Người dùng gửi ảnh chứng từ (kèm dưới đây).' : '',
     transcript ? `Người dùng nói (ghi âm đã chép lời — đưa nguyên văn vào transcript): ${transcript}` : '',
     input.note.trim() ? `Ghi chú / lời nhắn: ${input.note.trim()}` : '',
     input.text.trim() ? `Nội dung chữ (dán / từ tệp Excel):\n${input.text}` : '',
   ].filter(Boolean).join('\n') || 'Không có lời nhắn.';
-  const models = (env('GROQ_MODELS') || DEFAULT_GROQ_MODELS).split(',').map((m) => m.trim()).filter(Boolean);
+  const user = input.images.length
+    ? [{ type: 'text', text: userText }, ...input.images.map((f) => ({ type: 'image_url', image_url: { url: `data:${f.mime_type};base64,${f.data}` } }))]
+    : userText;
+  const list = input.images.length ? env('GROQ_VISION_MODELS') || DEFAULT_GROQ_VISION : env('GROQ_MODELS') || DEFAULT_GROQ_MODELS;
+  const models = list.split(',').map((m) => m.trim()).filter(Boolean);
   for (const model of models) {
     try {
       const res = await fetch(`${GROQ_URL}/chat/completions`, {
-        method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(15_000),
+        method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(input.images.length ? 25_000 : 15_000),
         body: JSON.stringify({
           model, temperature: 0.1, response_format: { type: 'json_object' },
-          ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
+          // gpt-oss: suy nghĩ ít cho nhanh; Qwen: giấu phần suy nghĩ để chỉ còn JSON
+          ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : { reasoning_format: 'hidden' }),
           messages: [{ role: 'system', content: `${system}\n\nChỉ trả về đúng 1 đối tượng JSON theo mẫu trên.` }, { role: 'user', content: user }],
         }),
       });
@@ -275,7 +290,8 @@ async function askGroq(key: string, system: string, input: { note: string; text:
         continue;
       }
       const out = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-      const answer = String(out.choices?.[0]?.message?.content ?? '').replace(/^\s*```(json)?/i, '').replace(/```\s*$/, '');
+      const answer = String(out.choices?.[0]?.message?.content ?? '').replace(/<think>[\s\S]*?<\/think>/g, '')
+        .replace(/^\s*```(json)?/i, '').replace(/```\s*$/, '');
       return { raw: JSON.parse(answer), model: `groq:${model}`, transcript };
     } catch (e) {
       console.error('Groq lỗi', model, e instanceof Error ? e.message : String(e));
