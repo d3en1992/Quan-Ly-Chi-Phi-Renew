@@ -62,6 +62,14 @@ const DEFAULT_MODELS = 'gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.8-f
 const DEFAULT_THINKING = 'minimal';
 const PER_MODEL_TIMEOUT_MS = 30_000;
 const TOTAL_BUDGET_MS = 110_000;
+/** Số vòng xoay qua danh sách model khi Google bận, nghỉ giữa 2 vòng */
+const MAX_ROUNDS = 3;
+const RETRY_PAUSE_MS = 1_500;
+/** Groq (dự phòng khi Gemini bận, chỉ chữ / ghi âm): secret GROQ_API_KEY; đổi model bằng GROQ_MODELS, GROQ_WHISPER_MODEL */
+const GROQ_URL = 'https://api.groq.com/openai/v1';
+const DEFAULT_GROQ_MODELS = 'openai/gpt-oss-120b,openai/gpt-oss-20b';
+const DEFAULT_GROQ_WHISPER = 'whisper-large-v3-turbo';
+const GROQ_RESERVE_MS = 25_000;
 const MAX_BASE64 = 21_500_000; // tổng các tệp ~16 MB: PDF nhận tới 15 MB (app gửi bản đã nén nếu nén được), ảnh ~300 KB, ghi âm ~4 MB
 
 Deno.serve(async (req) => {
@@ -149,48 +157,77 @@ Deno.serve(async (req) => {
       },
     });
     const started = Date.now();
+    const groqKey = env('GROQ_API_KEY');
+    // Groq chỉ thay được khi không có ảnh / PDF (model Groq đang dùng không xem ảnh) — lúc đó chừa thời gian cho Groq
+    const groqUsable = !!groqKey && !hasDoc;
+    const geminiBudget = groqUsable ? TOTAL_BUDGET_MS - GROQ_RESERVE_MS : TOTAL_BUDGET_MS;
     const fails: { model: string; status: number }[] = [];
-    for (const model of models) {
-      if (Date.now() - started > TOTAL_BUDGET_MS) break; // hàm máy chủ bị cắt ở ~150 giây
-      let res: Response;
-      try {
-        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: payload,
-          signal: AbortSignal.timeout(PER_MODEL_TIMEOUT_MS),
-        });
-      } catch {
-        fails.push({ model, status: 504 }); // treo quá lâu / mất mạng
-        continue;
-      }
-      if (!res.ok) {
-        console.error('Gemini lỗi', model, res.status, (await res.text()).slice(0, 300));
-        fails.push({ model, status: res.status });
-        continue;
-      }
-      const out = await res.json();
-      // Tên riêng (không trùng `text` = chữ người dùng dán): trước đây trùng tên nên JSON của AI bị coi là "ghi chú" → AI đoán công trình nào cũng thành "theo ghi chú"
-      const answer: string = (out?.candidates?.[0]?.content?.parts ?? [])
-        .filter((p: { thought?: boolean }) => !p.thought).map((p: { text?: string }) => p.text ?? '').join('')
-        .replace(/^\s*```(json)?/i, '').replace(/```\s*$/, '');
-      let raw: unknown;
-      try { raw = JSON.parse(answer); } catch {
-        fails.push({ model, status: 422 }); // trả về không phải JSON → thử model khác
-        continue;
-      }
+    /** Kết quả AI (JSON) → câu trả lời cho app */
+    const finish = (raw: unknown, mode: 'gemini' | 'groq', model: string, transcript?: string) => {
       if (fails.length) console.log('Đổi model', fails.map((f) => `${f.model}:${f.status}`).join(' → '), '→', model);
       // Công trình: ghi chú > hóa đơn đã lưu gần đây (NCC hay giao cho đâu + địa chỉ trên phiếu) > AI tự đoán; không theo ghi chú → tô vàng
       const extras = scanExtras(raw);
+      if (transcript && !extras.transcript) extras.transcript = transcript.slice(0, 2000);
       const result = applyProjectGuess(normalizeScan(raw, ctx, kind), `${note} ${text.slice(0, 500)}`, ctx, extras.transcript);
-      const resp: ScanResponse = { ...result, ...extras, mode: 'gemini', model, warning };
+      const resp: ScanResponse = { ...result, ...extras, mode, model, warning };
       return checkKindAllowed(resp, perms) ?? json(200, resp);
+    };
+    // Tự thử lại (anh Tình 29/11/2026): Google hay báo bận (503) — không bắt người dùng bấm lại. Mỗi vòng xoay qua các model,
+    // hết vòng nghỉ 1,5 giây rồi thử tiếp, tối đa MAX_ROUNDS vòng. Model hết lượt (429) / không dùng được (400/403/404) thì bỏ hẳn.
+    const dead = new Set<string>();
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      const live = models.filter((m) => !dead.has(m));
+      if (!live.length || Date.now() - started > geminiBudget) break;
+      if (round > 0) await new Promise((r) => setTimeout(r, RETRY_PAUSE_MS));
+      for (const model of live) {
+        const left = geminiBudget - (Date.now() - started);
+        if (left < 3_000) break; // hàm máy chủ bị cắt ở ~150 giây
+        let res: Response;
+        try {
+          res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: payload,
+            signal: AbortSignal.timeout(Math.min(PER_MODEL_TIMEOUT_MS, left)),
+          });
+        } catch {
+          fails.push({ model, status: 504 }); // treo quá lâu / mất mạng
+          continue;
+        }
+        if (!res.ok) {
+          console.error('Gemini lỗi', model, res.status, (await res.text()).slice(0, 300));
+          fails.push({ model, status: res.status });
+          if (![500, 502, 503, 504].includes(res.status)) dead.add(model);
+          continue;
+        }
+        const out = await res.json();
+        // Tên riêng (không trùng `text` = chữ người dùng dán): trước đây trùng tên nên JSON của AI bị coi là "ghi chú" → AI đoán công trình nào cũng thành "theo ghi chú"
+        const answer: string = (out?.candidates?.[0]?.content?.parts ?? [])
+          .filter((p: { thought?: boolean }) => !p.thought).map((p: { text?: string }) => p.text ?? '').join('')
+          .replace(/^\s*```(json)?/i, '').replace(/```\s*$/, '');
+        let raw: unknown;
+        try { raw = JSON.parse(answer); } catch {
+          fails.push({ model, status: 422 }); // trả về không phải JSON → thử model khác
+          continue;
+        }
+        return finish(raw, 'gemini', model);
+      }
+    }
+    // Gemini không được → Groq (chữ / ghi âm): ghi âm chép lời bằng Whisper rồi model chữ của Groq điền mẫu JSON
+    if (groqUsable) {
+      try {
+        const g = await askGroq(groqKey, buildPrompt(kind, note, ctx, perms), { note, text, audio: files.filter((f) => String(f.mime_type).startsWith('audio/')) });
+        if (g) return finish(g.raw, 'groq', g.model, g.transcript);
+      } catch (e) {
+        console.error('Groq lỗi', e instanceof Error ? e.message : String(e));
+      }
+      fails.push({ model: 'groq', status: 503 });
     }
     // Mọi model đều lỗi
     const codes = fails.map((f) => f.status);
     if (codes.length && codes.every((c) => c === 429 || c === 404 || c === 403)) {
       return json(429, { error: 'Hết lượt AI miễn phí của tất cả mô hình. Đợi 1 phút (hoặc đến mai) rồi thử lại, hoặc nhập tay.' });
     }
-    if (codes.some((c) => c === 503 || c === 500 || c === 504)) {
-      return json(503, { error: 'AI của Google đang quá tải. Đợi một lát rồi bấm lại.' });
+    if (codes.some((c) => c === 503 || c === 500 || c === 502 || c === 504)) {
+      return json(503, { error: `Máy chủ AI của Google đang bận (đã tự thử ${fails.length} lần với các mô hình khác nhau). Đợi 1–2 phút rồi bấm gửi lại, hoặc nhập tay.` });
     }
     return json(502, { error: `AI đọc ảnh lỗi (${codes.join(', ') || 'không có mô hình'}). Thử lại hoặc nhập tay.` });
   } catch (e) {
@@ -198,6 +235,54 @@ Deno.serve(async (req) => {
     return json(500, { error: e instanceof Error ? e.message : String(e) });
   }
 });
+
+/**
+ * Dự phòng Groq khi Gemini bận: ghi âm → Whisper chép lời tiếng Việt; rồi model chữ (gpt-oss) điền đúng mẫu JSON của câu lệnh.
+ * Trả null nếu mọi model Groq đều lỗi. Không gửi ảnh / PDF (model chữ không xem được).
+ */
+async function askGroq(key: string, system: string, input: { note: string; text: string; audio: InFile[] }): Promise<{ raw: unknown; model: string; transcript: string } | null> {
+  const auth = { Authorization: `Bearer ${key}` };
+  let transcript = '';
+  for (const a of input.audio) {
+    const bin = Uint8Array.from(atob(a.data!), (c) => c.charCodeAt(0));
+    const form = new FormData();
+    form.append('file', new Blob([bin], { type: 'audio/wav' }), 'ghi-am.wav');
+    form.append('model', env('GROQ_WHISPER_MODEL') || DEFAULT_GROQ_WHISPER);
+    form.append('language', 'vi');
+    form.append('response_format', 'json');
+    const res = await fetch(`${GROQ_URL}/audio/transcriptions`, { method: 'POST', headers: auth, body: form, signal: AbortSignal.timeout(12_000) });
+    if (!res.ok) throw new Error(`Whisper ${res.status} ${(await res.text()).slice(0, 200)}`);
+    transcript = [transcript, String(((await res.json()) as { text?: string }).text ?? '').trim()].filter(Boolean).join(' ');
+  }
+  const user = [
+    transcript ? `Người dùng nói (ghi âm đã chép lời — đưa nguyên văn vào transcript): ${transcript}` : '',
+    input.note.trim() ? `Ghi chú / lời nhắn: ${input.note.trim()}` : '',
+    input.text.trim() ? `Nội dung chữ (dán / từ tệp Excel):\n${input.text}` : '',
+  ].filter(Boolean).join('\n') || 'Không có lời nhắn.';
+  const models = (env('GROQ_MODELS') || DEFAULT_GROQ_MODELS).split(',').map((m) => m.trim()).filter(Boolean);
+  for (const model of models) {
+    try {
+      const res = await fetch(`${GROQ_URL}/chat/completions`, {
+        method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(15_000),
+        body: JSON.stringify({
+          model, temperature: 0.1, response_format: { type: 'json_object' },
+          ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
+          messages: [{ role: 'system', content: `${system}\n\nChỉ trả về đúng 1 đối tượng JSON theo mẫu trên.` }, { role: 'user', content: user }],
+        }),
+      });
+      if (!res.ok) {
+        console.error('Groq lỗi', model, res.status, (await res.text()).slice(0, 200));
+        continue;
+      }
+      const out = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      const answer = String(out.choices?.[0]?.message?.content ?? '').replace(/^\s*```(json)?/i, '').replace(/```\s*$/, '');
+      return { raw: JSON.parse(answer), model: `groq:${model}`, transcript };
+    } catch (e) {
+      console.error('Groq lỗi', model, e instanceof Error ? e.message : String(e));
+    }
+  }
+  return null;
+}
 
 /** AI tự nhận ra loại mà người này không có quyền → không trả dữ liệu */
 function checkKindAllowed(r: ScanResponse, perms: KindPermissions): Response | null {

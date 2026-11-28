@@ -178,7 +178,7 @@ export type ScanResult =
 
 export type ScanResponse = ScanResult & {
   /** 'gemini' = AI đọc thật · 'mock' = chưa có key, đọc từ fixtures */
-  mode: 'gemini' | 'mock';
+  mode: 'gemini' | 'groq' | 'mock';
   model?: string;
   warning?: string;
   /** Lời nói AI nghe được (khi gửi ghi âm) — để anh xem AI hiểu đúng chưa */

@@ -43,6 +43,8 @@ type Props = {
   /** Thôi chờ AI — ghi âm, ảnh, lời nhắn vẫn còn */
   onCancel: () => void;
   busy: boolean;
+  /** Chữ trên nút lúc chờ thay cho "AI đang đọc…" (đang tự thử lại) */
+  busyLabel?: string;
   onRead: () => void;
   /** Chỉ cho đúng 1 loại (nút Chụp CCCD ở Danh Bạ) */
   lockKind?: boolean;
@@ -60,7 +62,7 @@ export function useObjectUrl(blob: Blob | null): string | null {
   return url;
 }
 
-export function CaptureForm({ kind, setKind, allowed, note, setNote, input, onPickFile, onClearFile, onAudio, audio, onClearAudio, onCancel, busy, onRead, lockKind }: Props) {
+export function CaptureForm({ kind, setKind, allowed, note, setNote, input, onPickFile, onClearFile, onAudio, audio, onClearAudio, onCancel, busy, busyLabel, onRead, lockKind }: Props) {
   const camRef = useRef<HTMLInputElement>(null);
   const pickRef = useRef<HTMLInputElement>(null);
   const url = useObjectUrl(input?.kind === 'image' ? input.image.blob : null);
@@ -168,7 +170,7 @@ export function CaptureForm({ kind, setKind, allowed, note, setNote, input, onPi
       <p className="m-0 text-[12px] text-muted">AI đọc rồi điền sẵn để anh kiểm tra — app không tự lưu.</p>
 
       <Button variant="primary" size="lg" data-testid="scan-read" disabled={!canRead} onClick={onRead} className="justify-center">
-        <Icon name={busy ? 'hourglass_top' : 'auto_awesome'} />{busy ? 'AI đang đọc…' : 'Gửi cho AI'}
+        <Icon name={busy ? 'hourglass_top' : 'auto_awesome'} />{busy ? busyLabel || 'AI đang đọc…' : 'Gửi cho AI'}
       </Button>
       {busy ? <Button className="justify-center" data-testid="scan-cancel" onClick={onCancel}><Icon name="close" />Thôi chờ (giữ lại ghi âm, ảnh, lời nhắn)</Button> : null}
     </div>

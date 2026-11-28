@@ -12,7 +12,7 @@ import { useToast } from '@/components/ui/toast';
 import { hasLevel } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import { useLists } from '@/features/expenses/shared';
-import { askAssistant, audioToWav, prepareInput, type AiFile, type PreparedImage, type PreparedInput } from './api';
+import { ASSIST_ATTEMPTS, askAssistant, audioToWav, prepareInput, type AiFile, type PreparedImage, type PreparedInput } from './api';
 import { CaptureForm, type AudioClip } from './CaptureForm';
 import { ImageDuplicateNotice } from './DuplicateNotice';
 import type { Fingerprint } from './duplicates';
@@ -69,8 +69,8 @@ function AiGuide({ allowed, onPick }: { allowed: Record<ScanRequestKind, boolean
   );
 }
 
-/** Hàm máy chủ thử nhiều model, tối đa ~110 giây; quá 125 giây coi như mất kết nối */
-const WAIT_MS = 125_000;
+/** Hàm máy chủ thử nhiều vòng model (+ Groq), tối đa ~110 giây; quá 150 giây coi như mất kết nối */
+const WAIT_MS = 150_000;
 function withTimeout<T>(p: Promise<T>): Promise<T> {
   return new Promise((ok, fail) => {
     const t = window.setTimeout(() => fail(new Error('AI trả lời quá chậm — thử gửi lại.')), WAIT_MS);
@@ -102,6 +102,8 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
   const [input, setInput] = useState<PreparedInput | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** Chữ trên nút khi app đang tự gửi lại (vd "AI bận — tự gửi lại lần 2/3…") */
+  const [busyLabel, setBusyLabel] = useState('');
   const [result, setResult] = useState<{ resp: ScanResponse; image: PreparedImage | null; doc: Doc | null; fp: Fingerprint | null; fileNote: string } | null>(null);
   const [fp, setFp] = useState<Fingerprint | null>(null);
   const [audio, setAudio] = useState<AudioClip | null>(null);
@@ -122,6 +124,9 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
   const read = async (clip: AudioClip | null = audio) => {
     const id = ++run.current;
     setBusy(true);
+    setBusyLabel('');
+    // Chờ lâu thường là Google bận và máy chủ đang tự thử mô hình khác — báo để khỏi bấm lại
+    const slow = window.setTimeout(() => { if (run.current === id) setBusyLabel((l) => l || 'Google hơi bận — AI đang tự thử lại, cứ chờ…'); }, 15_000);
     try {
       const files: AiFile[] = [];
       if (input?.kind === 'image') files.push({ mime: input.image.mime, base64: input.image.base64 });
@@ -129,7 +134,9 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
       if (clip) {
         try { files.push(await audioToWav(clip.blob)); } catch { throw new Error('Không đọc được ghi âm — nghe lại thử, hoặc gõ chữ.'); }
       }
-      const resp = await withTimeout(askAssistant({ files, text: input?.kind === 'sheet' ? input.text : '', note, kind }));
+      const resp = await withTimeout(askAssistant({ files, text: input?.kind === 'sheet' ? input.text : '', note, kind }, (n) => {
+        if (run.current === id) setBusyLabel(`Mạng / máy chủ chập chờn — tự gửi lại lần ${n}/${ASSIST_ATTEMPTS}…`);
+      }));
       if (run.current !== id) return;
       if (resp.warning) toast(resp.warning);
       setResult({ resp, image: input?.kind === 'image' ? input.image : null, doc: docFromInput(input), fp, fileNote: input && input.kind !== 'image' && !input.store ? input.fileNote : '' });
@@ -139,7 +146,8 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
       if (run.current !== id) return;
       toast(`${e instanceof Error ? e.message : String(e)}${clip ? ' Ghi âm vẫn còn — bấm Gửi lại.' : ''}`, 'error');
     } finally {
-      if (run.current === id) setBusy(false);
+      window.clearTimeout(slow);
+      if (run.current === id) { setBusy(false); setBusyLabel(''); }
     }
   };
 
@@ -184,7 +192,7 @@ export function ScanWorkspace({ defaultKind = 'auto', lockKind = false, compact 
               kind={kind} setKind={setKind} allowed={allowedKinds} note={note} setNote={setNote}
               input={input} onPickFile={(f) => void pickFile(f)} onClearFile={() => { setInput(null); setFp(null); }} onAudio={onAudio}
               audio={audio} onClearAudio={() => setAudio(null)} onCancel={cancel}
-              busy={busy || preparing} onRead={() => void read()} lockKind={lockKind}
+              busy={busy || preparing} busyLabel={busyLabel} onRead={() => void read()} lockKind={lockKind}
             />
           </Card>
           {guide ? <AiGuide allowed={allowedKinds} onPick={(k, t) => { setKind(k); setNote(t); }} /> : null}

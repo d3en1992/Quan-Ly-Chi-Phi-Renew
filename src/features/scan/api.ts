@@ -129,20 +129,38 @@ export function recordingSupported(): boolean {
   return typeof window !== 'undefined' && typeof MediaRecorder !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
 }
 
-/** Gọi AI đọc ảnh / tệp / ghi âm / chữ. Lỗi trả về câu tiếng Việt từ hàm máy chủ. */
-export async function askAssistant(input: { files: AiFile[]; text?: string; note: string; kind: ScanRequestKind }): Promise<ScanResponse> {
-  const { data, error } = await supabase.functions.invoke('scan-document', {
-    body: { files: input.files.map((f) => ({ mime_type: f.mime, data: f.base64 })), text: input.text ?? '', note: input.note, kind: input.kind },
-  });
-  if (error) {
+/** Số lần app tự gửi lại khi đường truyền / máy chủ trung gian lỗi (hàm máy chủ đã tự xoay model khi Google bận) */
+export const ASSIST_ATTEMPTS = 3;
+const RESEND_PAUSE_MS = 2_000;
+/** Lỗi nên tự gửi lại: không tới được hàm máy chủ (mạng, Supabase trung gian) hoặc hàm bị cắt giữa chừng (502 / 504 / 546) */
+export function shouldResend(status: number | null): boolean {
+  return status === null || status === 502 || status === 504 || status === 546;
+}
+
+/**
+ * Gọi AI đọc ảnh / tệp / ghi âm / chữ. Lỗi trả về câu tiếng Việt từ hàm máy chủ.
+ * Rớt mạng / máy chủ trung gian lỗi → tự gửi lại tối đa ASSIST_ATTEMPTS lần (báo qua onRetry), không bắt người dùng bấm lại.
+ */
+export async function askAssistant(
+  input: { files: AiFile[]; text?: string; note: string; kind: ScanRequestKind },
+  onRetry?: (attempt: number) => void,
+): Promise<ScanResponse> {
+  const body = { files: input.files.map((f) => ({ mime_type: f.mime, data: f.base64 })), text: input.text ?? '', note: input.note, kind: input.kind };
+  for (let attempt = 1; ; attempt++) {
+    const { data, error } = await supabase.functions.invoke('scan-document', { body });
+    if (!error) return data as ScanResponse;
     let msg = error.message;
     const ctx = (error as { context?: Response }).context;
+    const status = ctx && typeof ctx.status === 'number' ? ctx.status : null;
     if (ctx && typeof ctx.json === 'function') {
       try { msg = ((await ctx.json()) as { error?: string }).error ?? msg; } catch { /* giữ thông báo gốc */ }
     }
-    throw new Error(msg);
+    if (attempt >= ASSIST_ATTEMPTS || !shouldResend(status)) {
+      throw new Error(shouldResend(status) ? `Chưa gửi được cho AI sau ${attempt} lần (mạng yếu hoặc máy chủ bận) — đợi chút rồi bấm gửi lại.` : msg);
+    }
+    onRetry?.(attempt + 1);
+    await new Promise((r) => setTimeout(r, RESEND_PAUSE_MS));
   }
-  return data as ScanResponse;
 }
 
 /** Gọi AI đọc ảnh (cách cũ — 1 ảnh). Lỗi trả về câu tiếng Việt từ hàm máy chủ. */
